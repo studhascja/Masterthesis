@@ -1,6 +1,9 @@
 import pygame
 import sys
 
+bar_scale = 400
+x_offset = 350
+
 def read_points(filename):
     points = []
     try:
@@ -38,7 +41,7 @@ def calculate_latency_statistics(latencies):
     max_latency = round (max(latencies) / 1_000_000, 3)
     jitter = round (max_latency - min_latency, 3)
     
-    # Berechnung des durchschnittlichen Jitters
+    # Calculation of average Jitter
     jitters = [] 
     for i in range(1, len(latencies)):
         jitter_value = abs(latencies[i] - latencies[i - 1])
@@ -52,7 +55,7 @@ def calculate_latency_statistics(latencies):
 def main():
     pygame.init()
     screen = pygame.display.set_mode((1800, 1000))
-    pygame.display.set_caption("Kreis Visualisierung und Latenz-Statistiken")
+    pygame.display.set_caption("WiFi-Circle Test")
     clock = pygame.time.Clock()
     
     circle_window_width = 950
@@ -91,34 +94,33 @@ def main():
 
     latency_count = len(latencies)
 
-    # Starten des Pygame Fensters
+    # Start Pygame window
     running = True
     while running:
-        screen.fill((120, 120, 120))  # Hintergrund auf schwarz setzen
+        screen.fill((120, 120, 120)) 
         screen.blit(circle_window, (850, 0))
         screen.blit(diagramm_window, (0, 420))
         screen.blit(legende_window, (20, 620))
 
-        # Zeichnen der Punkte (Kreis)
+        # Draw points
         for point in points:
             pygame.draw.circle(screen, (0, 255, 0), point, 3)
         
-        # Zeichnen des Balkendiagramms für die Latenzen
+        # Draw latency diagramm
         bar_width = 1
         for i, latency in enumerate(latencies):
-            bar_height = (latency / 1_000_000) / max_latency *  400
-            three_ms_normed = 3 / max_latency * 400
-            pygame.draw.rect(screen, (0, 0, 0), (350 + i * (bar_width + 1), 950 - bar_height, bar_width, bar_height))
+            bar_height = (latency / 1_000_000) / max_latency *  bar_scale
+            three_ms_normed = 3 / max_latency * bar_scale
+            pygame.draw.rect(screen, (0, 0, 0), (x_offset + i * (bar_width + 1), 950 - bar_height, bar_width, bar_height))
 
-        # Linien für die durchschnittliche Latenz und den Jitter
-        avg_latency_pos = avg_latency / max_latency * 400
-        avg_jitter_pos = avg_jitter / max_latency * 400
+        avg_latency_pos = avg_latency / max_latency * bar_scale
+        avg_jitter_pos = avg_jitter / max_latency * bar_scale
        
-        pygame.draw.line(screen, (0, 255, 255), (350, 950 - avg_latency_pos), (1750, 950 - avg_latency_pos), 4)  # Durchschnittliche Latenz (blau)
+        pygame.draw.line(screen, (0, 255, 255), (x_offset, 950 - avg_latency_pos), (1750, 950 - avg_latency_pos), 4)  # Durchschnittliche Latenz (blau)
         
-        pygame.draw.line(screen, (255, 255, 0), (350, 950 - avg_jitter_pos), (1750, 950 - avg_jitter_pos), 4)  # Jitter (gelb)
+        pygame.draw.line(screen, (255, 255, 0), (x_offset, 950 - avg_jitter_pos), (1750, 950 - avg_jitter_pos), 4)  # Jitter (gelb)
 
-        pygame.draw.line(screen, (255, 0, 0), (350, 950 - three_ms_normed), (1750, 950 - three_ms_normed), 4)
+        pygame.draw.line(screen, (255, 0, 0), (x_offset, 950 - three_ms_normed), (1750, 950 - three_ms_normed), 4)
 
         # Anzeige der Latenzstatistiken
         font = pygame.font.SysFont("Arial", 23)
