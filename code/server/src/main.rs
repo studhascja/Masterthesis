@@ -6,7 +6,7 @@ use std::time::{Duration, SystemTime};
 use std::f64::consts::PI;
 
 const TIMEOUT_MS: u64 = 3; 
-const NUM_POINTS: usize = 1000; 
+const NUM_POINTS: usize = 2000; 
 const RADIUS: f64 = 10.0; 
 
 fn median(values: &Vec<i128>) -> i128 {
@@ -39,12 +39,13 @@ fn hold_clock(start_time: SystemTime){
 
 fn handle_time(mut stream: TcpStream) {
     let mut buffer = [0; 1024];
-    let mut latencies = Vec::with_capacity(NUM_POINTS);
-
+    
     if let Ok(n) = stream.read(&mut buffer) {
         let msg = String::from_utf8_lossy(&buffer[..n]);
         if msg.trim() == "start" {
-            println!("Time synchronisation started");
+	    println!("------------------------------------------------------------");
+            println!("----------------Time synchronisation started----------------");
+	    println!("------------------------------------------------------------\n");
 
             let mut min_latency = u128::MAX;
             let mut min_latency_index = 0;
@@ -61,9 +62,7 @@ fn handle_time(mut stream: TcpStream) {
                 match stream.read(&mut buffer) {
                     Ok(n) if n > 0 => {
                         let duration = start_time.elapsed().unwrap();
-                        latencies.push(duration.as_nanos());
-
-                
+                                        
                        if duration.as_nanos() < min_latency {
                             min_latency = duration.as_nanos();
                             min_latency_index = i;
@@ -82,17 +81,15 @@ fn handle_time(mut stream: TcpStream) {
             }
 
             println!("The shortes latency was at {} with {} ns", min_latency_index, min_latency);
-		
-	    thread::sleep(Duration::from_millis(50));
-
-	    if let Err(e) = stream.write_all(format!("test {}\n", get_time_stamp()).as_bytes()) {
-                eprintln!("Error while sending: {}", e);
-            }
 
 	    let mut offsets = Vec::with_capacity(NUM_POINTS);
 
+	    println!("------------------------------------------------------------");
+	    println!("--------------------Start PTP Mechanism---------------------");
+	    println!("------------------------------------------------------------\n");
+
 	    //PTP Mechanism
-	    for i in 0..NUM_POINTS {
+	    for _i in 0..NUM_POINTS {
                 let start_time = SystemTime::now();
 
                 if let Err(e) = stream.write_all(format!("ptp {}\n", get_time_stamp()).as_bytes()) {
@@ -116,7 +113,6 @@ fn handle_time(mut stream: TcpStream) {
 				let first_offset = client_arrival as i128 - server_sent as i128;
 				let second_offset = server_arrival as i128 - client_sent as i128;
 
-				let mut offset_diff = 0;
 				let optimal_offset = (first_offset + second_offset) / 2;
 				let offset = optimal_offset - second_offset;
                                   
@@ -148,8 +144,12 @@ fn handle_time(mut stream: TcpStream) {
 
 	    let mut control_values = Vec::with_capacity(NUM_POINTS);
 
+	    println!("------------------------------------------------------------");
+	    println!("---------------------Start Latency Test---------------------");
+	    println!("------------------------------------------------------------\n");
+
 	    	    //Test
-	    for i in 0..NUM_POINTS {
+	    for _i in 0..NUM_POINTS {
                 let start_time = SystemTime::now();
 
                 if let Err(e) = stream.write_all(format!("ptp {}\n", get_time_stamp()).as_bytes()) {
@@ -192,102 +192,87 @@ fn handle_time(mut stream: TcpStream) {
             }
 
 	    let avg_error = median(&control_values);
-           println!("AVG-Error: {}", avg_error);
+            println!("AVG-Error is: {}", avg_error);
+	    let mut points = Vec::with_capacity(NUM_POINTS);
+	    let mut latency = Vec::with_capacity(NUM_POINTS);
+	    
+	    println!("------------------------------------------------------------");
+            println!("--------------------Calculation started---------------------");
+	    println!("------------------------------------------------------------\n");
 
-            let mut latencies_file = BufWriter::new(
-                OpenOptions::new()
-                    .write(true)
-                    .create(true)
-                    .truncate(true)
-                    .open("../latencys")
-                    .unwrap()
-            );
-
-            for latency in latencies {
-                writeln!(latencies_file, "{}", latency).unwrap();
-            }
-
-            latencies_file.flush().unwrap();
-            println!("Latenzen wurden in Datei gespeichert.");
-        }
-    }
-}
-
-fn handle_client(mut stream: TcpStream) {
-    let mut buffer = [0; 1024];
-    let mut points = Vec::with_capacity(NUM_POINTS);
-    let mut latency = Vec::with_capacity(NUM_POINTS);
-
-    if let Ok(n) = stream.read(&mut buffer) {
-        let msg = String::from_utf8_lossy(&buffer[..n]);
-        if msg.trim() == "start" {
-            println!("Berechnung gestartet...");
-            let mut last_y = 0.0;
+	    let mut last_y = 0.0;
             let mut duration = Duration::ZERO;
+	    let calc_time = SystemTime::now();
+	
+	    let mut i = 0;
 
-            for i in 0..NUM_POINTS {
-                let theta = 2.0 * PI * (i as f64) / (NUM_POINTS as f64);
+            while calc_time.elapsed().unwrap().as_secs() < 120{
+                let theta = 2.0 * PI * (i as f64) / (40000 as f64);
                 let x = RADIUS * theta.cos();
 
-                thread::sleep(Duration::from_millis(TIMEOUT_MS));
-                let start_time = SystemTime::now();
-                if let Err(e) = stream.write_all(format!("{} {}\n", theta, RADIUS).as_bytes()) {
-                    eprintln!("Fehler beim Senden: {}", e);
-                    return;
-                }
+            	let calc_start_time = SystemTime::now();
+            	if let Err(e) = stream.write_all(format!("calc {} {}\n", theta, RADIUS).as_bytes()) {
+                	eprintln!("Error while sending: {}", e);
+                	return;
+            	}
 
-                match stream.read(&mut buffer) {
-                    Ok(n) if n > 0 => {
-                        duration = start_time.elapsed().unwrap();
+             match stream.read(&mut buffer) {
+               	Ok(n) if n > 0 => {
+                	duration = calc_start_time.elapsed().unwrap();
 
-                        if duration.as_millis() > TIMEOUT_MS as u128 {
-                            println!("Timeout überschritten, alter y-Wert verwendet");
-                        } else {
-                            if let Ok(y) = String::from_utf8_lossy(&buffer[..n]).trim().parse::<f64>() {
-                                last_y = y;
-                            }
-                        }
-                    }
-                    _ => println!("Fehler beim Empfang oder keine Antwort erhalten"),
-                }
-
-                points.push((x, last_y));
-                latency.push(duration.as_nanos());
-            }
-
-            let mut circle_points = BufWriter::new(
-                OpenOptions::new()
-                    .write(true)
-                    .create(true)
-                    .truncate(true)
-                    .open("../circle_points")
-                    .unwrap()
-            );
-
-            let mut latencies = BufWriter::new(
-                OpenOptions::new()
-                    .write(true)
-                    .create(true)
-                    .truncate(true)
-                    .open("../latencys")
-                    .unwrap()
-            );
-
-            for (x, y) in points {
-                writeln!(circle_points, "{},{}", x, y).unwrap();
-            }
-
-            for l in latency {
-                writeln!(latencies, "{}", l).unwrap();
-            }
-
-            circle_points.flush().unwrap();
-            latencies.flush().unwrap();
-
-            println!("Points and Latencies written.");
-        }
-    }
+                   	if duration.as_millis() <= TIMEOUT_MS as u128 {
+                        	if let Ok(y) = String::from_utf8_lossy(&buffer[..n]).trim().parse::<f64>() {
+                                        last_y = y;
+                               }               
+            		} else { 
+				last_y = last_y - 2.0;
+				}	
+} _ => println!("Error while receiving the answer."),
 }
+            points.push((x, last_y));
+            latency.push(duration.as_nanos());
+	    hold_clock(calc_start_time);
+i += 1;
+}
+	    let mut circle_points = BufWriter::new(
+            OpenOptions::new()
+                .write(true)
+                .create(true)
+                .truncate(true)
+                .open("../circle_points")
+                .unwrap()
+        );
+
+       let mut latencies = BufWriter::new(
+           OpenOptions::new()
+                .write(true)
+                .create(true)
+                .truncate(true)
+                .open("../latencys")
+                .unwrap()
+        );
+
+        for (x, y) in &points {
+            writeln!(circle_points, "{},{}", x, y).unwrap();
+        }
+
+        for l in &latency {
+            writeln!(latencies, "{}", l).unwrap();
+        }
+
+        circle_points.flush().unwrap();
+        latencies.flush().unwrap();
+
+        println!("Points and Latencies written.");
+       
+
+
+      }
+}
+
+
+}
+
 
 fn main() -> io::Result<()> {
     let listener = TcpListener::bind("192.168.1.1:8080")?;
@@ -295,7 +280,7 @@ fn main() -> io::Result<()> {
 
     for stream in listener.incoming() {
         match stream {
-            Ok(stream) => {
+        	Ok(stream) => {
                 thread::spawn(move || {
                     handle_time(stream);
                 });
