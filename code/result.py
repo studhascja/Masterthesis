@@ -76,6 +76,14 @@ def main():
  
     legende_window.fill((110,110,110))
 
+    slider_height = 20
+    slider_y = 990
+    slider_width = 800
+    slider_x = 500
+    handle_width = 80
+
+    scroll_offset = 0
+    scrolling = False
 
     points = read_points("circle_points")
     latencies = read_latencies("latencys") 
@@ -90,7 +98,7 @@ def main():
     
     # Zählen der Latenzen über 3 ms
     over_3ms_count = sum(1 for latency in latencies if latency / 1_000_000 > 3)
-    print(f"Latenzen über 3 ms: {over_3ms_count}")
+    print(f"Realtime violations: {over_3ms_count}")
 
     latency_count = len(latencies)
 
@@ -105,13 +113,32 @@ def main():
         # Draw points
         for point in points:
             pygame.draw.circle(screen, (0, 255, 0), point, 3)
-        
+        if max_latency < 3:
+            global bar_scale
+            bar_scale = 400 / (3 / max_latency)
         # Draw latency diagramm
         bar_width = 1
-        for i, latency in enumerate(latencies):
-            bar_height = (latency / 1_000_000) / max_latency *  bar_scale
+        bar_spacing = 1
+        max_visible = 700
+        total_bars = len(latencies)
+
+        # Berechne sichtbare Balken abhängig vom Scroll
+        if total_bars > max_visible:
+            scroll_range = total_bars - max_visible
+            scroll_offset = max(0, min(scroll_offset, scroll_range))
+            start_index = scroll_offset
+            end_index = scroll_offset + max_visible
+        else:
+            start_index = 0
+            end_index = total_bars
+
+# Jetzt zeichnen wir nur den sichtbaren Bereich
+        for i, idx in enumerate(range(start_index, end_index)):
+            latency = latencies[idx]
+            bar_height = (latency / 1_000_000) / max_latency * bar_scale
             three_ms_normed = 3 / max_latency * bar_scale
-            pygame.draw.rect(screen, (0, 0, 0), (x_offset + i * (bar_width + 1), 950 - bar_height, bar_width, bar_height))
+            x_pos = x_offset + i * (bar_width + bar_spacing)
+            pygame.draw.rect(screen, (0, 0, 0), (x_pos, 950 - bar_height, bar_width, bar_height))
 
         avg_latency_pos = avg_latency / max_latency * bar_scale
         avg_jitter_pos = avg_jitter / max_latency * bar_scale
@@ -121,6 +148,14 @@ def main():
         pygame.draw.line(screen, (255, 255, 0), (x_offset, 950 - avg_jitter_pos), (1750, 950 - avg_jitter_pos), 4)  # Jitter (gelb)
 
         pygame.draw.line(screen, (255, 0, 0), (x_offset, 950 - three_ms_normed), (1750, 950 - three_ms_normed), 4)
+
+        if total_bars > max_visible:
+            pygame.draw.rect(screen, (80, 80, 80), (slider_x, slider_y, slider_width, slider_height))  # Slider Hintergrund
+
+            # Handle-Position abhängig vom scroll_offset
+            handle_x = slider_x + (scroll_offset / scroll_range) * (slider_width - handle_width)
+            pygame.draw.rect(screen, (200, 200, 200), (handle_x, slider_y, handle_width, slider_height))
+
 
         # Anzeige der Latenzstatistiken
         font = pygame.font.SysFont("Arial", 23)
@@ -188,7 +223,21 @@ def main():
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
-    
+
+            elif event.type == pygame.MOUSEBUTTONDOWN:
+                if total_bars > max_visible:
+                    mx, my = pygame.mouse.get_pos()
+                    if slider_y <= my <= slider_y + slider_height and slider_x <= mx <= slider_x + slider_width:
+                        scrolling = True
+
+            elif event.type == pygame.MOUSEBUTTONUP:
+                scrolling = False
+
+            elif event.type == pygame.MOUSEMOTION and scrolling:
+                mx, my = pygame.mouse.get_pos()
+                rel_x = max(slider_x, min(mx, slider_x + slider_width - handle_width))
+                percentage = (rel_x - slider_x) / (slider_width - handle_width)
+                scroll_offset = int(percentage * scroll_range)    
     pygame.quit()
     sys.exit()
 
