@@ -6,14 +6,14 @@ use std::f64::consts::PI;
 use std::{thread, time};
 use std::process::Command;
 
-fn adjust_time(diff: u128) -> u128 {
+fn adjust_time(diff: i128) -> u128 {
     let adjusted_time = SystemTime::now() - Duration::from_nanos(diff as u64);
     let timestamp_ns = adjusted_time
         .duration_since(SystemTime::UNIX_EPOCH)
         .expect("Systemtime is before UNIX-Time")
         .as_nanos();
 
-    println!("Adjusted time is: {:?}", adjusted_time);
+//    println!("Adjusted time is: {:?}", adjusted_time);
     timestamp_ns as u128
 }
 
@@ -26,7 +26,7 @@ fn main() -> io::Result<()> {
             stream.write_all(b"start\n")?;
 
             let mut buffer = [0; 1024];
-            let mut time_diffs = Vec::new(); 
+            let mut time_diffs: Vec<(usize, i128)> = Vec::new();   
 
             while let Ok(size) = stream.read(&mut buffer) {
                 if size == 0 {
@@ -43,13 +43,22 @@ fn main() -> io::Result<()> {
                         if let Ok(index) = parts[1].parse::<usize>() {
                             if let Some((_, diff)) = time_diffs.get(index) {
 				difference = *diff;
-				println!("Number: {} Difference {}", index, difference);
-                                adjust_time(difference);
+				//println!("Number: {} Difference {}", index, difference);
+                                //adjust_time(difference);
                             }
                         }
                     }
                 }
 		
+               if received_str.starts_with("result2") {
+                    let parts: Vec<&str> = received_str.split_whitespace().collect();
+                    if parts.len() == 2 {
+                        if let Ok(offset_diff) = parts[1].parse::<i128>() {
+                            difference = difference + offset_diff;
+                        }
+                    }
+                }
+
 		else if received_str.starts_with("test") {
     			let parts: Vec<&str> = received_str.split_whitespace().collect();
     			if parts.len() == 2 {
@@ -72,6 +81,25 @@ fn main() -> io::Result<()> {
     			}
 		}
 
+		else if received_str.starts_with("ptp") {
+			let time_of_arrival = adjust_time(difference);
+                        let parts: Vec<&str> = received_str.split_whitespace().collect();
+                        if parts.len() == 2 {
+                                let timestamp_str = parts[1].trim_end_matches("ns");
+
+                                if let Ok(received_timestamp) = timestamp_str.parse::<u128>() {
+                                        let time_of_depature = adjust_time(difference);
+					if let Err(e) = stream.write_all(format!("{} {} {}\n", received_timestamp, time_of_arrival, time_of_depature).as_bytes()) {
+                    				eprintln!("Error while sending: {}", e);
+                			}
+
+                                 } else {
+                                        eprintln!("Error while parsing: {}", parts[1]);
+                                }
+                        }
+                }
+
+
 
 		else if parts.len() == 2 {
    			let number = parts[0].parse::<usize>();
@@ -83,7 +111,7 @@ fn main() -> io::Result<()> {
         			let current_time = SystemTime::now();
                         	let elapsed_time = current_time
 					.duration_since(SystemTime::UNIX_EPOCH)
-                            		.expect("Time is before UNIX time");
+                            		.expect("Time is before UNIX-Time");
 
                         let diff = elapsed_time.as_nanos() as i128 - received_timestamp as i128;
                       
