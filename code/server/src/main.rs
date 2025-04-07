@@ -6,8 +6,36 @@ use std::time::{Duration, SystemTime};
 use std::f64::consts::PI;
 
 const TIMEOUT_MS: u64 = 3; 
-const NUM_POINTS: usize = 2000; 
+const NUM_POINTS: usize = 1000; 
 const RADIUS: f64 = 10.0; 
+
+fn median(values: &Vec<i128>) -> i128 {
+    let mut sorted_values = values.clone(); 
+    sorted_values.sort();  
+
+    let len = sorted_values.len();
+    
+    if len % 2 == 1 {
+    	return sorted_values[len / 2] 
+    } else {
+        return (sorted_values[len / 2 - 1] + sorted_values[len / 2]) / 2  // Average of 2 middle values
+    }
+}
+
+fn get_time_stamp() -> u128 {
+    let time = SystemTime::now();
+    let timestamp_ns = time
+        .duration_since(SystemTime::UNIX_EPOCH)
+        .expect("Systemtime is before UNIX-Time")
+        .as_nanos();
+    timestamp_ns as u128
+}
+
+fn hold_clock(start_time: SystemTime){
+        if start_time.elapsed().unwrap().as_millis() < 3 {
+        	thread::sleep(Duration::from_millis((3 - start_time.elapsed().unwrap().as_millis()).try_into().unwrap()));
+	}
+}
 
 fn handle_time(mut stream: TcpStream) {
     let mut buffer = [0; 1024];
@@ -24,12 +52,7 @@ fn handle_time(mut stream: TcpStream) {
             for i in 0..NUM_POINTS {
                 let start_time = SystemTime::now();
                                 
-                let elapsed = start_time
-                              	.duration_since(SystemTime::UNIX_EPOCH)
-                                .expect("Time before UNIX Time");
-
-	
-                if let Err(e) = stream.write_all(format!("{} {:?}\n", i, elapsed.as_nanos()).as_bytes()) {
+                if let Err(e) = stream.write_all(format!("{} {}\n", i, get_time_stamp()).as_bytes()) {
                     eprintln!("Error while sending: {}", e);
                     return;
                 }
@@ -50,11 +73,7 @@ fn handle_time(mut stream: TcpStream) {
                 }
 
                 // 3 ms clock
-		if start_time.elapsed().unwrap().as_millis() < 3 {
-
-                thread::sleep(Duration::from_millis((3 - start_time.elapsed().unwrap().as_millis()).try_into().unwrap()));
-
-                 }
+		hold_clock(start_time);
 	    }
 
             // Send result to Client
@@ -66,16 +85,115 @@ fn handle_time(mut stream: TcpStream) {
 		
 	    thread::sleep(Duration::from_millis(50));
 
-	    let test_time = SystemTime::now();
-            let test_elapsed = test_time
-				.duration_since(SystemTime::UNIX_EPOCH)
-                                .expect("Time before UNIX Time");
-
-            if let Err(e) = stream.write_all(format!("test {}\n", test_elapsed.as_nanos()).as_bytes()) {
+	    if let Err(e) = stream.write_all(format!("test {}\n", get_time_stamp()).as_bytes()) {
                 eprintln!("Error while sending: {}", e);
             }
 
-           
+	    let mut offsets = Vec::with_capacity(NUM_POINTS);
+
+	    //PTP Mechanism
+	    for i in 0..NUM_POINTS {
+                let start_time = SystemTime::now();
+
+                if let Err(e) = stream.write_all(format!("ptp {}\n", get_time_stamp()).as_bytes()) {
+                    eprintln!("Error while sending: {}", e);
+                    return;
+                }
+
+                match stream.read(&mut buffer) {
+                    Ok(n) if n > 0 => {
+			let server_arrival = get_time_stamp();
+                        let received_str = String::from_utf8_lossy(&buffer[..n]).trim().to_string();
+                        let parts: Vec<&str> = received_str.split_whitespace().collect();
+
+                        if parts.len() == 3 {
+			    if let (Ok(server_sent), Ok(client_arrival), Ok(client_sent)) = (
+                                parts[0].parse::<u128>(),
+                                parts[1].parse::<u128>(),
+                                parts[2].parse::<u128>(),
+                            ) {
+				
+				let first_offset = client_arrival as i128 - server_sent as i128;
+				let second_offset = server_arrival as i128 - client_sent as i128;
+
+				let mut offset_diff = 0;
+				let optimal_offset = (first_offset + second_offset) / 2;
+				let offset = optimal_offset - second_offset;
+                                  
+
+				offsets.push(offset);
+				//println!("Latenz: {} Diff: {}", optimal_offset, offset_diff);
+
+                            } else {
+                                eprintln!("Error parsing timestamps: {:?}", parts);
+                            }
+			    
+ 		        } else {
+                            eprintln!("Invalid response format: '{}'", received_str);
+                        }
+                    }
+                    _ => eprintln!("Error while receiving"),
+                }
+
+                // 3 ms clock
+                hold_clock(start_time);
+            }
+		
+	    let result_offset = median(&offsets);
+	    println!("Result-Offset {}", result_offset);
+
+	    if let Err(e) = stream.write_all(format!("result2 {}\n", result_offset).as_bytes()) {
+            	eprintln!("Error while sending result: {}", e);
+            }
+
+	    let mut control_values = Vec::with_capacity(NUM_POINTS);
+
+	    	    //Test
+	    for i in 0..NUM_POINTS {
+                let start_time = SystemTime::now();
+
+                if let Err(e) = stream.write_all(format!("ptp {}\n", get_time_stamp()).as_bytes()) {
+                    eprintln!("Error while sending: {}", e);
+                    return;
+                }
+
+                match stream.read(&mut buffer) {
+                    Ok(n) if n > 0 => {
+			let server_arrival1 = get_time_stamp();
+                        let received_str = String::from_utf8_lossy(&buffer[..n]).trim().to_string();
+                        let parts: Vec<&str> = received_str.split_whitespace().collect();
+
+                        if parts.len() == 3 {
+			    if let (Ok(server_sent1), Ok(client_arrival1), Ok(client_sent1)) = (
+                                parts[0].parse::<u128>(),
+                                parts[1].parse::<u128>(),
+                                parts[2].parse::<u128>(),
+                            ) {
+				
+				let first_test_offset = client_arrival1 as i128 - server_sent1 as i128;
+				let second_test_offset = server_arrival1 as i128 - client_sent1 as i128;
+
+				let diff_test_offset = second_test_offset - first_test_offset;
+				control_values.push(diff_test_offset.abs());
+                               //	println!("First Offset: {} Second Offset: {} Diffoffset: {}", first_test_offset, second_test_offset, diff_test_offset);
+                            } else {
+                                eprintln!("Error parsing timestamps: {:?}", parts);
+                            }
+			    
+ 		        } else {
+                            eprintln!("Invalid response format: '{}'", received_str);
+                        }
+                    }
+                    _ => eprintln!("Error while receiving"),
+                }
+
+                // 3 ms clock
+                hold_clock(start_time);
+            }
+
+	    let avg_error = median(&control_values);
+           println!("AVG-Error: {}", avg_error);
+
             let mut latencies_file = BufWriter::new(
                 OpenOptions::new()
                     .write(true)
