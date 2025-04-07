@@ -7,13 +7,17 @@ use std::{thread, time};
 use std::process::Command;
 
 fn adjust_time(diff: i128) -> u128 {
-    let adjusted_time = SystemTime::now() - Duration::from_nanos(diff as u64);
+    let adjusted_time = if diff >= 0 {
+        SystemTime::now() - Duration::from_nanos(diff as u64)
+    } else {
+        SystemTime::now() + Duration::from_nanos((-diff) as u64)
+    };
+
     let timestamp_ns = adjusted_time
         .duration_since(SystemTime::UNIX_EPOCH)
         .expect("Systemtime is before UNIX-Time")
         .as_nanos();
 
-//    println!("Adjusted time is: {:?}", adjusted_time);
     timestamp_ns as u128
 }
 
@@ -43,14 +47,28 @@ fn main() -> io::Result<()> {
                         if let Ok(index) = parts[1].parse::<usize>() {
                             if let Some((_, diff)) = time_diffs.get(index) {
 				difference = *diff;
-				//println!("Number: {} Difference {}", index, difference);
+				println!("Number: {} Difference {}", index, difference);
                                 //adjust_time(difference);
                             }
                         }
                     }
                 }
+
+	       else if received_str.starts_with("calc") {
+                    let parts: Vec<&str> = received_str.split_whitespace().collect();
+                    if parts.len() == 3 {
+                        if let (Ok(theta), Ok(radius)) = (parts[1].parse::<f64>(), parts[2].parse::<f64>()){
+				let y = radius * theta.sin();
+				let y_str = format!("{}\n", y);
+				
+				if let Err(e) = stream.write_all(y_str.as_bytes()) {
+					eprintln!("Error while sending the y coordinate: {}", e);
+				} 
+			}
+                    }
+                }
 		
-               if received_str.starts_with("result2") {
+               else if received_str.starts_with("result2") {
                     let parts: Vec<&str> = received_str.split_whitespace().collect();
                     if parts.len() == 2 {
                         if let Ok(offset_diff) = parts[1].parse::<i128>() {
