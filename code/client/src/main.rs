@@ -1,10 +1,10 @@
 use std::io::{self, Write, Read};
 use std::net::TcpStream;
 use std::process;
+use std::process::{Command, Stdio};
 use std::time::{SystemTime, Duration};
 use std::f64::consts::PI;
 use std::{thread, time};
-use std::process::Command;
 
 fn adjust_time(diff: i128) -> u128 {
     let adjusted_time = if diff >= 0 {
@@ -39,8 +39,7 @@ fn main() -> io::Result<()> {
 
                 let received_str = String::from_utf8_lossy(&buffer[..size]).trim().to_string();
                 let parts: Vec<&str> = received_str.split_whitespace().collect();
-		
-			
+		 	
                if received_str.starts_with("result") {
                     let parts: Vec<&str> = received_str.split_whitespace().collect();
                     if parts.len() == 2 {
@@ -59,7 +58,7 @@ fn main() -> io::Result<()> {
                     if parts.len() == 3 {
                         if let (Ok(theta), Ok(radius)) = (parts[1].parse::<f64>(), parts[2].parse::<f64>()){
 				let y = radius * theta.sin();
-				let y_str = format!("{}\n", y);
+				let y_str = format!("{} {}\n", y, adjust_time(difference));
 				
 				if let Err(e) = stream.write_all(y_str.as_bytes()) {
 					eprintln!("Error while sending the y coordinate: {}", e);
@@ -68,12 +67,38 @@ fn main() -> io::Result<()> {
                     }
                 }
 		
-               else if received_str.starts_with("result2") {
+               else if received_str.starts_with("_result") {
+		    println!("test");
                     let parts: Vec<&str> = received_str.split_whitespace().collect();
                     if parts.len() == 2 {
                         if let Ok(offset_diff) = parts[1].parse::<i128>() {
                             difference = difference + offset_diff;
-                        }
+			  println!("test");
+			        thread::spawn(|| {
+        				let mut status = Command::new("iperf3")
+            					.arg("-c")
+            					.arg("192.168.1.1")
+            					.arg("-u")
+            					.arg("-b")
+            					.arg("50M")
+            					.arg("-t")
+            					.arg("12")
+            					.arg("-p")
+            					.arg("5202")
+						.arg("-l")
+						.arg("1500")
+            					.stderr(Stdio::piped())
+            					.stdout(Stdio::piped())
+            					.spawn()
+            					.expect("Failed to start iperf3");
+	
+       	 				let _ = status.wait().expect("Failed to wait for iperf3 process");
+    				});
+				println!("Störer ausgeführt");
+                        }else {
+                                        eprintln!("Error while parsing: {}", parts[1]);
+                                }
+
                     }
                 }
 
