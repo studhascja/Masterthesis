@@ -6,7 +6,7 @@ use std::time::{Duration, SystemTime};
 use std::f64::consts::PI;
 
 const TIMEOUT_MS: u64 = 3; 
-const NUM_POINTS: usize = 2000; 
+const NUM_POINTS: usize = 200; 
 const RADIUS: f64 = 10.0; 
 
 fn median(values: &Vec<i128>) -> i128 {
@@ -138,7 +138,7 @@ fn handle_time(mut stream: TcpStream) {
 	    let result_offset = median(&offsets);
 	    println!("Result-Offset {}", result_offset);
 
-	    if let Err(e) = stream.write_all(format!("result2 {}\n", result_offset).as_bytes()) {
+	    if let Err(e) = stream.write_all(format!("_result {}\n", result_offset).as_bytes()) {
             	eprintln!("Error while sending result: {}", e);
             }
 
@@ -149,7 +149,7 @@ fn handle_time(mut stream: TcpStream) {
 	    println!("------------------------------------------------------------\n");
 
 	    	    //Test
-	    for _i in 0..NUM_POINTS {
+	    for _i in 0..20 {
                 let start_time = SystemTime::now();
 
                 if let Err(e) = stream.write_all(format!("ptp {}\n", get_time_stamp()).as_bytes()) {
@@ -193,6 +193,7 @@ fn handle_time(mut stream: TcpStream) {
 
 	    let avg_error = median(&control_values);
             println!("AVG-Error is: {}", avg_error);
+
 	    let mut points = Vec::with_capacity(NUM_POINTS);
 	    let mut latency = Vec::with_capacity(NUM_POINTS);
 	    
@@ -201,16 +202,23 @@ fn handle_time(mut stream: TcpStream) {
 	    println!("------------------------------------------------------------\n");
 
 	    let mut last_y = 0.0;
-            let mut duration = Duration::ZERO;
+            let mut calc_send_duration = Duration::ZERO;
+	    let mut cycle_time = Duration::ZERO;
+		
+	    let mut first_duration = 0;
+	    let mut second_duration = 0;
+
 	    let calc_time = SystemTime::now();
 	
 	    let mut i = 0;
 
-            while calc_time.elapsed().unwrap().as_secs() < 120{
-                let theta = 2.0 * PI * (i as f64) / (40000 as f64);
-                let x = RADIUS * theta.cos();
+            while calc_time.elapsed().unwrap().as_secs() < 12{
+                let calc_start_time = SystemTime::now();
 
-            	let calc_start_time = SystemTime::now();
+		let theta = 2.0 * PI * (i as f64) / (40000 as f64);
+                let x = RADIUS * theta.cos();
+		
+            	let calc_send_time = SystemTime::now();
             	if let Err(e) = stream.write_all(format!("calc {} {}\n", theta, RADIUS).as_bytes()) {
                 	eprintln!("Error while sending: {}", e);
                 	return;
@@ -218,21 +226,39 @@ fn handle_time(mut stream: TcpStream) {
 
              match stream.read(&mut buffer) {
                	Ok(n) if n > 0 => {
-                	duration = calc_start_time.elapsed().unwrap();
+			let received_str = String::from_utf8_lossy(&buffer[..n]).trim().to_string();
+                        let parts: Vec<&str> = received_str.split_whitespace().collect();
+                	calc_send_duration = calc_send_time.elapsed().unwrap();
+			let calc_end_time = SystemTime::now();
+			if parts.len() == 2 {
+                            if let (Ok(y), Ok(client_time)) = (
+                                parts[0].parse::<f64>(),
+                                parts[1].parse::<u128>()
+                            ) {
+				first_duration = client_time as i128 - calc_start_time.duration_since(SystemTime::UNIX_EPOCH).expect("Time before UNIX-Time").as_nanos() as i128;
+				second_duration = calc_end_time.duration_since(SystemTime::UNIX_EPOCH).expect("Time before UNIX-Time").as_nanos() as i128 - client_time as i128;
 
-                   	if duration.as_millis() <= TIMEOUT_MS as u128 {
-                        	if let Ok(y) = String::from_utf8_lossy(&buffer[..n]).trim().parse::<f64>() {
-                                        last_y = y;
-                               }               
-            		} else { 
-				last_y = last_y - 2.0;
-				}	
-} _ => println!("Error while receiving the answer."),
-}
+			    	if calc_send_duration.as_millis() <= TIMEOUT_MS as u128 {
+			    		last_y = y;
+			    	} else {
+			    		last_y = last_y - 2.0;
+			    	}
+                            } else {
+                                eprintln!("Error parsing timestamps: {:?}", parts);
+                            }
+
+                        } else {
+                            eprintln!("Invalid response format: '{}'", received_str);
+                        }
+                   },
+			Ok(_) | Err(_) => eprintln!("Error while reseaving")
+		}
             points.push((x, last_y));
-            latency.push(duration.as_nanos());
 	    hold_clock(calc_start_time);
-i += 1;
+	    
+	    i += 1;
+	   cycle_time = calc_start_time.elapsed().unwrap();
+	   latency.push((first_duration, second_duration, calc_send_duration.as_nanos(), cycle_time.as_nanos()));
 }
 	    let mut circle_points = BufWriter::new(
             OpenOptions::new()
@@ -256,8 +282,8 @@ i += 1;
             writeln!(circle_points, "{},{}", x, y).unwrap();
         }
 
-        for l in &latency {
-            writeln!(latencies, "{}", l).unwrap();
+        for (l1, l2, lg, c) in &latency {
+            writeln!(latencies, "{},{},{},{}", l1, l2, lg, c).unwrap();
         }
 
         circle_points.flush().unwrap();
