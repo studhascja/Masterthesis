@@ -24,8 +24,8 @@ def read_latencies(filename):
         with open(filename, 'r') as file:
             for line in file:
                 try:
-                    latency = float(line.strip())  
-                    latencies.append(latency)
+                    l1, l2, lg, c = map(float, line.strip().split(','))
+                    latencies.append((l1, l2, lg, c))
                 except ValueError:
                     print(f"Fehlerhafte Zeile: {line.strip()}")
     except FileNotFoundError:
@@ -36,15 +36,20 @@ def calculate_latency_statistics(latencies):
     if not latencies:
         return None, None, None, None, None
     
-    avg_latency = round((sum(latencies) / len(latencies)) / 1_000_000, 3)
-    min_latency = round(min(latencies) / 1_000_000, 3)
-    max_latency = round (max(latencies) / 1_000_000, 3)
+    latency_first= [tupel[0] for tupel in latencies]  
+    latency_second= [tupel[1] for tupel in latencies]  
+    latency_whole= [tupel[2] for tupel in latencies]    
+    cycle_times = [tupel[3] for tupel in latencies]    
+
+    avg_latency = round((sum(cycle_times) / len(cycle_times)) / 1_000_000, 3)
+    min_latency = round(min(cycle_times) / 1_000_000, 3)
+    max_latency = round (max(cycle_times) / 1_000_000, 3)
     jitter = round (max_latency - min_latency, 3)
     
     # Calculation of average Jitter
     jitters = [] 
     for i in range(1, len(latencies)):
-        jitter_value = abs(latencies[i] - latencies[i - 1])
+        jitter_value = abs(latency_whole[i] - latency_whole[i - 1])
         jitters.append(jitter_value)
     
     tmp_jitter = sum(jitters) / len(jitters) if jitters else 0
@@ -87,7 +92,11 @@ def main():
 
     points = read_points("circle_points")
     latencies = read_latencies("latencys") 
-    
+    latency_first= [tupel[0] for tupel in latencies]  
+    latency_second= [tupel[1] for tupel in latencies]  
+    latency_whole= [tupel[2] for tupel in latencies]    
+    cycle_times = [tupel[3] for tupel in latencies]    
+
     avg_latency, min_latency, max_latency, jitter, avg_jitter = calculate_latency_statistics(latencies)
     
     print(f"Durchschnittliche Latenz: {avg_latency:.2f} ms")
@@ -97,7 +106,7 @@ def main():
     print(f"Durchschnittlicher Jitter: {avg_jitter:.2f} ms")
     
     # Zählen der Latenzen über 3 ms
-    over_3ms_count = sum(1 for latency in latencies if latency / 1_000_000 > 3)
+    over_3ms_count = sum(1 for latency in latency_whole if latency / 1_000_000 > 3)
     print(f"Realtime violations: {over_3ms_count}")
 
     latency_count = len(latencies)
@@ -116,6 +125,7 @@ def main():
         if max_latency < 3:
             global bar_scale
             bar_scale = 400 / (3 / max_latency)
+        three_ms_normed = 3 / max_latency * bar_scale
         # Draw latency diagramm
         bar_width = 1
         bar_spacing = 1
@@ -134,11 +144,22 @@ def main():
 
 # Jetzt zeichnen wir nur den sichtbaren Bereich
         for i, idx in enumerate(range(start_index, end_index)):
-            latency = latencies[idx]
-            bar_height = (latency / 1_000_000) / max_latency * bar_scale
-            three_ms_normed = 3 / max_latency * bar_scale
+            l1 = latency_first[idx]
+            l2 = latency_second[idx]
+            lw = latency_whole[idx]
+            c = cycle_times[idx]
+
+            l1_bar_height = (l1 / 1_000_000) / max_latency * bar_scale
+            l2_bar_height = (l2 / 1_000_000) / max_latency * bar_scale
+            lw_bar_height = (lw / 1_000_000) / max_latency * bar_scale
+            c_bar_height = (c / 1_000_000) / max_latency * bar_scale
+
             x_pos = x_offset + i * (bar_width + bar_spacing)
-            pygame.draw.rect(screen, (0, 0, 0), (x_pos, 950 - bar_height, bar_width, bar_height))
+            
+            pygame.draw.rect(screen, (0, 0, 0), (x_pos, 950 - c_bar_height, bar_width, c_bar_height))
+            pygame.draw.rect(screen, (255, 255, 0), (x_pos, 950 - lw_bar_height, bar_width, lw_bar_height))
+           # pygame.draw.rect(screen, (0, 255, 255), (x_pos, 950 - l1_bar_height, bar_width, l1_bar_height))
+            pygame.draw.rect(screen, (255, 0, 0), (x_pos, 950 - l1_bar_height - l2_bar_height, bar_width, l2_bar_height))
 
         avg_latency_pos = avg_latency / max_latency * bar_scale
         avg_jitter_pos = avg_jitter / max_latency * bar_scale
