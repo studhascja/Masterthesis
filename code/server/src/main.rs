@@ -1,9 +1,11 @@
-use std::fs::OpenOptions;
+use std::fs::{OpenOptions, create_dir_all};
 use std::io::{self, Read, Write, BufWriter};
 use std::net::{TcpListener, TcpStream};
 use std::thread;
 use std::time::{Duration, SystemTime};
 use std::f64::consts::PI;
+use std::sync::{Arc, Mutex};
+use std::env;
 
 const TIMEOUT_MS: u64 = 3; 
 const NUM_POINTS: usize = 200; 
@@ -37,7 +39,7 @@ fn hold_clock(start_time: SystemTime){
 	}
 }
 
-fn handle_time(mut stream: TcpStream) {
+fn handle_time(mut stream: TcpStream, disconnect_counter: Arc<Mutex<i32>>, standard: Arc<String>, frequency: Arc<String>, bandwith: Arc<String>, qos: Arc<String>) {
     let mut buffer = [0; 1024];
     
     if let Ok(n) = stream.read(&mut buffer) {
@@ -60,7 +62,7 @@ fn handle_time(mut stream: TcpStream) {
                 
                
                 match stream.read(&mut buffer) {
-                    Ok(n) if n > 0 => {
+                      Ok(n) if n > 0 => {
                         let duration = start_time.elapsed().unwrap();
                                         
                        if duration.as_nanos() < min_latency {
@@ -260,23 +262,33 @@ fn handle_time(mut stream: TcpStream) {
 	   cycle_time = calc_start_time.elapsed().unwrap();
 	   latency.push((first_duration, second_duration, calc_send_duration.as_nanos(), cycle_time.as_nanos()));
 }
+     	    let mut counter = disconnect_counter.lock().unwrap();
+            *counter += 1;
+	   
+	    let result_path = format!("../results/standard_{}/frequency_{}/bandwith_{}/qos_{}", standard, frequency, bandwith, qos);
+	    
+	     if let Err(e) = create_dir_all(format!("{}", result_path)) {
+             eprintln!("Error while creating the result directories: {}", e);
+             return;
+    	     }
+
 	    let mut circle_points = BufWriter::new(
             OpenOptions::new()
                 .write(true)
                 .create(true)
                 .truncate(true)
-                .open("../circle_points")
+                .open(format!("{}/circle_points_{}", result_path, counter))
                 .unwrap()
-        );
+        	);
 
-       let mut latencies = BufWriter::new(
-           OpenOptions::new()
+       	     let mut latencies = BufWriter::new(
+             OpenOptions::new()
                 .write(true)
                 .create(true)
                 .truncate(true)
-                .open("../latencys")
+                .open(format!("{}/latencys_{}", result_path, counter))
                 .unwrap()
-        );
+        	);
 
         for (x, y) in &points {
             writeln!(circle_points, "{},{}", x, y).unwrap();
@@ -290,9 +302,10 @@ fn handle_time(mut stream: TcpStream) {
         latencies.flush().unwrap();
 
         println!("Points and Latencies written.");
-       
-
-
+        if *counter >= 1 {
+        	println!("3 Clients haben sich disconnected. Der Server wird beendet.");
+                std::process::exit(0); // Beendet den Server
+        }
       }
 }
 
@@ -301,14 +314,31 @@ fn handle_time(mut stream: TcpStream) {
 
 
 fn main() -> io::Result<()> {
+    let args: Vec<String> = env::args().collect();
+    
+    let standard = Arc::new(args[1].clone());
+    let frequency = Arc::new(args[2].clone());
+    let bandwith = Arc::new(args[3].clone());
+    let qos = Arc::new(args[4].clone());
+
+    println!("Usage: {}", qos);
+
     let listener = TcpListener::bind("192.168.1.1:8080")?;
     println!("Server läuft auf 192.168.1.1:8080");
+    let disconnect_counter = Arc::new(Mutex::new(0));
 
     for stream in listener.incoming() {
         match stream {
         	Ok(stream) => {
-                thread::spawn(move || {
-                    handle_time(stream);
+		let standard = Arc::clone(&standard);
+		let frequency = Arc::clone(&frequency);
+		let bandwith = Arc::clone(&bandwith);
+		let qos = Arc::clone(&qos);
+
+		let disconnect_counter = Arc::clone(&disconnect_counter);
+                
+		thread::spawn(move || {
+                    handle_time(stream, disconnect_counter, standard, frequency, bandwith, qos);
                 });
             }
             Err(e) => eprintln!("Verbindungsfehler: {}", e),
