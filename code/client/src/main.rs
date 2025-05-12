@@ -3,8 +3,7 @@ use std::net::TcpStream;
 use std::process;
 use std::process::{Command, Stdio};
 use std::time::{SystemTime, Duration};
-use std::f64::consts::PI;
-use std::{thread, time};
+use std::thread;
 
 fn adjust_time(diff: i128) -> u128 {
     let adjusted_time = if diff >= 0 {
@@ -80,15 +79,11 @@ fn main() -> io::Result<()> {
             					.arg("192.168.1.1")
             					.arg("-u")
             					.arg("-b")
-            					.arg("500M")
+            					.arg("15M")
             					.arg("-t")
             					.arg("12")
             					.arg("-p")
             					.arg("5202")
-						.arg("-l")
-						.arg("512")
-						.arg("-P")
-						.arg("1")
             					.stderr(Stdio::piped())
             					.stdout(Stdio::piped())
             					.spawn()
