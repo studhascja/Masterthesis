@@ -3,7 +3,8 @@ import sys
 
 bar_scale = 400
 x_offset = 350
-
+latency_filename = "results/standard_4/frequency_2.4/bandwith_20/qos_0/latencys_1"
+circlepoints_filename = "results/standard_4/frequency_2.4/bandwith_20/qos_0/circle_points_1" 
 def read_points(filename):
     points = []
     try:
@@ -90,8 +91,8 @@ def main():
     scroll_offset = 0
     scrolling = False
 
-    points = read_points("circle_points")
-    latencies = read_latencies("latencys") 
+    points = read_points(circlepoints_filename)
+    latencies = read_latencies(latency_filename) 
     latency_first= [tupel[0] for tupel in latencies]  
     latency_second= [tupel[1] for tupel in latencies]  
     latency_whole= [tupel[2] for tupel in latencies]    
