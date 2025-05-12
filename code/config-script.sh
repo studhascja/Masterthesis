@@ -1,5 +1,6 @@
 #!/bin/bash
 
+FILENAME="${1:-hostapd.conf}"
 CONFIG_FILE="/etc/dnsmasq.conf"
 INTERFACE="wlp1s0"
 DHCP_RANGE="dhcp-range=192.168.1.10,192.168.1.100,12h"
@@ -24,18 +25,6 @@ sudo systemctl restart dnsmasq
 echo "started Dnsmasq."
 
 # start Hostapd
-sudo hostapd /etc/hostapd/hostapd.conf
+sudo /home/jakob/hostapd-2.11/hostapd/hostapd -dd /etc/hostapd/${FILENAME}
+#sudo hostapd -dd /etc/hostapd/hostapd.conf
 
-
-# Cleanup
-echo "End script"
-
-# Stop dnsmasq
-sudo systemctl stop dnsmasq
-echo "Stopped Dnsmasq"
-
-# Start systemd-resolved
-sudo systemctl start systemd-resolved
-echo "Started systemd-resolved"
-
-exit 0
