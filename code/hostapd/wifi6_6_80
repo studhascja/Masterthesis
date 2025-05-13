@@ -1,0 +1,53 @@
+# === General WiFi Configuration ===
+interface=wlp1s0                         # Wireless interface name (check via `ip link` or `iw dev`)
+driver=nl80211                           # Use nl80211 driver (standard for modern Linux WiFi)
+
+ssid=jh_test                             # SSID (network name) that will be broadcast
+
+country_code=DE                          # Country code for regulatory settings (e.g. frequency limits, Tx power)
+ieee80211d=1                             # Enable 802.11d (adds country info to beacons for roaming clients)
+ieee80211n=1                             # Enable 802.11n (WiFi 4)
+
+# === Band and Channel Settings ===
+hw_mode=a                                # Use 6 GHz band (802.11a/n/ac/ax)
+channel=37                               # Channel 37 
+op_class=133                             # Operating class for 6 GHz with 80 MHz channel 
+wmm_enabled=1                            # Enable WMM (QoS support for voice/video, required for 802.11n/ac/ax)
+
+# === Security Settings ===
+auth_algs=3                              # Allow both Open System and Shared Key (required for WPA3-SAE)
+macaddr_acl=0                            # MAC address filter: 0 = accept all unless denied
+ignore_broadcast_ssid=0                 # Broadcast SSID (0 = visible network, 1 = hidden)
+okc=1                                    # Opportunistic Key Caching: improves roaming speed
+
+wpa=2                                    # WPA mode: 2 = WPA2/WPA3 mixed support
+wpa_pairwise=CCMP CCMP-256               # WPA encryption: CCMP (AES) and 256-bit variant
+rsn_pairwise=CCMP CCMP-256               # RSN (WPA2) encryption: same as above
+wpa_key_mgmt=SAE                         # WPA3 authentication using Simultaneous Authentication of Equals
+ieee80211w=2                             # Management Frame Protection (MFP): 2 = required (WPA3 mandatory)
+
+wpa_psk_file=/etc/hostapd/hostapd.psk    # Store passphrase securely in a PSK file (do not use plain `wpa_passphrase` here)
+
+# === WiFi 6 (802.11ax / HE) Configuration ===
+require_vht=1                            # Require 802.11ac (VHT) support (backward compatible)
+ieee80211ax=1                            # Enable 802.11ax (WiFi 6)
+
+# === HE (High Efficiency) Channel Settings ===
+he_oper_centr_freq_seg0_idx=39          # HE center channel index (for 80 MHz: primary + 2)
+
+he_default_pe_duration=4                # Preamble extension duration (used for HE MU transmissions)
+he_rts_threshold=1023                   # RTS threshold to avoid collisions (default value)
+
+# === HE MU-EDCA (QoS Scheduling for Multi-User transmissions) ===
+he_mu_edca_qos_info_param_count=0       # Number of MU EDCA parameter sets (0 = default)
+he_mu_edca_qos_info_q_ack=0             # QoS ACK policy (0 = disabled)
+he_mu_edca_qos_info_queue_request=0     # Queue size request support (0 = off)
+he_mu_edca_qos_info_txop_request=0      # TXOP request support (0 = off)
+
+# Access Category (AC) Best Effort
+he_mu_edca_ac_be_aifsn=8                # Arbitration Interframe Space Number
+he_mu_edca_ac_be_aci=0                  # Access Category Index
+
+# Access Category (AC) Voice
+he_mu_edca_ac_vo_ecwmin=9               # Voice traffic minimum contention window
+he_mu_edca_ac_vo_ecwmax=10              # Voice traffic maximum contention window

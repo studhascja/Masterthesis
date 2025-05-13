@@ -1,0 +1,38 @@
+# === Allgemeine WLAN-Konfiguration ===
+interface=wlp1s0                         # WLAN-Interface (z. B. per `ip link` oder `iw dev` herausfinden)
+driver=nl80211                           # nl80211: Standard-Treiber für moderne Linux-WLAN-Geräte
+
+ssid=jh_test                             # Netzwerkname (SSID), der ausgestrahlt wird
+
+country_code=DE                          # Länderkennung (wichtig für legale Kanäle/Sendeleistung)
+ieee80211d=1                             # Länderinformationen in Beacons aktivieren
+
+# === Frequenzband und Kanal ===
+hw_mode=a                                # 6 GHz-Band verwenden (WiFi 6E / 802.11ax)
+channel=1                                # Kanal 1 im 6 GHz Band (z. B. für 160 MHz Betrieb)
+op_class=134                             # Operating Class für 160 MHz Bandbreite (Kanal 1 im 6 GHz Band)
+
+# === WiFi 6E (802.11ax / HE) aktivieren ===
+ieee80211ax=1                            # WiFi 6E aktivieren (802.11ax für 6 GHz)
+require_vht=1                            # VHT (802.11ac) als Mindestanforderung
+
+# === Sicherheitskonfiguration (WPA3) ===
+ieee80211w=2                             # Management Frame Protection (MFP) erforderlich (Pflicht für WPA3)
+auth_algs=1                              # Nur Open System Authentication (WPA/SAE verwendet dies)
+wpa=2                                    # WPA2/WPA3 Mixed-Mode aktivieren
+wpa_key_mgmt=SAE                         # WPA3 SAE (Simultaneous Authentication of Equals)
+rsn_pairwise=CCMP                        # AES-CCMP Verschlüsselung
+wpa_psk_file=/etc/hostapd/hostapd.psk    # PSK in sicherer Datei (nicht im Klartext konfigurieren)
+
+# === HE (High Efficiency) Betriebsparameter ===
+he_oper_centr_freq_seg0_idx=15           # Center Frequency Index für 160 MHz (Channel 1 + Offset)
+he_oper_chwidth=2                        # Kanalbreite: 2 = 160 MHz
+he_default_pe_duration=4                 # Preamble Duration für bessere OFDMA-Koordination
+he_rts_threshold=1023                    # RTS-Threshold (Standardwert, reduziert Kollisionen)
+
+# === Logging (optional, für Debugging nützlich) ===
+logger_syslog=-1                         # Deaktiviere Syslog-Logging (falls gewünscht)
+logger_syslog_level=2                    # Logging-Level (2 = Info)
+logger_stdout=-1                         # Logging über stdout deaktivieren (falls gewünscht)
+logger_stdout_level=2                    # stdout-Logging-Level (2 = Info)
+
