@@ -1,9 +1,14 @@
+use libbpf_rs::skel::{OpenSkel, SkelBuilder, Skel};
 use std::io::{self, Write, Read};
 use std::net::TcpStream;
 use std::process;
 use std::process::{Command, Stdio};
 use std::time::{SystemTime, Duration};
 use std::thread;
+use anyhow::Result;
+
+include!("bpf/monitore.skel.rs");
+
 
 fn adjust_time(diff: i128) -> u128 {
     let adjusted_time = if diff >= 0 {
@@ -20,7 +25,17 @@ fn adjust_time(diff: i128) -> u128 {
     timestamp_ns as u128
 }
 
-fn main() -> io::Result<()> {
+fn main() -> Result<()> {
+
+    let open_skel = MonitoreSkelBuilder::default().open();
+    println!("Skelett geöffnet.");
+
+    let mut skel = open_skel?.load()?;
+    println!("Skelett geladen.");
+
+    skel.attach()?;
+    println!("eBPF-Programm läuft …");
+
     let mut difference = 0;
     let server_address = "192.168.1.1:8080";
     match TcpStream::connect(server_address) {
