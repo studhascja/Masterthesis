@@ -1,3 +1,4 @@
+use libbpf_rs::skel::{OpenSkel, SkelBuilder, Skel};
 use std::fs::{OpenOptions, create_dir_all};
 use std::io::{self, Read, Write, BufWriter};
 use std::net::{TcpListener, TcpStream};
@@ -6,6 +7,10 @@ use std::time::{Duration, SystemTime};
 use std::f64::consts::PI;
 use std::sync::{Arc, Mutex};
 use std::env;
+use anyhow::Result;
+
+include!("bpf/monitore.skel.rs");
+
 
 const TIMEOUT_MS: u64 = 3; 
 const NUM_POINTS: usize = 200; 
@@ -313,7 +318,17 @@ fn handle_time(mut stream: TcpStream, disconnect_counter: Arc<Mutex<i32>>, stand
 }
 
 
-fn main() -> io::Result<()> {
+fn main() -> Result<(), libbpf_rs::Error> {
+
+    let open_skel = MonitoreSkelBuilder::default().open();
+    println!("Skelett geöffnet.");
+
+    let mut skel = open_skel?.load()?;
+    println!("Skelett geladen.");
+
+    skel.attach()?;
+    println!("eBPF-Programm läuft …");
+
     let args: Vec<String> = env::args().collect();
     
     let standard = Arc::new(args[1].clone());
