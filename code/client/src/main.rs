@@ -6,8 +6,58 @@ use std::process::{Command, Stdio};
 use std::time::{SystemTime, Duration};
 use std::thread;
 use anyhow::Result;
+use serde::{Serialize, Deserialize};
+use bincode;
+
 
 include!("bpf/monitore.skel.rs");
+
+#[derive(Serialize, Deserialize, Debug)]
+enum Data {
+    IntegerI128(i128),
+    IntegerU128(u128),
+    IntegerU64(u64),
+    Float(f64),
+}
+
+#[repr(u8)]
+#[derive(Serialize, Deserialize, Debug)]
+enum MessageType {
+    Start = 0,
+    NTP = 1,
+    NTP_Result = 2,
+    PTP = 3,
+    PTP_Result = 4,
+    Calc = 5,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+struct Message{
+msg_type: MessageType,
+seq: Option<u64>,
+timestamp: Option<u128>,
+primary_data: Option<Data>,
+secondary_data:Option<Data>,
+}
+
+fn encode_message(
+    msg_type: MessageType,
+    seq: Option<u64>,
+    timestamp: Option<u128>,
+    primary_data: Option<Data>,
+    secondary_data: Option<Data>,
+) -> Result<Vec<u8>, anyhow::Error> {
+    let msg = Message {
+        msg_type,
+        seq: seq,
+        timestamp: timestamp,
+        primary_data: primary_data,
+        secondary_data: secondary_data,
+    };
+
+    let encoded = bincode::serialize(&msg).expect("Failed to serialize");
+     return Ok(encoded);
+}
 
 
 fn adjust_time(diff: i128) -> u128 {
@@ -41,145 +91,93 @@ fn main() -> Result<()> {
     match TcpStream::connect(server_address) {
         Ok(mut stream) => {
             println!("Connected to server: {}", server_address);
-            stream.write_all(b"start\n")?;
+            let encoded_msg = encode_message(MessageType::Start, None, None, None, None)?;
+            stream.write_all(&encoded_msg)?;
 
             let mut buffer = [0; 1024];
-            let mut time_diffs: Vec<(usize, i128)> = Vec::new();   
+            let mut time_diffs: Vec<(u64, i128)> = Vec::new();   
 
             while let Ok(size) = stream.read(&mut buffer) {
                 if size == 0 {
                     break; 
                 }
-
-                let received_str = String::from_utf8_lossy(&buffer[..size]).trim().to_string();
-                let parts: Vec<&str> = received_str.split_whitespace().collect();
-		 	
-               if received_str.starts_with("result") {
-                    let parts: Vec<&str> = received_str.split_whitespace().collect();
-                    if parts.len() == 2 {
-                        if let Ok(index) = parts[1].parse::<usize>() {
-                            if let Some((_, diff)) = time_diffs.get(index) {
-				difference = *diff;
-				println!("Number: {} Difference {}", index, difference);
-                                //adjust_time(difference);
-                            }
-                        }
-                    }
-                }
-
-	       else if received_str.starts_with("calc") {
-                    let parts: Vec<&str> = received_str.split_whitespace().collect();
-                    if parts.len() == 3 {
-                        if let (Ok(theta), Ok(radius)) = (parts[1].parse::<f64>(), parts[2].parse::<f64>()){
-				let y = radius * theta.sin();
-				let y_str = format!("{} {}\n", y, adjust_time(difference));
-				
-				if let Err(e) = stream.write_all(y_str.as_bytes()) {
-					eprintln!("Error while sending the y coordinate: {}", e);
-				} 
-			}
-                    }
-                }
+		let msg: Message = bincode::deserialize(&buffer[..size]).expect("Deserialization failed");
 		
-               else if received_str.starts_with("_result") {
-		    println!("test");
-                    let parts: Vec<&str> = received_str.split_whitespace().collect();
-                    if parts.len() == 2 {
-                        if let Ok(offset_diff) = parts[1].parse::<i128>() {
-                            difference = difference + offset_diff;
-			  println!("test");
-			        thread::spawn(|| {
-        				let mut status = Command::new("iperf3")
-            					.arg("-c")
-            					.arg("192.168.1.1")
-            					.arg("-u")
-            					.arg("-b")
-            					.arg("15M")
-            					.arg("-t")
-            					.arg("12")
-            					.arg("-p")
-            					.arg("5202")
-            					.stderr(Stdio::piped())
-            					.stdout(Stdio::piped())
-            					.spawn()
-            					.expect("Failed to start iperf3");
-	
-       	 				let _ = status.wait().expect("Failed to wait for iperf3 process");
-    				});
-				println!("Störer ausgeführt");
-                        }else {
-                                        eprintln!("Error while parsing: {}", parts[1]);
-                                }
+		match msg.msg_type {
+			MessageType::Start => {
+			println!("Error: Start should not be sent to client");
+			},
+			MessageType::NTP => {
+				let number = msg.seq;
+				let timestamp = msg.timestamp;
+				let current_time = SystemTime::now();
+                                let elapsed_time = current_time
+                                        .duration_since(SystemTime::UNIX_EPOCH)
+                                        .expect("Time is before UNIX-Time");
+				if let Some(ts) = timestamp {
+					let diff = elapsed_time.as_nanos() as i128 - ts as i128;
+					time_diffs.push((number.expect("Sequence-Number is empty"), diff.try_into().unwrap()));
+				}
+				let encoded_msg = encode_message(MessageType::NTP, number, None, None, None)?;
+				stream.write_all(&encoded_msg);
 
-                    }
-                }
+			}, 
+			MessageType::NTP_Result => {
+				let index = msg.primary_data;
+				if let Some(Data::IntegerU64(i)) = index {
+					if let Some((_, diff)) = time_diffs.get(i as usize) {
+                                		difference = *diff;
+                                		println!("Number: {} Difference {}", i, difference);
+                            		}
+				}
+			},
+			MessageType::PTP => {
+				let time_of_arrival = adjust_time(difference);
+				let received_timestamp = msg.timestamp;
+				let time_of_depature = adjust_time(difference);
+				let encoded_msg = encode_message(MessageType::PTP, msg.seq, Some(time_of_depature), Some(Data::IntegerU128(received_timestamp.expect("Received Timestamp empty"))), Some(Data::IntegerU128(time_of_arrival)))?;
+				stream.write_all(&encoded_msg);	
+			}, 
+			MessageType::PTP_Result => {
+				let offset_diff = msg.primary_data;
+  				if let Some(Data::IntegerI128(offset_diff)) = offset_diff {
+					difference = difference + offset_diff;
+				}
+				thread::spawn(|| {
+                                        let mut status = Command::new("iperf3")
+                                                .arg("-c")
+                                                .arg("192.168.1.1")
+                                                .arg("-u")
+                                                .arg("-b")
+                                                .arg("15M")
+                                                .arg("-t")
+                                                .arg("12")
+                                                .arg("-p")
+                                                .arg("5202")
+                                                .stderr(Stdio::piped())
+                                                .stdout(Stdio::piped())
+                                                .spawn()
+                                                .expect("Failed to start iperf3");
 
-		else if received_str.starts_with("test") {
-    			let parts: Vec<&str> = received_str.split_whitespace().collect();
-    			if parts.len() == 2 {
-        			let timestamp_str = parts[1].trim_end_matches("ns"); 
+                                        let _ = status.wait().expect("Failed to wait for iperf3 process");
+                                });
+                                println!("Störer ausgeführt");
 
-        			if let Ok(received_timestamp) = timestamp_str.parse::<u128>() {                       
-            				let test_time = adjust_time(difference);                         
-            				let diff = test_time as i128 - received_timestamp as i128;
-					
-					let unadjusted_time = SystemTime::now();
-					let without_diff = unadjusted_time
-        					.duration_since(SystemTime::UNIX_EPOCH)
-        					.expect("Systemtime is before UNIX-Time")
-        					.as_nanos();
+			},
+			MessageType::Calc => {
+				if let (Some(Data::Float(theta)), Some(Data::Float(radius))) =
+				(msg.primary_data, msg.secondary_data) {
+					let y = radius * theta.sin();
+					let encoded_msg = encode_message(MessageType::Calc, msg.seq, Some(adjust_time(difference)), Some(Data::Float(y)), None)?;
+					if let Err(e) = stream.write_all(&encoded_msg) {
+                                        eprintln!("Error while sending the y coordinate: {}", e);
+                                } 
 
-            				println!("Testdifference: {} Servertime: {} Client time {} Client time without diff {}", diff, received_timestamp, test_time, without_diff);
-        			} else {
-            				eprintln!("Error while parsing: {}", parts[1]);
-        			}
-    			}
+				}
+			}
 		}
-
-		else if received_str.starts_with("ptp") {
-			let time_of_arrival = adjust_time(difference);
-                        let parts: Vec<&str> = received_str.split_whitespace().collect();
-                        if parts.len() == 2 {
-                                let timestamp_str = parts[1].trim_end_matches("ns");
-
-                                if let Ok(received_timestamp) = timestamp_str.parse::<u128>() {
-                                        let time_of_depature = adjust_time(difference);
-					if let Err(e) = stream.write_all(format!("{} {} {}\n", received_timestamp, time_of_arrival, time_of_depature).as_bytes()) {
-                    				eprintln!("Error while sending: {}", e);
-                			}
-
-                                 } else {
-                                        eprintln!("Error while parsing: {}", parts[1]);
-                                }
-                        }
-                }
-
-
-
-		else if parts.len() == 2 {
-   			let number = parts[0].parse::<usize>();
-    			let timestamp_str = parts[1];
- 
-    			let timestamp_str = timestamp_str.trim_end_matches("ns");
-    
-    			if let (Ok(number), Ok(received_timestamp)) = (number, timestamp_str.parse::<u128>()) {
-        			let current_time = SystemTime::now();
-                        	let elapsed_time = current_time
-					.duration_since(SystemTime::UNIX_EPOCH)
-                            		.expect("Time is before UNIX-Time");
-
-                        let diff = elapsed_time.as_nanos() as i128 - received_timestamp as i128;
-                      
-                        time_diffs.push((number, diff.try_into().unwrap()));
-        	
-			stream.write_all(b"ACK\n")?;
-    			}
-		} 
-		else {
-        		println!("Error while parsing: number={} timestamp={}", parts[0], parts[1]);
-    		}
-            }
-        }
+	} 	
+}
         Err(e) => {
             eprintln!("Error while connection to server: {}", e);
             process::exit(1);
@@ -188,4 +186,3 @@ fn main() -> Result<()> {
 
     Ok(())
 }
-
