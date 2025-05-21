@@ -8,12 +8,61 @@ use std::f64::consts::PI;
 use std::sync::{Arc, Mutex};
 use std::env;
 use anyhow::Result;
+use serde::{Serialize, Deserialize};
+use bincode;
 
 include!("bpf/monitore.skel.rs");
 
 const TIMEOUT_MS: u64 = 3;
 const NUM_POINTS: usize = 4000;
 const RADIUS: f64 = 10.0;
+
+#[derive(Serialize, Deserialize, Debug)]
+enum Data {
+    IntegerI128(i128),
+    IntegerU128(u128),
+    IntegerU64(u64),
+    Float(f64),
+}
+
+#[repr(u8)]
+#[derive(Serialize, Deserialize, Debug, PartialEq)]
+enum MessageType {
+    Start = 0,
+    NTP = 1,
+    NTP_Result = 2,
+    PTP = 3,
+    PTP_Result = 4,
+    Calc = 5,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+struct Message{
+msg_type: MessageType,
+seq: Option<u64>,
+timestamp: Option<u128>,
+primary_data: Option<Data>,
+secondary_data:Option<Data>,
+}
+
+fn encode_message(
+    msg_type: MessageType,
+    seq: Option<u64>,
+    timestamp: Option<u128>,
+    primary_data: Option<Data>,
+    secondary_data: Option<Data>,
+) -> Result<Vec<u8>, anyhow::Error> {
+    let msg = Message {
+        msg_type,
+        seq: seq,
+        timestamp: timestamp,
+        primary_data: primary_data,
+        secondary_data: secondary_data,
+    };
+
+    let encoded = bincode::serialize(&msg).expect("Failed to serialize");
+    Ok(encoded)
+}
 
 fn median(values: &Vec<i128>) -> i128 {
     let mut sorted_values = values.clone();
@@ -44,11 +93,11 @@ fn wait_until(next_tick: Instant) {
     }
 }
 
-fn handle_time(mut stream: TcpStream, disconnect_counter: Arc<Mutex<i32>>, standard: Arc<String>, frequency: Arc<String>, bandwith: Arc<String>, qos: Arc<String>) {
+fn handle_time(mut stream: TcpStream, disconnect_counter: Arc<Mutex<i32>>, standard: Arc<String>, frequency: Arc<String>, bandwith: Arc<String>, qos: Arc<String>)-> Result<(), Box<dyn std::error::Error>> {
     let mut buffer = [0; 1024];
     if let Ok(n) = stream.read(&mut buffer) {
-        let msg = String::from_utf8_lossy(&buffer[..n]);
-        if msg.trim() == "start" {
+	let msg: Message = bincode::deserialize(&buffer[..n]).expect("Deserialization failed");
+	if msg.msg_type == MessageType::Start {
             println!("----------------Time synchronisation started----------------");
             let mut min_latency = u128::MAX;
             let mut min_latency_index = 0;
@@ -56,9 +105,10 @@ fn handle_time(mut stream: TcpStream, disconnect_counter: Arc<Mutex<i32>>, stand
             let mut next_tick = Instant::now() + interval;
             for i in 0..200 {
                 let start_time = Instant::now();
-                if let Err(e) = stream.write_all(format!("{} {}\n", i, get_time_stamp()).as_bytes()) {
+		let encoded_msg = encode_message(MessageType::NTP, Some(i), Some(get_time_stamp()), None, None)?;
+                if let Err(e) = stream.write_all(&encoded_msg) {
                     eprintln!("Error while sending: {}", e);
-                    return;
+                    return Ok(());
                 }
                 match stream.read(&mut buffer) {
                     Ok(n) if n > 0 => {
@@ -73,41 +123,38 @@ fn handle_time(mut stream: TcpStream, disconnect_counter: Arc<Mutex<i32>>, stand
                 wait_until(next_tick);
                 next_tick += interval;
             }
-            if let Err(e) = stream.write_all(format!("result {}\n", min_latency_index).as_bytes()) {
+	    let encoded_msg = encode_message(MessageType::NTP_Result, None, None, Some(Data::IntegerU64(min_latency_index)), None)?;
+            if let Err(e) = stream.write_all(&encoded_msg) {
                 eprintln!("Error while sending result: {}", e);
             }
             println!("The shortest latency was at {} with {} ns", min_latency_index, min_latency);
             let mut offsets = Vec::with_capacity(200);
+	    
             println!("--------------------Start PTP Mechanism---------------------");
             let mut next_tick = Instant::now() + interval;
-            for _ in 0..200 {
+            for i in 0..200 {
                 let start_time = Instant::now();
-                if let Err(e) = stream.write_all(format!("ptp {}\n", get_time_stamp()).as_bytes()) {
+		let encoded_msg = encode_message(MessageType::PTP, Some(i), Some(get_time_stamp()), None, None)?;
+                if let Err(e) = stream.write_all(&encoded_msg) {
                     eprintln!("Error while sending: {}", e);
-                    return;
+                    return Ok(());
                 }
                 match stream.read(&mut buffer) {
                     Ok(n) if n > 0 => {
                         let server_arrival = get_time_stamp();
-                        let received_str = String::from_utf8_lossy(&buffer[..n]).trim().to_string();
-                        let parts: Vec<&str> = received_str.split_whitespace().collect();
-                        if parts.len() == 3 {
-                            if let (Ok(server_sent), Ok(client_arrival), Ok(client_sent)) = (
-                                parts[0].parse::<u128>(),
-                                parts[1].parse::<u128>(),
-                                parts[2].parse::<u128>(),
-                            ) {
-                                let first_offset = client_arrival as i128 - server_sent as i128;
-                                let second_offset = server_arrival as i128 - client_sent as i128;
-                                let optimal_offset = (first_offset + second_offset) / 2;
-                                let offset = optimal_offset - second_offset;
-                                offsets.push(offset);
-                            } else {
-                                eprintln!("Error parsing timestamps: {:?}", parts);
-                            }
-                        } else {
-                            eprintln!("Invalid response format: '{}'", received_str);
-                        }
+                        let msg: Message = bincode::deserialize(&buffer[..n]).expect("Deserialization failed");
+			
+			if let (Some(Data::IntegerU128(server_sent)), Some(Data::IntegerU128(client_arrival)), Some(client_sent)) =
+    			(msg.primary_data, msg.secondary_data, msg.timestamp)
+			{
+    				let first_offset = client_arrival as i128 - server_sent as i128;
+    				let second_offset = server_arrival as i128 - client_sent as i128;
+    				let optimal_offset = (first_offset + second_offset) / 2;
+    				let offset = optimal_offset - second_offset;
+                        	offsets.push(offset);
+			} else {
+    				eprintln!("PTP format is wrong");
+			}
                     }
                     _ => eprintln!("Error while receiving"),
                 }
@@ -116,38 +163,35 @@ fn handle_time(mut stream: TcpStream, disconnect_counter: Arc<Mutex<i32>>, stand
             }
             let result_offset = median(&offsets);
             println!("Result-Offset {}", result_offset);
-            if let Err(e) = stream.write_all(format!("_result {}\n", result_offset).as_bytes()) {
+	    let encoded_msg = encode_message(MessageType::PTP_Result, None, None, Some(Data::IntegerI128(result_offset)), None)?;
+            if let Err(e) = stream.write_all(&encoded_msg) {
                 eprintln!("Error while sending result: {}", e);
             }
             println!("---------------------Start Latency Test---------------------");
             let mut control_values = Vec::with_capacity(NUM_POINTS);
             let mut next_tick = Instant::now() + interval;
-            for _ in 0..20 {
-                if let Err(e) = stream.write_all(format!("ptp {}\n", get_time_stamp()).as_bytes()) {
+            for i in 0..20 {
+                let encoded_msg = encode_message(MessageType::PTP, Some(i), Some(get_time_stamp()), None, None)?;
+                if let Err(e) = stream.write_all(&encoded_msg) {
                     eprintln!("Error while sending: {}", e);
-                    return;
+                    return Ok(());
                 }
+
                 match stream.read(&mut buffer) {
                     Ok(n) if n > 0 => {
                         let server_arrival = get_time_stamp();
-                        let received_str = String::from_utf8_lossy(&buffer[..n]).trim().to_string();
-                        let parts: Vec<&str> = received_str.split_whitespace().collect();
-                        if parts.len() == 3 {
-                            if let (Ok(server_sent), Ok(client_arrival), Ok(client_sent)) = (
-                                parts[0].parse::<u128>(),
-                                parts[1].parse::<u128>(),
-                                parts[2].parse::<u128>(),
-                            ) {
-                                let first_offset = client_arrival as i128 - server_sent as i128;
+                        let msg: Message = bincode::deserialize(&buffer[..n]).expect("Deserialization failed");
+
+                        if let (Some(Data::IntegerU128(server_sent)), Some(Data::IntegerU128(client_arrival)), Some(client_sent)) =
+                        (msg.primary_data, msg.secondary_data, msg.timestamp)
+                        {  
+				let first_offset = client_arrival as i128 - server_sent as i128;
                                 let second_offset = server_arrival as i128 - client_sent as i128;
                                 let diff_test_offset = second_offset - first_offset;
                                 control_values.push(diff_test_offset.abs());
-                            } else {
-                                eprintln!("Error parsing timestamps: {:?}", parts);
-                            }
-                        } else {
-                            eprintln!("Invalid response format: '{}'", received_str);
-                        }
+                         } else {
+                                eprintln!("Wrong PTP Format");
+                         }
                     }
                     _ => eprintln!("Error while receiving"),
                 }
@@ -167,38 +211,36 @@ fn handle_time(mut stream: TcpStream, disconnect_counter: Arc<Mutex<i32>>, stand
                 let theta = 2.0 * PI * (i as f64) / (NUM_POINTS as f64);
                 let x = RADIUS * theta.cos();
 		let calc_send_time = Instant::now();
-                if let Err(e) = stream.write_all(format!("calc {} {}\n", theta, RADIUS).as_bytes()) {
+
+		let encoded_msg = encode_message(MessageType::Calc, Some(i), None, Some(Data::Float(theta)), Some(Data::Float(RADIUS)))?;
+                if let Err(e) = stream.write_all(&encoded_msg) {
                     eprintln!("Error while sending: {}", e);
-                    return;
+                    return Ok(());
                 }
+
                 let mut first_duration = 0;
                 let mut second_duration = 0;
                 let mut calc_send_duration = Duration::ZERO;
                 match stream.read(&mut buffer) {
                     Ok(n) if n > 0 => {
                         let calc_end_time = Instant::now();
-                        let received_str = String::from_utf8_lossy(&buffer[..n]).trim().to_string();
-                        let parts: Vec<&str> = received_str.split_whitespace().collect();
-                        calc_send_duration = calc_send_time.elapsed();
-                        if parts.len() == 2 {
-                            if let (Ok(y), Ok(client_time)) = (
-                                parts[0].parse::<f64>(),
-                                parts[1].parse::<u128>(),
-                            ) {
-                                first_duration = client_time as i128 - get_time_stamp() as i128;
+			let msg: Message = bincode::deserialize(&buffer[..n]).expect("Deserialization failed");
+			calc_send_duration = calc_send_time.elapsed();
+                        if let (Some(Data::Float(y)), Some(client_time)) =
+                        (msg.primary_data, msg.timestamp)
+                        {
+				first_duration = client_time as i128 - get_time_stamp() as i128;
                                 second_duration = get_time_stamp() as i128 - client_time as i128;
                                 last_y = if calc_send_duration.as_millis() <= TIMEOUT_MS as u128 {
                                     y
                                 } else {
                                     last_y - 2.0
                                 };
-                            } else {
-                                eprintln!("Error parsing timestamps: {:?}", parts);
-                            }
-                        } else {
-                            eprintln!("Invalid response format: '{}'", received_str);
-                        }
-                    }
+
+                         } else {
+                                eprintln!("Wrong Calc Format");
+                         }
+			}
                     _ => eprintln!("Error while receiving"),
                 }
                 points.push((x, last_y));
@@ -212,7 +254,7 @@ fn handle_time(mut stream: TcpStream, disconnect_counter: Arc<Mutex<i32>>, stand
             let result_path = format!("../results/standard_{}/frequency_{}/bandwith_{}/qos_{}", standard, frequency, bandwith, qos);
             if let Err(e) = create_dir_all(&result_path) {
                 eprintln!("Error while creating directories: {}", e);
-                return;
+                return Ok(());
             }
             let mut circle_points = BufWriter::new(OpenOptions::new().write(true).create(true).truncate(true).open(format!("{}/circle_points_{}", result_path, counter)).unwrap());
             let mut latencies = BufWriter::new(OpenOptions::new().write(true).create(true).truncate(true).open(format!("{}/latencys_{}", result_path, counter)).unwrap());
@@ -228,9 +270,15 @@ fn handle_time(mut stream: TcpStream, disconnect_counter: Arc<Mutex<i32>>, stand
             if *counter >= 1 {
                 println!("3 Clients haben sich disconnected. Der Server wird beendet.");
                 std::process::exit(0);
-            }
-        }
-    }
+	} else {
+		return Ok(());
+	}   
+       } else {
+	return Ok(());
+	}
+    } else {
+	return Ok (());
+	}
 }
 
 fn main() -> Result<(), libbpf_rs::Error> {
@@ -257,7 +305,7 @@ fn main() -> Result<(), libbpf_rs::Error> {
                 let qos = Arc::clone(&qos);
                 let disconnect_counter = Arc::clone(&disconnect_counter);
                 thread::spawn(move || {
-                    handle_time(stream, disconnect_counter, standard, frequency, bandwith, qos);
+                    let _ = handle_time(stream, disconnect_counter, standard, frequency, bandwith, qos);
                 });
             }
             Err(e) => eprintln!("Verbindungsfehler: {}", e),
