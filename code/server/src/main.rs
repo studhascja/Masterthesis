@@ -9,7 +9,7 @@ use std::sync::{Arc, Mutex};
 use std::env;
 use anyhow::Result;
 use serde::{Serialize, Deserialize};
-use bincode;
+use bytemuck::{Pod, Zeroable, bytes_of, from_bytes};
 
 include!("bpf/monitore.skel.rs");
 
@@ -36,32 +36,44 @@ enum MessageType {
     Calc = 5,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
-struct Message{
-msg_type: MessageType,
-seq: Option<u64>,
-timestamp: Option<u128>,
-primary_data: Option<Data>,
-secondary_data:Option<Data>,
+#[repr(C)]
+#[derive(Copy, Clone, Debug, Zeroable, Pod)]
+struct Message {
+    timestamp: u128,
+    first_u128: u128,
+    second_u128: u128,
+    i_val: i128,
+    first_f64: f64,
+    second_f64: f64,
+    seq: u64,
+    msg_type: u8,
+    _padding: [u8; 7],
 }
 
 fn encode_message(
-    msg_type: MessageType,
-    seq: Option<u64>,
-    timestamp: Option<u128>,
-    primary_data: Option<Data>,
-    secondary_data: Option<Data>,
+     msg_type: MessageType,
+    seq: u64,
+    timestamp: u128,
+    first_u128: u128,
+    second_u128: u128,
+    first_f64: f64,
+    second_f64: f64,
+    i_val: i128,
 ) -> Result<Vec<u8>, anyhow::Error> {
     let msg = Message {
-        msg_type,
+        msg_type: msg_type as u8,
         seq: seq,
         timestamp: timestamp,
-        primary_data: primary_data,
-        secondary_data: secondary_data,
+        first_u128: first_u128,
+	second_u128: second_u128,
+	first_f64: first_f64,
+	second_f64: second_f64,
+	i_val: i_val,
+	_padding: [0u8; 7],
     };
 
-    let encoded = bincode::serialize(&msg).expect("Failed to serialize");
-    Ok(encoded)
+    let encoded: &[u8] = bytemuck::bytes_of(&msg);
+    Ok(encoded.to_vec())
 }
 
 fn median(values: &Vec<i128>) -> i128 {
@@ -94,10 +106,10 @@ fn wait_until(next_tick: Instant) {
 }
 
 fn handle_time(mut stream: TcpStream, disconnect_counter: Arc<Mutex<i32>>, standard: Arc<String>, frequency: Arc<String>, bandwith: Arc<String>, qos: Arc<String>)-> Result<(), Box<dyn std::error::Error>> {
-    let mut buffer = [0; 1024];
+    let mut buffer = [0u8; std::mem::size_of::<Message>()];
     if let Ok(n) = stream.read(&mut buffer) {
-	let msg: Message = bincode::deserialize(&buffer[..n]).expect("Deserialization failed");
-	if msg.msg_type == MessageType::Start {
+	let msg: Message = *bytemuck::from_bytes::<Message>(&buffer);
+	if msg.msg_type == MessageType::Start as u8 {
             println!("----------------Time synchronisation started----------------");
             let mut min_latency = u128::MAX;
             let mut min_latency_index = 0;
@@ -105,7 +117,7 @@ fn handle_time(mut stream: TcpStream, disconnect_counter: Arc<Mutex<i32>>, stand
             let mut next_tick = Instant::now() + interval;
             for i in 0..200 {
                 let start_time = Instant::now();
-		let encoded_msg = encode_message(MessageType::NTP, Some(i), Some(get_time_stamp()), None, None)?;
+		let encoded_msg = encode_message(MessageType::NTP, i, get_time_stamp(), 0, 0, 0.0, 0.0, 0)?;
                 if let Err(e) = stream.write_all(&encoded_msg) {
                     eprintln!("Error while sending: {}", e);
                     return Ok(());
@@ -123,7 +135,7 @@ fn handle_time(mut stream: TcpStream, disconnect_counter: Arc<Mutex<i32>>, stand
                 wait_until(next_tick);
                 next_tick += interval;
             }
-	    let encoded_msg = encode_message(MessageType::NTP_Result, None, None, Some(Data::IntegerU64(min_latency_index)), None)?;
+	    let encoded_msg = encode_message(MessageType::NTP_Result, 0, 0, min_latency_index.into(), 0, 0.0, 0.0, 0)?;
             if let Err(e) = stream.write_all(&encoded_msg) {
                 eprintln!("Error while sending result: {}", e);
             }
@@ -134,7 +146,7 @@ fn handle_time(mut stream: TcpStream, disconnect_counter: Arc<Mutex<i32>>, stand
             let mut next_tick = Instant::now() + interval;
             for i in 0..200 {
                 let start_time = Instant::now();
-		let encoded_msg = encode_message(MessageType::PTP, Some(i), Some(get_time_stamp()), None, None)?;
+		let encoded_msg = encode_message(MessageType::PTP, i, get_time_stamp(), 0, 0, 0.0, 0.0, 0)?;
                 if let Err(e) = stream.write_all(&encoded_msg) {
                     eprintln!("Error while sending: {}", e);
                     return Ok(());
@@ -142,10 +154,10 @@ fn handle_time(mut stream: TcpStream, disconnect_counter: Arc<Mutex<i32>>, stand
                 match stream.read(&mut buffer) {
                     Ok(n) if n > 0 => {
                         let server_arrival = get_time_stamp();
-                        let msg: Message = bincode::deserialize(&buffer[..n]).expect("Deserialization failed");
+                        let msg: Message = *bytemuck::from_bytes::<Message>(&buffer);
 			
-			if let (Some(Data::IntegerU128(server_sent)), Some(Data::IntegerU128(client_arrival)), Some(client_sent)) =
-    			(msg.primary_data, msg.secondary_data, msg.timestamp)
+			if let (server_sent, client_arrival, client_sent) =
+    			(msg.first_u128, msg.second_u128, msg.timestamp)
 			{
     				let first_offset = client_arrival as i128 - server_sent as i128;
     				let second_offset = server_arrival as i128 - client_sent as i128;
@@ -163,7 +175,7 @@ fn handle_time(mut stream: TcpStream, disconnect_counter: Arc<Mutex<i32>>, stand
             }
             let result_offset = median(&offsets);
             println!("Result-Offset {}", result_offset);
-	    let encoded_msg = encode_message(MessageType::PTP_Result, None, None, Some(Data::IntegerI128(result_offset)), None)?;
+	    let encoded_msg = encode_message(MessageType::PTP_Result, 0, 0, 0, 0, 0.0, 0.0, result_offset)?;
             if let Err(e) = stream.write_all(&encoded_msg) {
                 eprintln!("Error while sending result: {}", e);
             }
@@ -171,7 +183,7 @@ fn handle_time(mut stream: TcpStream, disconnect_counter: Arc<Mutex<i32>>, stand
             let mut control_values = Vec::with_capacity(NUM_POINTS);
             let mut next_tick = Instant::now() + interval;
             for i in 0..20 {
-                let encoded_msg = encode_message(MessageType::PTP, Some(i), Some(get_time_stamp()), None, None)?;
+                let encoded_msg = encode_message(MessageType::PTP, i, get_time_stamp(), 0, 0, 0.0, 0.0, 0)?;
                 if let Err(e) = stream.write_all(&encoded_msg) {
                     eprintln!("Error while sending: {}", e);
                     return Ok(());
@@ -180,10 +192,10 @@ fn handle_time(mut stream: TcpStream, disconnect_counter: Arc<Mutex<i32>>, stand
                 match stream.read(&mut buffer) {
                     Ok(n) if n > 0 => {
                         let server_arrival = get_time_stamp();
-                        let msg: Message = bincode::deserialize(&buffer[..n]).expect("Deserialization failed");
+                        let msg: Message = *bytemuck::from_bytes::<Message>(&buffer);
 
-                        if let (Some(Data::IntegerU128(server_sent)), Some(Data::IntegerU128(client_arrival)), Some(client_sent)) =
-                        (msg.primary_data, msg.secondary_data, msg.timestamp)
+                        if let (server_sent, client_arrival, client_sent) =
+                        (msg.first_u128, msg.second_u128, msg.timestamp)
                         {  
 				let first_offset = client_arrival as i128 - server_sent as i128;
                                 let second_offset = server_arrival as i128 - client_sent as i128;
@@ -212,7 +224,7 @@ fn handle_time(mut stream: TcpStream, disconnect_counter: Arc<Mutex<i32>>, stand
                 let x = RADIUS * theta.cos();
 		let calc_send_time = Instant::now();
 
-		let encoded_msg = encode_message(MessageType::Calc, Some(i), None, Some(Data::Float(theta)), Some(Data::Float(RADIUS)))?;
+		let encoded_msg = encode_message(MessageType::Calc, i, 0, 0, 0, theta, RADIUS, 0)?;
                 if let Err(e) = stream.write_all(&encoded_msg) {
                     eprintln!("Error while sending: {}", e);
                     return Ok(());
@@ -224,10 +236,10 @@ fn handle_time(mut stream: TcpStream, disconnect_counter: Arc<Mutex<i32>>, stand
                 match stream.read(&mut buffer) {
                     Ok(n) if n > 0 => {
                         let calc_end_time = Instant::now();
-			let msg: Message = bincode::deserialize(&buffer[..n]).expect("Deserialization failed");
+			let msg: Message = *bytemuck::from_bytes::<Message>(&buffer);
 			calc_send_duration = calc_send_time.elapsed();
-                        if let (Some(Data::Float(y)), Some(client_time)) =
-                        (msg.primary_data, msg.timestamp)
+                        if let (y, client_time) =
+                        (msg.first_f64, msg.timestamp)
                         {
 				first_duration = client_time as i128 - get_time_stamp() as i128;
                                 second_duration = get_time_stamp() as i128 - client_time as i128;
