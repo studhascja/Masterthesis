@@ -7,18 +7,11 @@ use std::time::{SystemTime, Duration};
 use std::thread;
 use anyhow::Result;
 use serde::{Serialize, Deserialize};
-use bincode;
-
+use bytemuck::{Pod, Zeroable, bytes_of, from_bytes};
+use std::convert::TryFrom;
+use std::mem::{MaybeUninit, align_of};
 
 include!("bpf/monitore.skel.rs");
-
-#[derive(Serialize, Deserialize, Debug)]
-enum Data {
-    IntegerI128(i128),
-    IntegerU128(u128),
-    IntegerU64(u64),
-    Float(f64),
-}
 
 #[repr(u8)]
 #[derive(Serialize, Deserialize, Debug)]
@@ -31,32 +24,61 @@ enum MessageType {
     Calc = 5,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
-struct Message{
-msg_type: MessageType,
-seq: Option<u64>,
-timestamp: Option<u128>,
-primary_data: Option<Data>,
-secondary_data:Option<Data>,
+#[repr(C)]
+#[derive(Copy, Clone, Debug, Zeroable, Pod)]
+struct Message {
+    timestamp: u128,
+    first_u128: u128,
+    second_u128: u128,
+    i_val: i128,
+    first_f64: f64,
+    second_f64: f64,
+    seq: u64,
+    msg_type: u8,
+    _padding: [u8; 7],
 }
+
+impl TryFrom<u8> for MessageType {
+    type Error = std::convert::Infallible; 
+
+    fn try_from(value: u8) -> Result<Self, Self::Error> {
+        match value {
+            0 => Ok(MessageType::Start),
+            1 => Ok(MessageType::NTP),
+            2 => Ok(MessageType::NTP_Result),
+            3 => Ok(MessageType::PTP),
+            4 => Ok(MessageType::PTP_Result),
+            5 => Ok(MessageType::Calc),
+            _ => panic!("False Value for MessageType: {}", value), 
+        }
+    }
+}
+
 
 fn encode_message(
     msg_type: MessageType,
-    seq: Option<u64>,
-    timestamp: Option<u128>,
-    primary_data: Option<Data>,
-    secondary_data: Option<Data>,
+    seq: u64,
+    timestamp: u128,
+    first_u128: u128,
+    second_u128: u128,
+    first_f64: f64,
+    second_f64: f64,
+    i_val: i128,
 ) -> Result<Vec<u8>, anyhow::Error> {
     let msg = Message {
-        msg_type,
+        msg_type: msg_type as u8,
         seq: seq,
         timestamp: timestamp,
-        primary_data: primary_data,
-        secondary_data: secondary_data,
+        first_u128: first_u128,
+        second_u128: second_u128,
+        first_f64: first_f64,
+        second_f64: second_f64,
+        i_val: i_val,
+        _padding: [0u8; 7],
     };
 
-    let encoded = bincode::serialize(&msg).expect("Failed to serialize");
-     return Ok(encoded);
+    let encoded: &[u8] = bytemuck::bytes_of(&msg);
+    Ok(encoded.to_vec())
 }
 
 
@@ -91,58 +113,68 @@ fn main() -> Result<()> {
     match TcpStream::connect(server_address) {
         Ok(mut stream) => {
             println!("Connected to server: {}", server_address);
-            let encoded_msg = encode_message(MessageType::Start, None, None, None, None)?;
+            let encoded_msg = encode_message(MessageType::Start, 0, 0, 0, 0, 0.0, 0.0, 0)?;
             stream.write_all(&encoded_msg)?;
 
-            let mut buffer = [0; 1024];
+            let mut buffer = [0u8; std::mem::size_of::<Message>()];
             let mut time_diffs: Vec<(u64, i128)> = Vec::new();   
 
             while let Ok(size) = stream.read(&mut buffer) {
                 if size == 0 {
                     break; 
                 }
-		let msg: Message = bincode::deserialize(&buffer[..size]).expect("Deserialization failed");
 		
-		match msg.msg_type {
-			MessageType::Start => {
+		
+		let mut raw = MaybeUninit::<Message>::uninit();
+    		let raw_ptr = raw.as_mut_ptr() as *mut u8;
+
+    		unsafe {
+        		std::ptr::copy_nonoverlapping(
+            		buffer.as_ptr(),
+            		raw_ptr,
+            		std::mem::size_of::<Message>(),
+        	);
+		
+
+        	let msg = raw.assume_init();
+		
+		
+		match MessageType::try_from(msg.msg_type) {
+			Ok(MessageType::Start) => {
 			println!("Error: Start should not be sent to client");
 			},
-			MessageType::NTP => {
+			Ok(MessageType::NTP) => {
 				let number = msg.seq;
 				let timestamp = msg.timestamp;
 				let current_time = SystemTime::now();
                                 let elapsed_time = current_time
                                         .duration_since(SystemTime::UNIX_EPOCH)
                                         .expect("Time is before UNIX-Time");
-				if let Some(ts) = timestamp {
-					let diff = elapsed_time.as_nanos() as i128 - ts as i128;
-					time_diffs.push((number.expect("Sequence-Number is empty"), diff.try_into().unwrap()));
-				}
-				let encoded_msg = encode_message(MessageType::NTP, number, None, None, None)?;
+				let diff = elapsed_time.as_nanos() as i128 - timestamp as i128;
+				time_diffs.push((number, diff.try_into().unwrap()));
+				
+				let encoded_msg = encode_message(MessageType::NTP, number, 0, 0, 0, 0.0, 0.0, 0)?;
 				stream.write_all(&encoded_msg);
 
 			}, 
-			MessageType::NTP_Result => {
-				let index = msg.primary_data;
-				if let Some(Data::IntegerU64(i)) = index {
-					if let Some((_, diff)) = time_diffs.get(i as usize) {
+			Ok(MessageType::NTP_Result) => {
+				let index = msg.first_u128;
+			 	if let Some((_, diff)) = time_diffs.get(index as usize) {
                                 		difference = *diff;
-                                		println!("Number: {} Difference {}", i, difference);
-                            		}
-				}
+                                		println!("Number: {} Difference {}", index, difference);
+                            	}
 			},
-			MessageType::PTP => {
+			Ok(MessageType::PTP) => {
 				let time_of_arrival = adjust_time(difference);
 				let received_timestamp = msg.timestamp;
 				let time_of_depature = adjust_time(difference);
-				let encoded_msg = encode_message(MessageType::PTP, msg.seq, Some(time_of_depature), Some(Data::IntegerU128(received_timestamp.expect("Received Timestamp empty"))), Some(Data::IntegerU128(time_of_arrival)))?;
+				let encoded_msg = encode_message(MessageType::PTP, msg.seq, time_of_depature, received_timestamp, time_of_arrival, 0.0, 0.0, 0)?;
 				stream.write_all(&encoded_msg);	
 			}, 
-			MessageType::PTP_Result => {
-				let offset_diff = msg.primary_data;
-  				if let Some(Data::IntegerI128(offset_diff)) = offset_diff {
-					difference = difference + offset_diff;
-				}
+			Ok(MessageType::PTP_Result) => {
+				let offset_diff = msg.i_val;
+  				difference = difference + offset_diff;
+		
 				thread::spawn(|| {
                                         let mut status = Command::new("iperf3")
                                                 .arg("-c")
@@ -164,17 +196,18 @@ fn main() -> Result<()> {
                                 println!("Störer ausgeführt");
 
 			},
-			MessageType::Calc => {
-				if let (Some(Data::Float(theta)), Some(Data::Float(radius))) =
-				(msg.primary_data, msg.secondary_data) {
+			Ok(MessageType::Calc) => {
+				if let (theta, radius) =
+				(msg.first_f64, msg.second_f64) {
 					let y = radius * theta.sin();
-					let encoded_msg = encode_message(MessageType::Calc, msg.seq, Some(adjust_time(difference)), Some(Data::Float(y)), None)?;
+					let encoded_msg = encode_message(MessageType::Calc, msg.seq, adjust_time(difference), 0, 0, y, 0.0, 0)?;
 					if let Err(e) = stream.write_all(&encoded_msg) {
                                         eprintln!("Error while sending the y coordinate: {}", e);
                                 } 
 
 				}
 			}
+		}
 		}
 	} 	
 }
@@ -186,3 +219,4 @@ fn main() -> Result<()> {
 
     Ok(())
 }
+
