@@ -1,4 +1,5 @@
 use libbpf_rs::skel::{OpenSkel, SkelBuilder, Skel};
+use libbpf_rs::{RingBufferBuilder, Program, UprobeOpts};
 use std::io::{self, Write, Read};
 use std::net::TcpStream;
 use std::process;
@@ -10,6 +11,14 @@ use serde::{Serialize, Deserialize};
 use bytemuck::{Pod, Zeroable, bytes_of, from_bytes};
 use std::convert::TryFrom;
 use std::mem::{MaybeUninit, align_of};
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{Arc, Mutex};
+use std::sync::OnceLock;
+use std::env;
+
+static USER_ZERO: OnceLock<std::time::Instant> = OnceLock::new();
+static KERNEL_ZERO: OnceLock<u64> = OnceLock::new();
+static TEST: OnceLock<std::time::Instant> = OnceLock::new();
 
 include!("bpf/monitore.skel.rs");
 
@@ -36,6 +45,22 @@ struct Message {
     seq: u64,
     msg_type: u8,
     _padding: [u8; 7],
+}
+
+#[repr(C, packed)]
+#[derive(Copy, Clone, Debug, Zeroable, Pod)]
+struct BpfData {
+    msg_type: u8,
+    _padding: [u8; 7], 
+    seq: u64,
+}
+
+#[repr(C, packed)]
+#[derive(Copy, Clone, Debug, Zeroable, Pod)]
+struct Event {
+    timestamp: u64,
+    data: BpfData,
+
 }
 
 impl TryFrom<u8> for MessageType {
@@ -97,8 +122,23 @@ fn adjust_time(diff: i128) -> u128 {
     timestamp_ns as u128
 }
 
+#[no_mangle]
+pub extern "C" fn measure_instant() -> std::time::Instant {
+    std::time::Instant::now()
+}
+
+
 fn main() -> Result<()> {
 
+    let current_event = Arc::new(Mutex::new(Event {
+    	timestamp: 0,
+    	data: BpfData {
+        	msg_type: 0,
+        	_padding: [0; 7],
+        	seq: 0,
+    	},
+    }));
+    let event_ref = current_event.clone();
     let open_skel = MonitoreSkelBuilder::default().open();
     println!("Skelett geöffnet.");
 
@@ -106,8 +146,62 @@ fn main() -> Result<()> {
     println!("Skelett geladen.");
 
     skel.attach()?;
-    println!("eBPF-Programm läuft …");
 
+    println!("eBPF-Programm läuft …");
+    let running = Arc::new(AtomicBool::new(true));
+    let r = running.clone();
+    let maps = skel.maps();
+    // Callback-Funktion, wird bei jedem Ringbuffer-Event aufgerufen
+    let mut ringbuf_builder = RingBufferBuilder::new();
+    ringbuf_builder.add(maps.events(), move |data: &[u8]| {
+            if data.len() != std::mem::size_of::<Event>() {
+                eprintln!("Unexpected data size: {}", data.len());
+                return 0;
+            }
+
+        let event = bytemuck::from_bytes::<Event>(data);
+	let now = std::time::Instant::now();
+	
+    	USER_ZERO.get_or_init(|| now);
+    	KERNEL_ZERO.get_or_init(|| event.timestamp);
+
+    	let elapsed = now.duration_since(*USER_ZERO.get().unwrap());
+    	let kernel_diff = event.timestamp - *KERNEL_ZERO.get().unwrap();
+	let diff_ns = elapsed.as_nanos() as i128 - kernel_diff as i128;
+    	/*
+	println!(
+        	"Latenz: {:?} (User: {:?} - Kernel: {:?})",
+        	diff_ns,
+        	elapsed,
+        	Duration::from_nanos(kernel_diff),
+    	);
+	if let Some(val) = TEST.get(){
+		let usersp = val.duration_since(*USER_ZERO.get().unwrap());
+		let test_diff = usersp.as_nanos() as i128 - kernel_diff as i128;
+		
+		println!(
+                	"TEST: Latenz: {:?} (User: {:?} - Kernel: {:?})",
+                	test_diff,
+                	usersp,
+                	Duration::from_nanos(kernel_diff),
+        );
+
+	}*/
+	let mut locked_event = event_ref.lock().unwrap();
+    	*locked_event = *event;
+
+        0 // Rückgabewert: 0 bedeutet "OK"
+    })?;
+    let mut ringbuf = ringbuf_builder.build()?;
+
+// Separate Thread für Polling des Ringbuffers starten
+let handle = thread::spawn(move || {
+      let now = unsafe{measure_instant()};
+      USER_ZERO.get_or_init(|| now);
+    while r.load(Ordering::Relaxed) {
+        ringbuf.poll(Duration::from_millis(100)).unwrap();
+    }
+});
     let mut difference = 0;
     let server_address = "192.168.1.1:8080";
     match TcpStream::connect(server_address) {
@@ -144,7 +238,10 @@ fn main() -> Result<()> {
 			println!("Error: Start should not be sent to client");
 			},
 			Ok(MessageType::NTP) => {
+				let event_snapshot = current_event.lock().unwrap();
 				let number = msg.seq;
+				if event_snapshot.data.msg_type == 1 && event_snapshot.data.seq == number {println!("match");}
+				else {println!("no match");}
 				let timestamp = msg.timestamp;
 				let current_time = SystemTime::now();
                                 let elapsed_time = current_time
@@ -158,6 +255,8 @@ fn main() -> Result<()> {
 
 			}, 
 			Ok(MessageType::NTP_Result) => {
+				//let test = unsafe{measure_instant()};
+				//TEST.get_or_init(|| test);
 				let index = msg.first_u128;
 			 	if let Some((_, diff)) = time_diffs.get(index as usize) {
                                 		difference = *diff;

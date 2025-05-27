@@ -14,6 +14,56 @@ char __license[] SEC("license") = "GPL";
     );                                                                         \
   } while(0)
 
+
+struct Message {
+    __u64 timestamp_lo;       
+    __u64 timestamp_hi;       
+    __u64 first_u128_lo;
+    __u64 first_u128_hi;
+    __u64 second_u128_lo;
+    __u64 second_u128_hi;
+    __u64 i_val_lo;
+    __u64 i_val_hi;
+    double first_f64;
+    double second_f64;
+    __u64 seq;    
+    __u8 msg_type;  
+    __u8 _padding[7];         
+}__attribute__((packed));
+
+struct BPF_Data {
+	__u8 msg_type;
+	__u64 seq;
+};
+
+struct Event {
+	__u64 timestamp;
+	struct BPF_Data data;
+};
+
+struct {
+	__uint(type, BPF_MAP_TYPE_RINGBUF);
+	__uint(max_entries, 1 << 24);
+} events SEC(".maps");
+
+
+SEC("uretprobe//home/jakob/Masterthesis/code/client/target/debug/client:measure_instant")
+int trace_measure_instant(struct pt_regs *ctx) {
+    __u64 timestamp = bpf_ktime_get_ns();
+    struct Event *e = bpf_ringbuf_reserve(&events, sizeof(*e), 0);
+    	if (!e) {
+        return 0;
+    	}
+    	
+        e->data.msg_type = 0;
+        e->data.seq = 0;
+        e->timestamp = timestamp;
+
+    bpf_ringbuf_submit(e, 0);
+    return 0;
+}
+
+
 SEC("tracepoint/net/netif_receive_skb")
 int handle_netif_receive_skb(struct trace_event_raw_consume_skb *ctx) {
 struct sk_buff *skb = (struct sk_buff *)ctx->skbaddr;
@@ -56,16 +106,24 @@ struct tcphdr tcph = {};
 bpf_probe_read(&tcph, sizeof(tcph), tcp_header);
 
 u8 tcp_header_len = tcph.doff * 4;
+if(d == 1){
+	char *payload = tcp_header + tcp_header_len;
 
-// Payload
-char *payload = tcp_header + tcp_header_len;
+	struct Message msg = {};
+	bpf_probe_read(&msg, sizeof(msg), payload);	
+	bpf_printk("Size of eBPF Message struct: %d", sizeof(struct Message));
+	bpf_printk("TCP Payload: Type: %u Seq: %llu", msg.msg_type, msg.seq);
+	
+	struct Event *event;
+	event = bpf_ringbuf_reserve(&events, sizeof(*event), 0);
+	if (!event) return 0;
 
-// Z.B. 32 Bytes Payload auslesen
-char buf[32] = {};
-bpf_probe_read(&buf, sizeof(buf), payload);
+	event->data.msg_type = msg.msg_type;
+	event->data.seq = msg.seq;
+	event->timestamp = bpf_ktime_get_ns();
 
-// ASCII-Zeichen ausgeben (nicht druckbare Zeichen werden ggf. "komisch" dargestellt)
-bpf_printk("TCP Payload: %s", buf);
+	bpf_ringbuf_submit(event, 0);
+}
 
 return 0;
 }
@@ -100,3 +158,5 @@ int handle_net_dev_xmit(struct trace_event_raw_net_dev_xmit *ctx) {
 
     return 0;
 }
+
+
