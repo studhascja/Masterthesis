@@ -10,10 +10,20 @@ use std::env;
 use anyhow::Result;
 use serde::{Serialize, Deserialize};
 use bytemuck::{Pod, Zeroable, bytes_of, from_bytes};
+use std::convert::TryFrom;
+use std::mem::{MaybeUninit, align_of};
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::OnceLock;
+use std::collections::VecDeque;
+use libbpf_rs::{RingBufferBuilder, Program, UprobeOpts};
 
 include!("bpf/monitore.skel.rs");
 
-const TIMEOUT_MS: u64 = 3;
+static CURRENT_EVENT: OnceLock<Arc<Mutex<VecDeque<Event>>>> = OnceLock::new();
+static USER_ZERO: OnceLock<Instant> = OnceLock::new();
+static KERNEL_ZERO: OnceLock<u64> = OnceLock::new();
+static TEST: OnceLock<Instant> = OnceLock::new();
+const TIMEOUT_NS: u64 = 3000000;
 const NUM_POINTS: usize = 4000;
 const RADIUS: f64 = 10.0;
 
@@ -36,7 +46,7 @@ enum MessageType {
     Calc = 5,
 }
 
-#[repr(C)]
+#[repr(C, packed)]
 #[derive(Copy, Clone, Debug, Zeroable, Pod)]
 struct Message {
     timestamp: u128,
@@ -76,6 +86,43 @@ fn encode_message(
     Ok(encoded.to_vec())
 }
 
+#[repr(C, packed)]
+#[derive(Copy, Clone, Debug, Zeroable, Pod)]
+struct BpfData {
+    msg_type: u8,
+    _padding: [u8; 7], 
+    seq: u64,
+}
+
+#[repr(C, packed)]
+#[derive(Copy, Clone, Debug, Zeroable, Pod)]
+struct Event {
+    timestamp: u64,
+    data: BpfData,
+
+}
+
+impl TryFrom<u8> for MessageType {
+    type Error = std::convert::Infallible;
+
+    fn try_from(value: u8) -> Result<Self, Self::Error> {
+        match value {
+            0 => Ok(MessageType::Start),
+            1 => Ok(MessageType::NTP),
+            2 => Ok(MessageType::NTP_Result),
+            3 => Ok(MessageType::PTP),
+            4 => Ok(MessageType::PTP_Result),
+            5 => Ok(MessageType::Calc),
+            _ => panic!("False Value for MessageType: {}", value),
+        }
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn measure_instant() -> Instant {
+    Instant::now()
+}
+
 fn median(values: &Vec<i128>) -> i128 {
     let mut sorted_values = values.clone();
     sorted_values.sort();
@@ -88,8 +135,10 @@ fn median(values: &Vec<i128>) -> i128 {
 }
 
 fn get_time_stamp() -> u128 {
-    let time = SystemTime::now();
-    time.duration_since(SystemTime::UNIX_EPOCH).expect("Systemtime is before UNIX-Time").as_nanos()
+        SystemTime::now()
+        .duration_since(SystemTime::UNIX_EPOCH)
+        .expect("Time went backwards")
+        .as_nanos()
 }
 
 fn wait_until(next_tick: Instant) {
@@ -105,6 +154,26 @@ fn wait_until(next_tick: Instant) {
     }
 }
 
+fn wait_for_event(
+    number: u64,
+    msg_t: MessageType,
+) -> Event {
+	let queue_arc = CURRENT_EVENT.get().expect("CURRENT_EVENT not initialized");
+    loop {
+        {
+	    let mut queue = queue_arc.lock().unwrap();
+            while let Some(evt) = queue.pop_front() {
+		if let Ok(msg_type) = MessageType::try_from(evt.data.msg_type) {
+                    if msg_type == msg_t && evt.data.seq == number {
+                        return evt;
+                    }
+                }
+            }
+        }
+        thread::sleep(Duration::from_nanos(50));
+    }
+}
+
 fn handle_time(mut stream: TcpStream, disconnect_counter: Arc<Mutex<i32>>, standard: Arc<String>, frequency: Arc<String>, bandwith: Arc<String>, qos: Arc<String>)-> Result<(), Box<dyn std::error::Error>> {
     let mut buffer = [0u8; std::mem::size_of::<Message>()];
     if let Ok(n) = stream.read(&mut buffer) {
@@ -113,28 +182,40 @@ fn handle_time(mut stream: TcpStream, disconnect_counter: Arc<Mutex<i32>>, stand
             println!("----------------Time synchronisation started----------------");
             let mut min_latency = u128::MAX;
             let mut min_latency_index = 0;
-            let interval = Duration::from_millis(TIMEOUT_MS);
+            let interval = Duration::from_nanos(TIMEOUT_NS);
             let mut next_tick = Instant::now() + interval;
             for i in 0..200 {
                 let start_time = Instant::now();
-		let encoded_msg = encode_message(MessageType::NTP, i, get_time_stamp(), 0, 0, 0.0, 0.0, 0)?;
+                let elapsed_time = start_time.duration_since(*USER_ZERO.get().unwrap());
+
+		let encoded_msg = encode_message(MessageType::NTP, i, elapsed_time.as_nanos(), 0, 0, 0.0, 0.0, 0)?;
+		//println!("{:?}", encoded_msg);
                 if let Err(e) = stream.write_all(&encoded_msg) {
                     eprintln!("Error while sending: {}", e);
                     return Ok(());
                 }
                 match stream.read(&mut buffer) {
                     Ok(n) if n > 0 => {
-                        let duration = start_time.elapsed().as_nanos();
-                        if duration < min_latency {
-                            min_latency = duration;
-                            min_latency_index = i;
-                        }
+			let msg: Message = *bytemuck::from_bytes::<Message>(&buffer);
+			let number = msg.seq;
+			let event_snapshot = wait_for_event(number, MessageType::NTP);
+
+			let end_time = event_snapshot.timestamp - *KERNEL_ZERO.get().unwrap();
+                        let nanos = end_time as u128 - elapsed_time.as_nanos();
+			println!("Nanos {}", nanos);
+			if nanos < min_latency {
+                            	min_latency = nanos;
+                            	min_latency_index = i;
+                       	}
                     }
                     _ => eprintln!("Error while receiving"),
                 }
                 wait_until(next_tick);
                 next_tick += interval;
             }
+           // let test = unsafe{measure_instant()};
+           // TEST.get_or_init(|| test);
+
 	    let encoded_msg = encode_message(MessageType::NTP_Result, 0, 0, min_latency_index.into(), 0, 0.0, 0.0, 0)?;
             if let Err(e) = stream.write_all(&encoded_msg) {
                 eprintln!("Error while sending result: {}", e);
@@ -146,16 +227,18 @@ fn handle_time(mut stream: TcpStream, disconnect_counter: Arc<Mutex<i32>>, stand
             let mut next_tick = Instant::now() + interval;
             for i in 0..200 {
                 let start_time = Instant::now();
-		let encoded_msg = encode_message(MessageType::PTP, i, get_time_stamp(), 0, 0, 0.0, 0.0, 0)?;
+		let elapsed_time = start_time.duration_since(*USER_ZERO.get().unwrap());
+		let encoded_msg = encode_message(MessageType::PTP, i, elapsed_time.as_nanos(), 0, 0, 0.0, 0.0, 0)?;
                 if let Err(e) = stream.write_all(&encoded_msg) {
                     eprintln!("Error while sending: {}", e);
                     return Ok(());
                 }
                 match stream.read(&mut buffer) {
                     Ok(n) if n > 0 => {
-                        let server_arrival = get_time_stamp();
                         let msg: Message = *bytemuck::from_bytes::<Message>(&buffer);
-			
+ 			let number = msg.seq;
+                        let event_snapshot = wait_for_event(number, MessageType::PTP);
+			let server_arrival = event_snapshot.timestamp - *KERNEL_ZERO.get().unwrap(); 
 			if let (server_sent, client_arrival, client_sent) =
     			(msg.first_u128, msg.second_u128, msg.timestamp)
 			{
@@ -183,7 +266,9 @@ fn handle_time(mut stream: TcpStream, disconnect_counter: Arc<Mutex<i32>>, stand
             let mut control_values = Vec::with_capacity(NUM_POINTS);
             let mut next_tick = Instant::now() + interval;
             for i in 0..20 {
-                let encoded_msg = encode_message(MessageType::PTP, i, get_time_stamp(), 0, 0, 0.0, 0.0, 0)?;
+		let start_time = Instant::now();
+                let elapsed_time = start_time.duration_since(*USER_ZERO.get().unwrap());
+                let encoded_msg = encode_message(MessageType::PTP, i, elapsed_time.as_nanos(), 0, 0, 0.0, 0.0, 0)?;
                 if let Err(e) = stream.write_all(&encoded_msg) {
                     eprintln!("Error while sending: {}", e);
                     return Ok(());
@@ -191,8 +276,11 @@ fn handle_time(mut stream: TcpStream, disconnect_counter: Arc<Mutex<i32>>, stand
 
                 match stream.read(&mut buffer) {
                     Ok(n) if n > 0 => {
-                        let server_arrival = get_time_stamp();
+                        
                         let msg: Message = *bytemuck::from_bytes::<Message>(&buffer);
+			let number = msg.seq;
+                        let event_snapshot = wait_for_event(number, MessageType::PTP);
+                        let server_arrival = event_snapshot.timestamp - *KERNEL_ZERO.get().unwrap();
 
                         if let (server_sent, client_arrival, client_sent) =
                         (msg.first_u128, msg.second_u128, msg.timestamp)
@@ -215,35 +303,43 @@ fn handle_time(mut stream: TcpStream, disconnect_counter: Arc<Mutex<i32>>, stand
             let mut points = Vec::with_capacity(NUM_POINTS);
             let mut latency = Vec::with_capacity(NUM_POINTS);
             let mut last_y = 0.0;
-            let calc_time = Instant::now();
+            let calc_time = SystemTime::now();
             let mut next_tick = Instant::now() + interval;
             let mut i = 0;
-            while calc_time.elapsed().as_secs() < 12 {
+            while calc_time.elapsed()?.as_secs() < 12 {
                 let calc_start_time = Instant::now();
+		let calc_start_elapsed = calc_start_time.duration_since(*USER_ZERO.get().unwrap());
                 let theta = 2.0 * PI * (i as f64) / (NUM_POINTS as f64);
                 let x = RADIUS * theta.cos();
 		let calc_send_time = Instant::now();
+		let calc_send_elapsed = calc_send_time.duration_since(*USER_ZERO.get().unwrap());
+
 
 		let encoded_msg = encode_message(MessageType::Calc, i, 0, 0, 0, theta, RADIUS, 0)?;
                 if let Err(e) = stream.write_all(&encoded_msg) {
                     eprintln!("Error while sending: {}", e);
                     return Ok(());
                 }
+		    
 
                 let mut first_duration = 0;
                 let mut second_duration = 0;
-                let mut calc_send_duration = Duration::ZERO;
+		let mut calc_send_duration = 0;
                 match stream.read(&mut buffer) {
                     Ok(n) if n > 0 => {
-                        let calc_end_time = Instant::now();
-			let msg: Message = *bytemuck::from_bytes::<Message>(&buffer);
-			calc_send_duration = calc_send_time.elapsed();
+                        let msg: Message = *bytemuck::from_bytes::<Message>(&buffer);
+			
+			let number = msg.seq;
+                        let event_snapshot = wait_for_event(number, MessageType::Calc);
+                        let calc_end_time = event_snapshot.timestamp - *KERNEL_ZERO.get().unwrap();
+
+			calc_send_duration = calc_end_time as u128 - calc_send_elapsed.as_nanos();
                         if let (y, client_time) =
                         (msg.first_f64, msg.timestamp)
                         {
-				first_duration = client_time as i128 - get_time_stamp() as i128;
-                                second_duration = get_time_stamp() as i128 - client_time as i128;
-                                last_y = if calc_send_duration.as_millis() <= TIMEOUT_MS as u128 {
+				first_duration = client_time as i128 - calc_end_time as i128;
+                                second_duration = calc_end_time as i128 - client_time as i128;
+                                last_y = if calc_send_duration <= TIMEOUT_NS as u128 {
                                     y
                                 } else {
                                     last_y - 2.0
@@ -257,7 +353,7 @@ fn handle_time(mut stream: TcpStream, disconnect_counter: Arc<Mutex<i32>>, stand
                 }
                 points.push((x, last_y));
                 wait_until(next_tick);
-                latency.push((first_duration, second_duration, calc_send_duration.as_nanos(), calc_start_time.elapsed().as_nanos()));
+                latency.push((first_duration, second_duration, calc_send_duration, calc_start_time.elapsed().as_nanos()));
                 next_tick += interval;
                 i += 1;
             }
@@ -294,12 +390,76 @@ fn handle_time(mut stream: TcpStream, disconnect_counter: Arc<Mutex<i32>>, stand
 }
 
 fn main() -> Result<(), libbpf_rs::Error> {
+    let event_queue = Arc::new(Mutex::new(VecDeque::new()));
+    CURRENT_EVENT.set(event_queue.clone()).unwrap();
+    
+    let event_ref = CURRENT_EVENT.get().expect("CURRENT_EVENT not initialized");
     let open_skel = MonitoreSkelBuilder::default().open();
     println!("Skelett geöffnet.");
+
     let mut skel = open_skel?.load()?;
     println!("Skelett geladen.");
+
     skel.attach()?;
+
     println!("eBPF-Programm läuft …");
+    let running = Arc::new(AtomicBool::new(true));
+    let r = running.clone();
+    let maps = skel.maps();
+    // Callback-Funktion, wird bei jedem Ringbuffer-Event aufgerufen
+    let mut ringbuf_builder = RingBufferBuilder::new();
+    ringbuf_builder.add(maps.events(), move |data: &[u8]| {
+            if data.len() != std::mem::size_of::<Event>() {
+                eprintln!("Unexpected data size: {}", data.len());
+                return 0;
+            }
+
+        let event = bytemuck::from_bytes::<Event>(data);
+        let now = Instant::now();
+
+        USER_ZERO.get_or_init(|| now);
+        KERNEL_ZERO.get_or_init(|| event.timestamp);
+
+        let elapsed = now.duration_since(*USER_ZERO.get().unwrap());
+        let kernel_diff = event.timestamp - *KERNEL_ZERO.get().unwrap();
+        let diff_ns = elapsed.as_nanos() as i128 - kernel_diff as i128;
+/*
+        println!(
+                "Latenz: {:?} (User: {:?} - Kernel: {:?})",
+                diff_ns,
+                elapsed,
+                Duration::from_nanos(kernel_diff),
+        );
+        if let Some(val) = TEST.get(){
+                let usersp = val.duration_since(*USER_ZERO.get().unwrap());
+                let test_diff = usersp.as_nanos() as i128 - kernel_diff as i128;
+                
+                println!(
+                        "TEST: Latenz: {:?} (User: {:?} - Kernel: {:?})",
+                        test_diff,
+                        usersp,
+                        Duration::from_nanos(kernel_diff),
+        );
+	} */
+        let mut queue = event_ref.lock().unwrap();
+        queue.push_back(*event);
+
+        0 // Rückgabewert: 0 bedeutet "OK"
+    })?;
+    let mut ringbuf = ringbuf_builder.build()?;
+
+// Separate Thread für Polling des Ringbuffers starten
+let handle = thread::spawn(move || {
+      let now = unsafe{measure_instant()};
+      USER_ZERO.get_or_init(|| now);
+    while r.load(Ordering::Relaxed) {
+        ringbuf.poll(Duration::from_millis(100)).unwrap();
+    
+}
+});
+
+    println!("Size of Message: {}", std::mem::size_of::<Message>());
+    
     let args: Vec<String> = env::args().collect();
     let standard = Arc::new(args[1].clone());
     let frequency = Arc::new(args[2].clone());
