@@ -15,15 +15,19 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use std::sync::OnceLock;
 use std::env;
+use std::time::Instant;
+use std::collections::VecDeque;
+use once_cell::sync::Lazy;
 
-static USER_ZERO: OnceLock<std::time::Instant> = OnceLock::new();
-static KERNEL_ZERO: OnceLock<u64> = OnceLock::new();
-static TEST: OnceLock<std::time::Instant> = OnceLock::new();
+
+static USER_ZERO: Lazy<Mutex<Instant>> = Lazy::new(|| Mutex::new(Instant::now()));
+static KERNEL_ZERO: Lazy<Mutex<u64>> = Lazy::new(|| Mutex::new(0));
+static TEST: OnceLock<Instant> = OnceLock::new();
 
 include!("bpf/monitore.skel.rs");
 
 #[repr(u8)]
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, PartialEq)]
 enum MessageType {
     Start = 0,
     NTP = 1,
@@ -51,17 +55,20 @@ struct Message {
 #[derive(Copy, Clone, Debug, Zeroable, Pod)]
 struct BpfData {
     msg_type: u8,
-    _padding: [u8; 7], 
+    _padding: [u8; 7],
     seq: u64,
 }
 
 #[repr(C, packed)]
 #[derive(Copy, Clone, Debug, Zeroable, Pod)]
 struct Event {
+    event_type: u8,
+    _padding: [u8; 7],
     timestamp: u64,
     data: BpfData,
-
 }
+
+
 
 impl TryFrom<u8> for MessageType {
     type Error = std::convert::Infallible; 
@@ -123,21 +130,57 @@ fn adjust_time(diff: i128) -> u128 {
 }
 
 #[no_mangle]
-pub extern "C" fn measure_instant() -> std::time::Instant {
-    std::time::Instant::now()
+pub extern "C" fn measure_instant() -> Instant {
+    Instant::now()
+}
+
+
+fn wait_for_event(
+    current_event: Arc<Mutex<VecDeque<Event>>>,
+    number: u64,
+    msg_t: MessageType,
+    event_t: u8,
+) -> Event {
+    loop {
+        {
+            let mut queue = current_event.lock().unwrap();
+            while let Some(evt) = queue.pop_front() {
+                if let Ok(msg_type) = MessageType::try_from(evt.data.msg_type) {
+                    if msg_type == msg_t && evt.data.seq == number && evt.event_type == event_t{
+                        return evt;
+                    }
+                }
+            }
+     	}
+        thread::sleep(Duration::from_nanos(50));
+    }
+}
+
+fn set_kernel_zero(value: u64) {
+    let mut kernel = KERNEL_ZERO.lock().unwrap();
+    *kernel = value;
+}
+
+fn get_kernel_zero() -> u64 {
+    let kernel = KERNEL_ZERO.lock().unwrap();
+    *kernel
+}
+
+fn update_user_zero() {
+    let mut time = USER_ZERO.lock().unwrap();
+    *time = measure_instant();
+}
+
+fn read_user_zero() -> Instant {
+    let time = USER_ZERO.lock().unwrap();
+    *time
 }
 
 
 fn main() -> Result<()> {
 
-    let current_event = Arc::new(Mutex::new(Event {
-    	timestamp: 0,
-    	data: BpfData {
-        	msg_type: 0,
-        	_padding: [0; 7],
-        	seq: 0,
-    	},
-    }));
+    let current_event = Arc::new(Mutex::new(VecDeque::new()));
+    let mut client_sent_time = 0;
     let event_ref = current_event.clone();
     let open_skel = MonitoreSkelBuilder::default().open();
     println!("Skelett geöffnet.");
@@ -160,14 +203,14 @@ fn main() -> Result<()> {
             }
 
         let event = bytemuck::from_bytes::<Event>(data);
-	let now = std::time::Instant::now();
-	
-    	USER_ZERO.get_or_init(|| now);
-    	KERNEL_ZERO.get_or_init(|| event.timestamp);
+	if event.event_type == 0 {
+            set_kernel_zero(event.timestamp);
+        }
+	else {
+            let mut queue = event_ref.lock().unwrap();
+            queue.push_back(*event);
+        }
 
-    	let elapsed = now.duration_since(*USER_ZERO.get().unwrap());
-    	let kernel_diff = event.timestamp - *KERNEL_ZERO.get().unwrap();
-	let diff_ns = elapsed.as_nanos() as i128 - kernel_diff as i128;
     	/*
 	println!(
         	"Latenz: {:?} (User: {:?} - Kernel: {:?})",
@@ -187,18 +230,13 @@ fn main() -> Result<()> {
         );
 
 	}*/
-	let mut locked_event = event_ref.lock().unwrap();
-    	*locked_event = *event;
-
-        0 // Rückgabewert: 0 bedeutet "OK"
+	0 
     })?;
     let mut ringbuf = ringbuf_builder.build()?;
 
 // Separate Thread für Polling des Ringbuffers starten
 let handle = thread::spawn(move || {
-      let now = unsafe{measure_instant()};
-      USER_ZERO.get_or_init(|| now);
-    while r.load(Ordering::Relaxed) {
+      while r.load(Ordering::Relaxed) {
         ringbuf.poll(Duration::from_millis(100)).unwrap();
     }
 });
@@ -235,40 +273,36 @@ let handle = thread::spawn(move || {
 		
 		match MessageType::try_from(msg.msg_type) {
 			Ok(MessageType::Start) => {
-			println!("Error: Start should not be sent to client");
+				println!("Error: Start should not be sent to client");
 			},
 			Ok(MessageType::NTP) => {
-				let event_snapshot = current_event.lock().unwrap();
+				update_user_zero();
 				let number = msg.seq;
-				if event_snapshot.data.msg_type == 1 && event_snapshot.data.seq == number {println!("match");}
-				else {println!("no match");}
-				let timestamp = msg.timestamp;
-				let current_time = SystemTime::now();
-                                let elapsed_time = current_time
-                                        .duration_since(SystemTime::UNIX_EPOCH)
-                                        .expect("Time is before UNIX-Time");
-				let diff = elapsed_time.as_nanos() as i128 - timestamp as i128;
-				time_diffs.push((number, diff.try_into().unwrap()));
-				
-				let encoded_msg = encode_message(MessageType::NTP, number, 0, 0, 0, 0.0, 0.0, 0)?;
-				stream.write_all(&encoded_msg);
-
+        			let encoded_msg = encode_message(MessageType::NTP, number, 0, 0, 0, 0.0, 0.0, 0)?;
+				stream.write_all(&encoded_msg)?;	
 			}, 
 			Ok(MessageType::NTP_Result) => {
 				//let test = unsafe{measure_instant()};
 				//TEST.get_or_init(|| test);
-				let index = msg.first_u128;
-			 	if let Some((_, diff)) = time_diffs.get(index as usize) {
-                                		difference = *diff;
-                                		println!("Number: {} Difference {}", index, difference);
-                            	}
+				let number = msg.seq;
+                                let event_snapshot = wait_for_event(current_event.clone(), number, MessageType::NTP_Result, 1);
+				let client_receive = event_snapshot.timestamp - get_kernel_zero();
+
+                                let received_timestamp = msg.timestamp;
+                                let now = Instant::now();
+                                let time_of_depature = now.duration_since(read_user_zero());
+                                let encoded_msg = encode_message(MessageType::NTP_Result, msg.seq, client_sent_time, received_timestamp, client_receive.into(), 0.0, 0.0, 0)?;
+                                stream.write_all(&encoded_msg);
+				
+				let event_snapshot_send = wait_for_event(current_event.clone(), number, MessageType::NTP_Result, 2);
+				client_sent_time = (event_snapshot_send.timestamp - get_kernel_zero()) as u128;
 			},
 			Ok(MessageType::PTP) => {
-				let time_of_arrival = adjust_time(difference);
-				let received_timestamp = msg.timestamp;
-				let time_of_depature = adjust_time(difference);
-				let encoded_msg = encode_message(MessageType::PTP, msg.seq, time_of_depature, received_timestamp, time_of_arrival, 0.0, 0.0, 0)?;
-				stream.write_all(&encoded_msg);	
+				update_user_zero();
+                                let number = msg.seq;
+                                let encoded_msg = encode_message(MessageType::PTP, number, 0, 0, 0, 0.0, 0.0, 0)?;
+                                stream.write_all(&encoded_msg)?;
+
 			}, 
 			Ok(MessageType::PTP_Result) => {
 				let offset_diff = msg.i_val;
@@ -299,6 +333,7 @@ let handle = thread::spawn(move || {
 				if let (theta, radius) =
 				(msg.first_f64, msg.second_f64) {
 					let y = radius * theta.sin();
+					
 					let encoded_msg = encode_message(MessageType::Calc, msg.seq, adjust_time(difference), 0, 0, y, 0.0, 0)?;
 					if let Err(e) = stream.write_all(&encoded_msg) {
                                         eprintln!("Error while sending the y coordinate: {}", e);

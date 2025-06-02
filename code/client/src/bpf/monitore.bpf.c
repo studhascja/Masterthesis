@@ -33,10 +33,12 @@ struct Message {
 
 struct BPF_Data {
 	__u8 msg_type;
+	__u8 _padding[7];
 	__u64 seq;
 };
 
 struct Event {
+	__u8 event_type;
 	__u64 timestamp;
 	struct BPF_Data data;
 };
@@ -54,7 +56,7 @@ int trace_measure_instant(struct pt_regs *ctx) {
     	if (!e) {
         return 0;
     	}
-    	
+    	e->event_type = 0;
         e->data.msg_type = 0;
         e->data.seq = 0;
         e->timestamp = timestamp;
@@ -113,11 +115,12 @@ if(d == 1){
 	bpf_probe_read(&msg, sizeof(msg), payload);	
 	bpf_printk("Size of eBPF Message struct: %d", sizeof(struct Message));
 	bpf_printk("TCP Payload: Type: %u Seq: %llu", msg.msg_type, msg.seq);
-	
+	if (msg.msg_type < 0 || msg.msg_type > 5) return 0;	
 	struct Event *event;
 	event = bpf_ringbuf_reserve(&events, sizeof(*event), 0);
 	if (!event) return 0;
 
+	event->event_type = 1;
 	event->data.msg_type = msg.msg_type;
 	event->data.seq = msg.seq;
 	event->timestamp = bpf_ktime_get_ns();
@@ -131,7 +134,7 @@ return 0;
 SEC("tracepoint/net/net_dev_xmit")
 int handle_net_dev_xmit(struct trace_event_raw_net_dev_xmit *ctx) {
     char devname[16] = {};
-    
+
     // __data_loc-Feld: niederwertige 16 Bit enthalten den Offset
     u32 offset = ctx->__data_loc_name & 0xFFFF;
 
@@ -142,21 +145,59 @@ int handle_net_dev_xmit(struct trace_event_raw_net_dev_xmit *ctx) {
     bpf_core_read_str(devname, sizeof(devname), name_ptr);
 
     int pid = bpf_get_current_pid_tgid() >> 32;
-    
+
     char comm[16] = {};
     bpf_get_current_comm(&comm, sizeof(comm));
-    if (__builtin_strcmp(comm, "client") == 0) {
-        // Nur dann etwas ausgeben, wenn der Prozessname übereinstimmt
-        bpf_printk("net_dev_xmit: pid=%d dev=%s skbaddr=%p len=%u rc=%d comm=%s\n",
-                   pid,
-                   devname,
-                   (void *)ctx->skbaddr,
-                   ctx->len,
-                   ctx->rc,
-                   comm);
-    }
+
+        struct sk_buff *skb = (struct sk_buff *)ctx->skbaddr;
+        char *head;
+        u16 mac_header;
+
+        member_read(&head, skb, head); // Zeiger auf den Beginn der Daten
+        member_read(&mac_header, skb, mac_header);
+
+        char* ip_header_address = head + mac_header + MAC_HEADER_SIZE;
+        struct iphdr iph;
+bpf_probe_read(&iph, sizeof(iph), ip_header_address);
+if (iph.protocol != IPPROTO_TCP)
+    return 0;
+ u32 src_ip = __builtin_bswap32(iph.saddr);
+        u8 d = src_ip & 0xff;
+
+        u32 dst_ip = __builtin_bswap32(iph.daddr);
+        u8 dd = dst_ip & 0xff;
+
+        u8 ip_header_len = iph.ihl * 4;
+
+
+        if (__builtin_strcmp(comm, "client") == 0) {
+                char *tcp_header = ip_header_address + ip_header_len;
+
+                struct tcphdr tcph = {};
+                bpf_probe_read(&tcph, sizeof(tcph), tcp_header);
+                u8 tcp_header_len = tcph.doff * 4;
+
+                if(d == 43 && dd == 1){
+                        char *payload = tcp_header + tcp_header_len;
+
+                        struct Message msg = {};
+                        bpf_probe_read(&msg, sizeof(msg), payload);
+                        if (msg.msg_type < 0 || msg.msg_type > 5) return 0;
+                                struct Event *event;
+                                event = bpf_ringbuf_reserve(&events, sizeof(*event), 0);
+                                if (!event) return 0;
+                                event->event_type = 2;
+                                event->data.msg_type = msg.msg_type;
+                                event->data.seq = msg.seq;
+                                event->timestamp = bpf_ktime_get_ns();
+
+                                bpf_ringbuf_submit(event, 0);
+                }
+
+
+
+        }
 
     return 0;
 }
-
 
