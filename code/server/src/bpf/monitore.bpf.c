@@ -14,6 +14,12 @@ char __license[] SEC("license") = "GPL";
       ((char*)source_struct) + offsetof(typeof(*source_struct), source_member) \
     );                                                                         \
   } while(0)
+struct {
+    __uint(type, BPF_MAP_TYPE_ARRAY);
+    __uint(max_entries, 1);     // Nur ein Eintrag: unser globaler Counter
+    __type(key, u32);
+    __type(value, u64);
+} event_counter SEC(".maps");
 
 struct Message {
     __u64 timestamp_lo;       
@@ -47,6 +53,7 @@ struct {
         __uint(type, BPF_MAP_TYPE_RINGBUF);
         __uint(max_entries, 1 << 24);
 } events SEC(".maps");
+
 
 SEC("uretprobe//home/jakob/Masterthesis/code/server/target/debug/server:measure_instant")
 int trace_measure_instant(struct pt_regs *ctx) {
@@ -105,8 +112,8 @@ if(d == 43){
 	*/
         struct Message msg = {};
         bpf_probe_read(&msg, sizeof(msg), payload);     
-        bpf_printk("Size of eBPF Message struct: %d", sizeof(struct Message));
-        bpf_printk("TCP Payload: Type: %u Seq: %llu", msg.msg_type, msg.seq);
+       // bpf_printk("Size of eBPF Message struct: %d", sizeof(struct Message));
+       // bpf_printk("TCP Payload: Type: %u Seq: %llu", msg.msg_type, msg.seq);
 	if (msg.msg_type < 0 || msg.msg_type > 5) return 0;
 
         struct Event *event;
@@ -195,3 +202,59 @@ if (iph.protocol != IPPROTO_TCP)
 
     return 0;
 }
+
+
+
+SEC("tracepoint/net/net_dev_queue")
+int handle_net_dev_queue(struct trace_event_raw_net_dev_template *ctx) {
+struct sk_buff *skb = (struct sk_buff *)ctx->skbaddr;
+char *head;
+u16 mac_header;
+
+char comm[16] = {};
+bpf_get_current_comm(&comm, sizeof(comm));
+if (__builtin_strcmp(comm, "server") != 0) return 0;
+
+
+member_read(&head, skb, head); // Zeiger auf den Beginn der Daten
+member_read(&mac_header, skb, mac_header);
+
+char* ip_header_address = head + mac_header + MAC_HEADER_SIZE;
+struct iphdr iph;
+bpf_probe_read(&iph, sizeof(iph), ip_header_address);
+if (iph.protocol != IPPROTO_TCP)
+    return 0;
+
+u32 src_ip = __builtin_bswap32(iph.saddr);
+u8 d = src_ip & 0xff;
+
+
+u8 ip_header_len = iph.ihl * 4;
+
+// TCP-Header
+char *tcp_header = ip_header_address + ip_header_len;
+
+struct tcphdr tcph = {};
+bpf_probe_read(&tcph, sizeof(tcph), tcp_header);
+
+u8 tcp_header_len = tcph.doff * 4;
+
+char *payload = tcp_header + tcp_header_len;
+struct Message msg = {};
+        bpf_probe_read(&msg, sizeof(msg), payload);     
+
+        struct Event *event;
+        event = bpf_ringbuf_reserve(&events, sizeof(*event), 0);
+        if (!event) return 0;
+
+        event->event_type = 3;
+        event->data.msg_type = 4;
+        event->data.seq = msg.seq;
+        event->timestamp = bpf_ktime_get_ns();
+
+        bpf_ringbuf_submit(event, 0);
+
+return 0;
+}
+
+

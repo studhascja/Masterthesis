@@ -20,8 +20,12 @@ use std::time::{Duration, Instant, SystemTime};
 include!("bpf/monitore.skel.rs");
 
 static CURRENT_EVENT: OnceLock<Arc<Mutex<VecDeque<Event>>>> = OnceLock::new();
+static CURRENT_QUEUE_EVENT: OnceLock<Arc<Mutex<VecDeque<Event>>>> = OnceLock::new();
+
 static USER_ZERO: Lazy<Mutex<Instant>> = Lazy::new(|| Mutex::new(Instant::now()));
 static KERNEL_ZERO: Lazy<Mutex<u64>> = Lazy::new(|| Mutex::new(0));
+static MESSAGE_COUNT: Lazy<Mutex<u64>> = Lazy::new(|| Mutex::new(0));
+
 static TEST: OnceLock<Instant> = OnceLock::new();
 const TIMEOUT_NS: u64 = 3000000;
 const NUM_POINTS: usize = 4000;
@@ -110,7 +114,19 @@ struct PTPTimestampSet {
     server_sent: u128,
     server_kernel_sent: u128,
     client_arrival: u128,
-    client_sent: Option<u128>, 
+    client_sent: Option<u128>,
+}
+
+#[derive(Default, Clone)]
+struct CalcTimestampSet {
+    server_arrival: u128,
+    server_arrival_kernel: u128,
+    server_queue: u128,
+    server_sent: u128,
+    server_sent_kernel: u128,
+    client_queue: Option<u128>,
+    client_arrival_kernel: u128,
+    client_sent_kernel: Option<u128>,
 }
 
 impl TryFrom<u8> for MessageType {
@@ -165,15 +181,36 @@ fn wait_until(next_tick: Instant) {
     }
 }
 
+pub fn increment_message_count() -> u64 {
+    let mut count = MESSAGE_COUNT.lock().unwrap();
+    *count += 1;
+    *count
+}
+
+fn wait_for_queue_event(timestamp: u64) -> Option<Event> {
+let mut queue_arc = CURRENT_QUEUE_EVENT.get().expect("CURRENT_QUEUE_EVENT not initialized");
+let count = *MESSAGE_COUNT.lock().unwrap() as usize;  
+
+let mut queue = queue_arc.lock().unwrap();
+for i in 1..queue.len() {
+        if queue.len() >= count && (queue[queue.len() - i].timestamp - get_kernel_zero()) < timestamp {
+                return Some(queue[queue.len() - i].clone());        
+        }  
+        thread::sleep(Duration::from_nanos(50));
+    }
+println!("Falsch");
+return None;
+}
+
 fn wait_for_event(number: u64, msg_t: MessageType, event_t: u8) -> Event {
-    let queue_arc = CURRENT_EVENT.get().expect("CURRENT_EVENT not initialized");
-    loop {
+    	let mut queue_arc = CURRENT_EVENT.get().expect("CURRENT_EVENT not initialized");
+	loop {
         {
             let mut queue = queue_arc.lock().unwrap();
             while let Some(evt) = queue.pop_front() {
                 if let Ok(msg_type) = MessageType::try_from(evt.data.msg_type) {
                     if msg_type == msg_t && evt.data.seq == number && evt.event_type == event_t {
-                        return evt;
+			return evt;
                     }
                 }
             }
@@ -181,6 +218,7 @@ fn wait_for_event(number: u64, msg_t: MessageType, event_t: u8) -> Event {
         thread::sleep(Duration::from_nanos(50));
     }
 }
+
 
 fn set_kernel_zero(value: u64) {
     let mut kernel = KERNEL_ZERO.lock().unwrap();
@@ -221,18 +259,19 @@ fn handle_time(
             let interval = Duration::from_nanos(TIMEOUT_NS);
             let mut next_tick = Instant::now() + interval;
             let mut needed_time = u128::MAX;
-	    let mut ptp_diff = u128::MAX;
+            let mut ptp_diff = u128::MAX;
             let mut i = 0;
             while needed_time > 500000 {
                 let start_time = Instant::now();
                 let elapsed_start_time = start_time.duration_since(read_user_zero());
-
+		println!("{}", i);
                 let encoded_msg = encode_message(MessageType::NTP, i, 0, 0, 0, 0.0, 0.0, 0)?;
                 //println!("{:?}", encoded_msg);
                 if let Err(e) = stream.write_all(&encoded_msg) {
                     eprintln!("Error while sending: {}", e);
                     return Ok(());
                 }
+		increment_message_count();
                 match stream.read(&mut buffer) {
                     Ok(n) if n > 0 => {
                         let msg: Message = *bytemuck::from_bytes::<Message>(&buffer);
@@ -257,54 +296,47 @@ fn handle_time(
                 next_tick += interval;
                 i += 1;
             }
-
+	
             // let test = unsafe{measure_instant()};
             // TEST.get_or_init(|| test);
 
-           
             println!("--------------------Start PTP Mechanism---------------------");
-	    let mut j = 0;
+            let mut j = 0;
             let mut next_tick = Instant::now() + interval;
             while ptp_diff > 1000 {
                 let start_time = Instant::now();
-                let encoded_msg = encode_message(
-                    MessageType::PTP,
-                    j,
-              	    0,
-                    0,
-                    0,
-                    0.0,
-                    0.0,
-                    0,
-                )?;
+                let encoded_msg = encode_message(MessageType::PTP, j, 0, 0, 0, 0.0, 0.0, 0)?;
                 if let Err(e) = stream.write_all(&encoded_msg) {
                     eprintln!("Error while sending: {}", e);
                     return Ok(());
                 }
-		let wait_time = Instant::now() + Duration::from_nanos((needed_time as f64 / 2.2).round() as u64);
-		wait_until(wait_time);
-		update_user_zero();
+		increment_message_count();
+                let wait_time = Instant::now()
+                    + Duration::from_nanos((needed_time as f64 / 2.2).round() as u64);
+                wait_until(wait_time);
+                update_user_zero();
 
                 match stream.read(&mut buffer) {
                     Ok(n) if n > 0 => {
-			let end_time = Instant::now();
-			let ptp_duration = end_time - start_time;
-			ptp_diff = ptp_duration.as_nanos().abs_diff(needed_time);
-			println!("PTP-Diff = {}", ptp_diff);
+                        let end_time = Instant::now();
+                        let ptp_duration = end_time - start_time;
+                        ptp_diff = ptp_duration.as_nanos().abs_diff(needed_time);
+                        println!("PTP-Diff = {} {}", ptp_diff, j);
                         let msg: Message = *bytemuck::from_bytes::<Message>(&buffer);
                     }
                     _ => eprintln!("Error while receiving"),
                 }
+		j += 1;
                 wait_until(next_tick);
                 next_tick += interval;
-            }
-
+            }	
+	 
             println!("---------------------Start Latency Test---------------------");
             let mut next_tick = Instant::now() + interval;
-	    let mut timestamps: Vec<PTPTimestampSet> = vec![PTPTimestampSet::default(); 20];
+            let mut timestamps: Vec<PTPTimestampSet> = vec![PTPTimestampSet::default(); 20];
 
             for i in 0..21 {
-		let index = i as usize;
+                let index = i as usize;
                 let start_time = Instant::now();
                 let elapsed_time = start_time.duration_since(read_user_zero());
                 let encoded_msg = encode_message(
@@ -321,65 +353,68 @@ fn handle_time(
                     eprintln!("Error while sending: {}", e);
                     return Ok(());
                 }
-		let event_snapshot_sending = wait_for_event(i, MessageType::NTP_Result, 2);
-		let server_kernel_sent = event_snapshot_sending.timestamp - get_kernel_zero();
+		increment_message_count();
+                let event_snapshot_sending = wait_for_event(i, MessageType::NTP_Result, 2);
+                let server_kernel_sent = event_snapshot_sending.timestamp - get_kernel_zero();
 
                 match stream.read(&mut buffer) {
                     Ok(n) if n > 0 => {
-			let end_time = Instant::now();
-			let msg: Message = *bytemuck::from_bytes::<Message>(&buffer);
+                        let end_time = Instant::now();
+                        let msg: Message = *bytemuck::from_bytes::<Message>(&buffer);
                         let number = msg.seq;
-			let event_snapshot = wait_for_event(number, MessageType::NTP_Result, 1);
-			let server_arrival = end_time.duration_since(read_user_zero());
-			let server_arrival_kernel = event_snapshot.timestamp - get_kernel_zero();           
-                        
+                        let event_snapshot = wait_for_event(number, MessageType::NTP_Result, 1);
+                        let server_arrival = end_time.duration_since(read_user_zero());
+                        let server_arrival_kernel = event_snapshot.timestamp - get_kernel_zero();
+
                         if let (server_sent, client_arrival, client_sent) =
                             (msg.first_u128, msg.second_u128, msg.timestamp)
                         {
-				if i < 20 {
-			    		timestamps[index].server_arrival = server_arrival.as_nanos();
-					timestamps[index].server_arrival_kernel = server_arrival_kernel as u128;
-					timestamps[index].server_sent = server_sent;
-					timestamps[index].server_kernel_sent = server_kernel_sent as u128;
-					timestamps[index].client_arrival = client_arrival;
-				}
+                            if i < 20 {
+                                timestamps[index].server_arrival = server_arrival.as_nanos();
+                                timestamps[index].server_arrival_kernel =
+                                    server_arrival_kernel as u128;
+                                timestamps[index].server_sent = server_sent;
+                                timestamps[index].server_kernel_sent = server_kernel_sent as u128;
+                                timestamps[index].client_arrival = client_arrival;
+                            }
 
-				if i > 0 {
-    					timestamps[index - 1].client_sent = Some(client_sent);
-				}
-                          } else {
+                            if i > 0 {
+                                timestamps[index - 1].client_sent = Some(client_sent);
+                            }
+                        } else {
                             eprintln!("Wrong PTP Format");
                         }
                     }
                     _ => eprintln!("Error while receiving"),
                 }
-		wait_until(next_tick);
+                wait_until(next_tick);
                 next_tick += interval;
-	}
-	for (i, ts) in timestamps.iter().enumerate() {
-    		if let Some(client_sent) = ts.client_sent {
-        		let first_offset = ts.client_arrival as i128 - ts.server_kernel_sent as i128;
-        		let second_offset = ts.server_arrival_kernel as i128 - client_sent as i128;
-        		let whole = ts.server_arrival as i128 - ts.server_sent as i128;
-        		let diff_test_offset = second_offset - first_offset;
+            }
+            for (i, ts) in timestamps.iter().enumerate() {
+                if let Some(client_sent) = ts.client_sent {
+                    let first_offset = ts.client_arrival as i128 - ts.server_kernel_sent as i128;
+                    let second_offset = ts.server_arrival_kernel as i128 - client_sent as i128;
+                    let whole = ts.server_arrival as i128 - ts.server_sent as i128;
+                    let diff_test_offset = second_offset - first_offset;
 
-        		println!(
-            			"#{i}: Diff_Offset: {}, Whole: {}, First: {}, Second: {}",
-            			diff_test_offset, whole, first_offset, second_offset
-        			);
-    		} else {
-        		println!("#{i}: Incomplete timestamp set");
-    		}
-	}
-     
-            
+                    println!(
+                        "#{i}: Diff_Offset: {}, Whole: {}, First: {}, Second: {}",
+                        diff_test_offset, whole, first_offset, second_offset
+                    );
+                } else {
+                    println!("#{i}: Incomplete timestamp set");
+                }
+            }
+
             let mut points = Vec::with_capacity(NUM_POINTS);
-            let mut latency = Vec::with_capacity(NUM_POINTS);
+            let mut latency: Vec<CalcTimestampSet> = vec![CalcTimestampSet::default(); NUM_POINTS];
+
             let mut last_y = 0.0;
             let calc_time = SystemTime::now();
             let mut next_tick = Instant::now() + interval;
             let mut i = 0;
             while calc_time.elapsed()?.as_secs() < 12 {
+                let index = i as usize;
                 let calc_start_time = Instant::now();
                 let calc_start_elapsed = calc_start_time.duration_since(read_user_zero());
                 let theta = 2.0 * PI * (i as f64) / (NUM_POINTS as f64);
@@ -392,22 +427,49 @@ fn handle_time(
                     eprintln!("Error while sending: {}", e);
                     return Ok(());
                 }
+		increment_message_count();
+
+                let event_snapshot_sending = wait_for_event(i, MessageType::Calc, 2);
+                let server_sent_kernel = event_snapshot_sending.timestamp - get_kernel_zero();
+
+	        let event_snapshot_queue = wait_for_queue_event(server_sent_kernel);
+                let server_queue = event_snapshot_queue.unwrap().timestamp - get_kernel_zero();
 
                 let mut first_duration = 0;
                 let mut second_duration = 0;
                 let mut calc_send_duration = 0;
                 match stream.read(&mut buffer) {
                     Ok(n) if n > 0 => {
+                        let end_time = Instant::now();
+                        let calc_end_time = end_time.duration_since(read_user_zero());
                         let msg: Message = *bytemuck::from_bytes::<Message>(&buffer);
 
                         let number = msg.seq;
                         let event_snapshot = wait_for_event(number, MessageType::Calc, 1);
-                        let calc_end_time = event_snapshot.timestamp - get_kernel_zero();
+                        let server_arrival_kernel = event_snapshot.timestamp - get_kernel_zero();
 
-                        calc_send_duration = calc_end_time as u128 - calc_send_elapsed.as_nanos();
-                        if let (y, client_time) = (msg.first_f64, msg.timestamp) {
-                            first_duration = client_time as i128 - calc_end_time as i128;
-                            second_duration = calc_end_time as i128 - client_time as i128;
+                        calc_send_duration =
+                            calc_end_time.as_nanos() - calc_send_elapsed.as_nanos();
+
+                        if let (y, client_queue, client_arrival_kernel, client_sent) = (
+                            msg.first_f64,
+                            msg.timestamp,
+                            msg.first_u128,
+                            msg.second_u128,
+                        ) {
+                            latency[index].server_arrival = calc_end_time.as_nanos();
+                            latency[index].server_arrival_kernel = server_arrival_kernel as u128;
+                            latency[index].server_queue = server_queue as u128;
+                            latency[index].server_sent = calc_send_elapsed.as_nanos();
+                            latency[index].server_sent_kernel = server_sent_kernel as u128;
+                            latency[index].client_arrival_kernel = client_arrival_kernel;
+
+                            if i > 0 {
+                                latency[index - 1].client_sent_kernel = Some(client_sent);
+				latency[index - 1].client_queue = Some(client_queue);
+
+                            }
+
                             last_y = if calc_send_duration <= TIMEOUT_NS as u128 {
                                 y
                             } else {
@@ -421,15 +483,38 @@ fn handle_time(
                 }
                 points.push((x, last_y));
                 wait_until(next_tick);
-                latency.push((
-                    first_duration,
-                    second_duration,
-                    calc_send_duration,
-                    calc_start_time.elapsed().as_nanos(),
-                ));
                 next_tick += interval;
                 i += 1;
             }
+
+            let encoded_msg = encode_message(
+                MessageType::Calc,
+                NUM_POINTS.try_into().unwrap(),
+                0,
+                0,
+                0,
+                0.0,
+                0.0,
+                0,
+            )?;
+            if let Err(e) = stream.write_all(&encoded_msg) {
+                eprintln!("Error while sending: {}", e);
+                return Ok(());
+            }
+	    increment_message_count();
+            match stream.read(&mut buffer) {
+                Ok(n) if n > 0 => {
+                    let msg: Message = *bytemuck::from_bytes::<Message>(&buffer);
+                    if let (client_sent, client_queue) = (msg.second_u128, msg.timestamp) {
+                        latency[NUM_POINTS - 1].client_sent_kernel = Some(client_sent);
+                        latency[NUM_POINTS - 1].client_queue = Some(client_queue);
+                    } else {
+                        eprintln!("Wrong Calc Format");
+                    }
+                }
+                _ => eprintln!("Error while receiving"),
+            }
+
             let mut counter = disconnect_counter.lock().unwrap();
             *counter += 1;
             let result_path = format!(
@@ -440,14 +525,7 @@ fn handle_time(
                 eprintln!("Error while creating directories: {}", e);
                 return Ok(());
             }
-            let mut circle_points = BufWriter::new(
-                OpenOptions::new()
-                    .write(true)
-                    .create(true)
-                    .truncate(true)
-                    .open(format!("{}/circle_points_{}", result_path, counter))
-                    .unwrap(),
-            );
+
             let mut latencies = BufWriter::new(
                 OpenOptions::new()
                     .write(true)
@@ -456,12 +534,42 @@ fn handle_time(
                     .open(format!("{}/latencys_{}", result_path, counter))
                     .unwrap(),
             );
+
+            for (i, ts) in latency.iter().enumerate() {
+                if let (Some(client_sent_kernel), Some(client_queue)) =
+                    (ts.client_sent_kernel, ts.client_queue)
+                {
+                    let work_t1 = ts.server_queue as i128 - ts.server_sent as i128;
+                    let queue_t1 = ts.server_sent_kernel as i128 - ts.server_queue as i128;
+                    let send_t1 = ts.client_arrival_kernel as i128 - ts.server_sent_kernel as i128;
+                    let work_t2 = client_queue as i128 - ts.client_arrival_kernel as i128;
+                    let queue_t2 = client_sent_kernel as i128 - client_queue as i128;
+                    let send_t2 = ts.server_arrival_kernel as i128 - client_sent_kernel as i128;
+                    let whole = ts.server_arrival as i128 - ts.server_sent as i128;
+                    writeln!(
+                        latencies,
+                        "{},{},{},{},{},{},{}",
+                        work_t1, queue_t1, send_t1, work_t2, queue_t2, send_t2, whole
+                    )
+                    .unwrap();
+                } else {
+                    println!("#{}: Incomplete timestamp set", i);
+                }
+            }
+
+            let mut circle_points = BufWriter::new(
+                OpenOptions::new()
+                    .write(true)
+                    .create(true)
+                    .truncate(true)
+                    .open(format!("{}/circle_points_{}", result_path, counter))
+                    .unwrap(),
+            );
+
             for (x, y) in &points {
                 writeln!(circle_points, "{},{}", x, y).unwrap();
             }
-            for (l1, l2, lg, c) in &latency {
-                writeln!(latencies, "{},{},{},{}", l1, l2, lg, c).unwrap();
-            }
+
             circle_points.flush().unwrap();
             latencies.flush().unwrap();
             println!("Points and Latencies written.");
@@ -481,9 +589,14 @@ fn handle_time(
 
 fn main() -> Result<(), libbpf_rs::Error> {
     let event_queue = Arc::new(Mutex::new(VecDeque::new()));
+    let queue_event_queue = Arc::new(Mutex::new(VecDeque::new()));
+
     CURRENT_EVENT.set(event_queue.clone()).unwrap();
+    CURRENT_QUEUE_EVENT.set(queue_event_queue.clone()).unwrap();
 
     let event_ref = CURRENT_EVENT.get().expect("CURRENT_EVENT not initialized");
+    let queue_event_ref = CURRENT_QUEUE_EVENT.get().expect("CURRENT_EVENT not initialized");
+
     let open_skel = MonitoreSkelBuilder::default().open();
     println!("Skelett geöffnet.");
 
@@ -530,10 +643,15 @@ fn main() -> Result<(), libbpf_rs::Error> {
                             Duration::from_nanos(kernel_diff),
             );
         } */
-        else {
-            let mut queue = event_ref.lock().unwrap();
+        else if event.event_type == 3{
+            let mut queue = queue_event_ref.lock().unwrap();
             queue.push_back(*event);
         }
+	else {
+	 	let mut queue = event_ref.lock().unwrap();
+         	queue.push_back(*event);
+
+	}
         0 // Rückgabewert: 0 bedeutet "OK"
     })?;
     let mut ringbuf = ringbuf_builder.build()?;
