@@ -201,3 +201,53 @@ if (iph.protocol != IPPROTO_TCP)
     return 0;
 }
 
+SEC("tracepoint/net/net_dev_queue")
+int handle_net_dev_queue(struct trace_event_raw_net_dev_template *ctx) {
+struct sk_buff *skb = (struct sk_buff *)ctx->skbaddr;
+char *head;
+u16 mac_header;
+
+char comm[16] = {};
+bpf_get_current_comm(&comm, sizeof(comm));
+if (__builtin_strcmp(comm, "client") != 0) return 0;
+
+
+member_read(&head, skb, head); // Zeiger auf den Beginn der Daten
+member_read(&mac_header, skb, mac_header);
+
+char* ip_header_address = head + mac_header + MAC_HEADER_SIZE;
+struct iphdr iph;
+bpf_probe_read(&iph, sizeof(iph), ip_header_address);
+if (iph.protocol != IPPROTO_TCP)
+    return 0;
+
+u32 src_ip = __builtin_bswap32(iph.saddr);
+u8 d = src_ip & 0xff;
+
+
+u8 ip_header_len = iph.ihl * 4;
+
+// TCP-Header
+char *tcp_header = ip_header_address + ip_header_len;
+
+struct tcphdr tcph = {};
+bpf_probe_read(&tcph, sizeof(tcph), tcp_header);
+
+u8 tcp_header_len = tcph.doff * 4;
+
+char *payload = tcp_header + tcp_header_len;
+struct Message msg = {};
+        bpf_probe_read(&msg, sizeof(msg), payload);     
+        struct Event *event;
+        event = bpf_ringbuf_reserve(&events, sizeof(*event), 0);
+        if (!event) return 0;
+
+        event->event_type = 3;
+        event->data.msg_type = 4;
+        event->data.seq = msg.seq;
+        event->timestamp = bpf_ktime_get_ns();
+
+        bpf_ringbuf_submit(event, 0);
+
+return 0;
+}

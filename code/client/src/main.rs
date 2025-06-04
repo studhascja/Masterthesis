@@ -19,6 +19,9 @@ use std::time::Instant;
 use std::collections::VecDeque;
 use once_cell::sync::Lazy;
 
+static CURRENT_EVENT: OnceLock<Arc<Mutex<VecDeque<Event>>>> = OnceLock::new();
+static CURRENT_QUEUE_EVENT: OnceLock<Arc<Mutex<VecDeque<Event>>>> = OnceLock::new();
+static MESSAGE_COUNT: Lazy<Mutex<u64>> = Lazy::new(|| Mutex::new(1));
 
 static USER_ZERO: Lazy<Mutex<Instant>> = Lazy::new(|| Mutex::new(Instant::now()));
 static KERNEL_ZERO: Lazy<Mutex<u64>> = Lazy::new(|| Mutex::new(0));
@@ -134,24 +137,40 @@ pub extern "C" fn measure_instant() -> Instant {
     Instant::now()
 }
 
+pub fn increment_message_count() -> u64 {
+    let mut count = MESSAGE_COUNT.lock().unwrap();
+    *count += 1;
+    *count
+}
 
-fn wait_for_event(
-    current_event: Arc<Mutex<VecDeque<Event>>>,
-    number: u64,
-    msg_t: MessageType,
-    event_t: u8,
-) -> Event {
-    loop {
+fn wait_for_queue_event(timestamp: u64) -> Option<Event> {
+let mut queue_arc = CURRENT_QUEUE_EVENT.get().expect("CURRENT_QUEUE_EVENT not initialized");
+let count = *MESSAGE_COUNT.lock().unwrap() as usize;
+
+let mut queue = queue_arc.lock().unwrap();
+for i in 1..queue.len() {
+        if queue.len() >= count && (queue[queue.len() - i].timestamp - get_kernel_zero()) < timestamp {
+                return Some(queue[queue.len() - i].clone());
+        }
+        thread::sleep(Duration::from_nanos(50));
+    }
+println!("Falsch");
+return None;
+}
+
+fn wait_for_event(number: u64, msg_t: MessageType, event_t: u8) -> Event {
+        let mut queue_arc = CURRENT_EVENT.get().expect("CURRENT_EVENT not initialized");
+        loop {
         {
-            let mut queue = current_event.lock().unwrap();
+            let mut queue = queue_arc.lock().unwrap();
             while let Some(evt) = queue.pop_front() {
                 if let Ok(msg_type) = MessageType::try_from(evt.data.msg_type) {
-                    if msg_type == msg_t && evt.data.seq == number && evt.event_type == event_t{
+                    if msg_type == msg_t && evt.data.seq == number && evt.event_type == event_t {
                         return evt;
                     }
                 }
             }
-     	}
+        }
         thread::sleep(Duration::from_nanos(50));
     }
 }
@@ -178,10 +197,19 @@ fn read_user_zero() -> Instant {
 
 
 fn main() -> Result<()> {
+    let event_queue = Arc::new(Mutex::new(VecDeque::new()));
+    let queue_event_queue = Arc::new(Mutex::new(VecDeque::new()));
 
-    let current_event = Arc::new(Mutex::new(VecDeque::new()));
+    CURRENT_EVENT.set(event_queue.clone()).unwrap();
+    CURRENT_QUEUE_EVENT.set(queue_event_queue.clone()).unwrap();
+
+    let event_ref = CURRENT_EVENT.get().expect("CURRENT_EVENT not initialized");
+    let queue_event_ref = CURRENT_QUEUE_EVENT.get().expect("CURRENT_EVENT not initialized");
+
+
     let mut client_sent_time = 0;
-    let event_ref = current_event.clone();
+    let mut client_queue_time = 0;
+
     let open_skel = MonitoreSkelBuilder::default().open();
     println!("Skelett geöffnet.");
 
@@ -206,10 +234,16 @@ fn main() -> Result<()> {
 	if event.event_type == 0 {
             set_kernel_zero(event.timestamp);
         }
-	else {
-            let mut queue = event_ref.lock().unwrap();
+	else if event.event_type == 3 {
+            let mut queue = queue_event_ref.lock().unwrap();
             queue.push_back(*event);
         }
+        else {
+                let mut queue = event_ref.lock().unwrap();
+                queue.push_back(*event);
+
+        }
+
 
     	/*
 	println!(
@@ -247,6 +281,7 @@ let handle = thread::spawn(move || {
             println!("Connected to server: {}", server_address);
             let encoded_msg = encode_message(MessageType::Start, 0, 0, 0, 0, 0.0, 0.0, 0)?;
             stream.write_all(&encoded_msg)?;
+	    increment_message_count();
 
             let mut buffer = [0u8; std::mem::size_of::<Message>()];
             let mut time_diffs: Vec<(u64, i128)> = Vec::new();   
@@ -279,13 +314,14 @@ let handle = thread::spawn(move || {
 				update_user_zero();
 				let number = msg.seq;
         			let encoded_msg = encode_message(MessageType::NTP, number, 0, 0, 0, 0.0, 0.0, 0)?;
-				stream.write_all(&encoded_msg)?;	
+				stream.write_all(&encoded_msg)?;
+				increment_message_count();	
 			}, 
 			Ok(MessageType::NTP_Result) => {
 				//let test = unsafe{measure_instant()};
 				//TEST.get_or_init(|| test);
 				let number = msg.seq;
-                                let event_snapshot = wait_for_event(current_event.clone(), number, MessageType::NTP_Result, 1);
+                                let event_snapshot = wait_for_event(number, MessageType::NTP_Result, 1);
 				let client_receive = event_snapshot.timestamp - get_kernel_zero();
 
                                 let received_timestamp = msg.timestamp;
@@ -293,8 +329,8 @@ let handle = thread::spawn(move || {
                                 let time_of_depature = now.duration_since(read_user_zero());
                                 let encoded_msg = encode_message(MessageType::NTP_Result, msg.seq, client_sent_time, received_timestamp, client_receive.into(), 0.0, 0.0, 0)?;
                                 stream.write_all(&encoded_msg);
-				
-				let event_snapshot_send = wait_for_event(current_event.clone(), number, MessageType::NTP_Result, 2);
+				increment_message_count();
+				let event_snapshot_send = wait_for_event(number, MessageType::NTP_Result, 2);
 				client_sent_time = (event_snapshot_send.timestamp - get_kernel_zero()) as u128;
 			},
 			Ok(MessageType::PTP) => {
@@ -302,12 +338,12 @@ let handle = thread::spawn(move || {
                                 let number = msg.seq;
                                 let encoded_msg = encode_message(MessageType::PTP, number, 0, 0, 0, 0.0, 0.0, 0)?;
                                 stream.write_all(&encoded_msg)?;
-
+				increment_message_count();
 			}, 
 			Ok(MessageType::PTP_Result) => {
 				let offset_diff = msg.i_val;
   				difference = difference + offset_diff;
-		
+		/*
 				thread::spawn(|| {
                                         let mut status = Command::new("iperf3")
                                                 .arg("-c")
@@ -325,20 +361,29 @@ let handle = thread::spawn(move || {
                                                 .expect("Failed to start iperf3");
 
                                         let _ = status.wait().expect("Failed to wait for iperf3 process");
-                                });
+                                });*/
                                 println!("Störer ausgeführt");
-
 			},
+
 			Ok(MessageType::Calc) => {
 				if let (theta, radius) =
 				(msg.first_f64, msg.second_f64) {
 					let y = radius * theta.sin();
-					
-					let encoded_msg = encode_message(MessageType::Calc, msg.seq, adjust_time(difference), 0, 0, y, 0.0, 0)?;
-					if let Err(e) = stream.write_all(&encoded_msg) {
-                                        eprintln!("Error while sending the y coordinate: {}", e);
-                                } 
+					let number = msg.seq;
+                                	let event_snapshot = wait_for_event(number, MessageType::Calc, 1);
+                                	let client_receive = event_snapshot.timestamp - get_kernel_zero();
 
+					let encoded_msg = encode_message(MessageType::Calc, msg.seq, client_queue_time as u128, client_receive as u128, client_sent_time as u128, y, 0.0, 0)?;
+					if let Err(e) = stream.write_all(&encoded_msg) {
+                                        	eprintln!("Error while sending the y coordinate: {}", e);
+                                	}
+					increment_message_count();
+
+					let event_snapshot_send = wait_for_event(number, MessageType::Calc, 2);
+	                                client_sent_time = (event_snapshot_send.timestamp - get_kernel_zero()) as u128;
+						
+					let event_snapshot_queue = wait_for_queue_event(client_sent_time as u64);
+                                        client_queue_time = (event_snapshot_queue.unwrap().timestamp - get_kernel_zero()) as u128
 				}
 			}
 		}
