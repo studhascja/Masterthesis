@@ -1,0 +1,117 @@
+  \documentclass[twoside=false, %  einseitiger "Druck" (= optimiert für Abgabe als PDF)
+    % BCOR=15mm, % Bindekorrektur; für Ausdruck mit Klebebindung Kommentar entfernen und ggf. anpassen
+    chapterprefix=false,
+    headinclude=true,
+    footinclude=false,
+    pagesize,%         write pagesize to DVI or PDF
+    fontsize=11pt,%             use this font size
+    paper=a4,%          use ISO A4
+    bibliography=totoc,%         write bibliography-chapter to table of contents
+%    index=totoc,%         write index-chapter to table of contents (Index is not used here)
+    cleardoublepage=plain,% \cleardoublepage generates pages with pagestyle empty
+    headings=big,%       A4/B5
+    listof=flat,%        improved list of tables
+    numbers=noenddot
+  ]{scrbook}
+
+\usepackage[listings=false]{scrhack}  % die erwünschten Änderungen sind im Paket listings bereits integriert
+\usepackage{enumitem}
+\usepackage{amsfonts}
+\usepackage[slantedGreek,sc]{mathpazo}  % Schriftart Palatino
+% \usepackage{lmodern}    % statt mathpazo, falls CM Fonts verwendet werden sollen
+%\usepackage{mathptmx}    % statt mathpazo, falls Times  verwendet werden soll
+\usepackage[scaled=.95]{helvet}
+\usepackage{courier}
+% der DIV-Faktor darf erst NACH dem Laden der Schriften gesetzt werden, damit der Satzspiegel korrekt berechnet wird
+% kann manuell nach beliebgen angepasst werden (vergrößert bzw. verkleinert den für Text genutzten Bereich auf der Seite,
+% es gibt aber ggf. eine Warung des typearea-Pakets (die man ignorieren kann)
+\KOMAoptions{DIV=14}  % DIV Faktor für Satzspiegelberechnung, siehe Doku zu KOMA Script; 14 für Druck ohne Bindekorrektur, 15 mit Korrektur
+\usepackage[T1]{fontenc}
+\usepackage{textcomp}
+\usepackage{mathtools}            % standard math notation (vectors/sets/...)
+\usepackage{bm}        % standard math notation (fonts)
+\usepackage{fixmath}        % standard math notation (fonts)
+\usepackage{graphicx}
+\usepackage[facing=yes]{floatrow}       % mehrere Gleitobjekte nebeneinander/caption neben Bild/Tabelle
+\usepackage[labelfont=bf,sf,font=small,labelsep=space,format=plain]{caption}
+\usepackage{subcaption}
+\usepackage{scrlayer-scrpage}
+\usepackage{epstopdf}
+\usepackage[english]{babel}			% change to English for English settings (headings, table/figure names etc.) ALSO CHANGE selectlanguage command below!
+%\usepackage[english]{babel}    % for English settings
+\usepackage{listings}
+\usepackage{ellipsis}  % Korrigiert den Weißraum um Auslassungspunkte
+\usepackage{microtype}  % optischer Randausgleich etc.
+
+\usepackage{xcolor}         % z.B. für schattierte Boxen
+\usepackage{framed}			% shaded Umgebung
+\definecolor{shadecolor}{gray}{.85}%
+
+% Links im PDF
+\usepackage[colorlinks=false,
+            pdfborder={0 0 0},
+            breaklinks=true,
+            pdfpagelabels=true]
+            {hyperref}
+
+
+% Einstellungen für Bild-/Tabellenbeschriftung neben dem Bild
+\floatsetup[figure]{capbesideposition={inside,top}}
+\floatsetup[table]{capbesideposition={inside,top},style=plaintop}
+\renewfloatcommand{fcapside}{figure}[\capbeside][\FBwidth]
+\newfloatcommand{tcapside}{table}[\capbeside][\FBwidth]
+
+% Einstellung für Bezeichnung des Quellcode-Verzeichnises
+% comment out for English settings
+%\renewcommand{\lstlistlistingname}{Code-Verzeichnis}
+
+
+\deffootnote{1em}{1em}{%
+ \makebox[1em][l]{\thefootnotemark}}
+
+\newcommand{\real}{\mathord{\mathrm{I\!R}}}
+
+\begin{document}
+\lstset{language=java}
+%\selectlanguage{ngerman}    
+\selectlanguage{english}    % for English settings
+\def\figdir{figures}
+\def\tabledir{tables}
+
+\frontmatter
+\hypersetup{pageanchor=false}
+
+\pagestyle{scrplain}
+\pagestyle{empty}
+
+\include{title}
+\cleardoubleemptypage
+\include{abstract}
+\cleardoubleemptypage
+
+\pagestyle{scrplain}
+\pagenumbering{roman}
+\include{toc}
+
+\pagestyle{scrheadings}
+
+
+\addtokomafont{caption}{\small}
+
+\mainmatter
+\hypersetup{pageanchor=true}
+\include{chapter_introduction}
+\include{chapter_basics}
+\include{chapter_related_work}
+\include{chapter_test_environment}
+\include{chapter_wifi_modifications}
+\include{chapter_evaluation}
+\include{chapter_conclussion}
+\appendix
+\include{append}
+
+\cleardoublepage
+
+\bibliographystyle{natger}  % this is intended to be used together with German language settings; replace if you desire a different style
+\bibliography{thesis}
+\end{document}

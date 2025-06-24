@@ -1,0 +1,74 @@
+\chapter{Test Environment}
+\section{Test concept}
+\subsection{Requirements}
+\subsection{Used Technologies}
+\subsection{Server and Client Implementation}
+\subsection{Monitoring}
+\subsection{Test Automatization}
+\subsection{Access point configuration}
+\section{Operating System}
+\subsection{Requirements}
+\begin{itemize}
+    \item As less background noise on the system as possible
+    \item Capable for hard real time
+    \item For my test environment the programming languages Python, Rust and the bpftrace library
+    \item Capability to use the Wi-Fi Card
+    \item Network tools, to manage my Wi-Fi interface and generate the workload
+\end{itemize}
+
+\subsection{Implementation}
+
+\begin{itemize}
+    \item local.conf \begin{itemize}
+        \item set machine to raspberrypi 5
+        \item set variable $RUST\_LIBC$
+        \item set preferred linux version to 6.12
+        \item activated license synaptics-killswitch
+    \end{itemize}
+    \item distro (version 5.2.1 on the walnascar branch) \begin{itemize}
+        \item for mt7925e is a kernelversion of at least 5.7 necessary
+        \item walnascar was the newest one to the time of june 2025
+    \end{itemize}
+    \item image \begin{itemize}
+        \item hostapd
+        \item dnsmasq
+        \item python3, python3-pip
+        \item net-tools, iproute2, wpa-supplicant, iw und networkmanager (Als Netzwerktools um interfaces, etc steuern zu können)
+        \item werden mittels $IMAGE\_INSTALL$ hinzugefügt
+        \end{itemize}
+    \item Other Layers \begin{itemize}
+        \item Poky
+        \item meta-openembedded (oe, python, networking)
+        \item meta-raspberrypi
+        \item meta-rust in layer.conf the branch walnascar had to be added and the $RUST\_LIBC$ has to replaced with $\$\{@d.getVar('RUST\_LIBC').lower()\}$, and the variable had to be set in the local.conf
+    \end{itemize}
+    \item Own layer \begin{itemize}
+        \item bb and bbappend files like normal
+        \item higher priority
+        \item set layer compatability to walnascar
+    \end{itemize}
+    \item RT-Patch \begin{itemize}
+        \item from meta-raspberrypi layer only Linux 6.12.1 is given
+        \item the normal patch is 6.12.28, this is not working
+        \item from older patches 6.12.8 is working, but QA had to be added
+        \item also the kernel config needed to be updated, especially the preemt rt and rcu boost, to read copy update and synchronization in the kernel for rt behaviour
+    \end{itemize}
+    \item device-tree overlay \begin{itemize}
+        \item download pcie-32bit-dma-pi5.dtbo from https://github.com/raspberrypi/firmware/tree/master/boot/overlays
+        \item write own recipe which installs the file at /boot/overlays/
+        \item License file has to be created, because it's an own recipe, so the md5 checksum has to be added
+        \item since Distro 5.1 for S ${WORKDIR}/sources$ has to be set, in this path the files are saved
+        \item with do install first the folder is created and then the file is saved in the temporary root file system D with the rights 644
+        \item With Files:\${PN} the file is set from the temporaray file system to the final one 
+        \item in the local.conf with $RPI\_USE\_OVERLAYS$ and $RPI\_EXTRA\_CONFIG$ the overlay is added to the config.txt
+        \item in meta-raspberrypi/conf/machine/include/rpi-base.inc it has to be added in the $RPI\_KERNEL\_DEVICETREE\_OVERLAYS$ 
+    \end{itemize}
+    \item Custom Files \begin{itemize}
+        \item hostapd \begin{itemize}
+            \item bbappend in recipes-connectivity/hostapd
+            \item all configs are located in /etc/hostapd
+            \item same procedure like for the device tree overlay
+            \item files are not located in workdir, but in workdir/sources-unpack
+        \end{itemize}
+    \end{itemize}  
+\end{itemize}
