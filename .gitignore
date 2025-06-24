@@ -1,0 +1,53 @@
+# LaTeX intermediate and output files
+*.aux
+*.lof
+*.log
+*.lot
+*.fls
+*.out
+*.toc
+*.fmt
+*.fot
+*.cb
+*.cb2
+*.blg
+*.bbl
+*.bcf
+*.run.xml
+*.synctex.gz
+*.synctex.gz(busy)
+*.fdb_latexmk
+*.xdv
+*.nav
+*.snm
+*.vrb
+*.tdo
+*.bst
+*.dbj
+*.lol
+
+# Editors
+*~
+*.swp
+*.bak
+*.tmp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# latexmk specific
+latex.out
+latex.log
+latex.fls
+
+# arara
+*.run
+
+# lualatex or xelatex
+*.lua
+*.pdfsync
+
+# Build directories
+build/
+output/
