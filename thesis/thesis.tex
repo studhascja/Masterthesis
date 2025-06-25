@@ -1,4 +1,4 @@
-  \documentclass[twoside=false, %  einseitiger "Druck" (= optimiert für Abgabe als PDF)
+\documentclass[twoside=false, %  einseitiger "Druck" (= optimiert für Abgabe als PDF)
     % BCOR=15mm, % Bindekorrektur; für Ausdruck mit Klebebindung Kommentar entfernen und ggf. anpassen
     chapterprefix=false,
     headinclude=true,
@@ -18,6 +18,7 @@
 \usepackage{enumitem}
 \usepackage{amsfonts}
 \usepackage[slantedGreek,sc]{mathpazo}  % Schriftart Palatino
+
 % \usepackage{lmodern}    % statt mathpazo, falls CM Fonts verwendet werden sollen
 %\usepackage{mathptmx}    % statt mathpazo, falls Times  verwendet werden soll
 \usepackage[scaled=.95]{helvet}
@@ -46,14 +47,13 @@
 \usepackage{xcolor}         % z.B. für schattierte Boxen
 \usepackage{framed}			% shaded Umgebung
 \definecolor{shadecolor}{gray}{.85}%
-
+\usepackage{minted}
 % Links im PDF
 \usepackage[colorlinks=false,
             pdfborder={0 0 0},
             breaklinks=true,
             pdfpagelabels=true]
             {hyperref}
-
 
 % Einstellungen für Bild-/Tabellenbeschriftung neben dem Bild
 \floatsetup[figure]{capbesideposition={inside,top}}

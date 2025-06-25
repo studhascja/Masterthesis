@@ -51,3 +51,7 @@ latex.fls
 # Build directories
 build/
 output/
+
+#Other
+*.pygtex
+*.pygstyle
