@@ -1,0 +1,40 @@
+# === General WiFi Configuration ===
+interface=wlp1s0                       # Wireless interface name (adjust to your system's device name)
+driver=nl80211                         # Use nl80211 driver (modern Linux wireless driver)
+ssid=jh_test                           # SSID (network name) to broadcast
+
+country_code=DE                        # Country code for regulatory settings (e.g., allowed frequencies & power)
+ieee80211d=1                           # Enable 802.11d (includes country info in beacons)
+ieee80211n=1                           # Enable 802.11n (WiFi 4)
+ieee80211ac=1                          # Enable 802.11ac (WiFi 5)
+
+# === Radio and Band Settings ===
+hw_mode=a                              # Use 5 GHz band (802.11a/n/ac/ax)
+channel=36                             # Channel 36 (center freq 5180 MHz, UNII-1 band)
+
+wmm_enabled=1                          # Enable WMM (QoS support, required for 802.11n/ac/ax)
+
+# === Security Settings ===
+auth_algs=3                            # Allow both Open System and Shared Key authentication (required for WPA3-SAE)
+macaddr_acl=0                          # 0 = accept all MACs unless explicitly denied
+ignore_broadcast_ssid=0               # 0 = broadcast SSID (network visible)
+okc=1                                  # Opportunistic Key Caching (faster roaming support)
+wpa=2                                  # WPA mode: 2 = WPA2 (and mixed WPA2/WPA3 if needed)
+wpa_pairwise=CCMP CCMP-256             # WPA encryption: AES (CCMP) and AES-256
+rsn_pairwise=CCMP CCMP-256             # RSN/WPA2 encryption: same as above
+wpa_psk_file=/etc/hostapd/hostapd.psk  # Store WPA passphrase securely in a separate file
+
+# === WiFi 6 (802.11ax) Configuration ===
+require_vht=1                          # Require VHT (802.11ac) support from clients
+ieee80211ax=1                          # Enable 802.11ax (WiFi 6)
+
+# === Channel Width and Capabilities ===
+ht_capab=[SHORT-GI-20][MAX-AMSDU-3839]  
+                                       # 802.11n (HT) capabilities:
+                                       # SHORT-GI-20: short guard interval (faster throughput)
+                                       # MAX-AMSDU-3839: maximum aggregation size
+
+vht_capab=[MAX-MPDU-3895][SHORT-GI-80][SU-BEAMFORMEE]  
+                                       # 802.11ac (VHT) capabilities:
+                                       # MAX-MPDU-3895: larger max packet size
+                                       # SHORT-GI-80: short guard interval

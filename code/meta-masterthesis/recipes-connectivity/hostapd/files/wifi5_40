@@ -1,0 +1,45 @@
+# === General WiFi Configuration ===
+interface=wlp1s0                       # Wireless network interface (adjust to your system's interface name)
+driver=nl80211                         # WiFi driver (nl80211 is standard for modern Linux systems)
+ssid=jh_test                           # Name (SSID) of the wireless network
+
+country_code=DE                        # Country code for regulatory domain (affects legal channels and TX power)
+ieee80211d=1                           # Enable 802.11d (country-specific settings, important when roaming)
+ieee80211n=1                           # Enable 802.11n (WiFi 4)
+
+# === Radio and Band Settings ===
+hw_mode=a                              # Use 5 GHz band (802.11a and above)
+channel=36                             # WiFi channel in 5 GHz band (UNII-1), corresponds to 5.180 GHz
+
+wmm_enabled=1                          # Enable WMM (Wireless Multimedia Extensions) for QoS (required for 802.11n/ac)
+
+# === Security Settings ===
+auth_algs=3                            # Authentication algorithms: 3 = both Open System and Shared Key (supports WPA3-SAE)
+macaddr_acl=0                          # MAC address filtering: 0 = accept all except those in deny list
+ignore_broadcast_ssid=0               # SSID broadcast: 0 = visible network, 1 = hidden SSID
+okc=1                                  # Opportunistic Key Caching: speeds up roaming between APs
+wpa=2                                  # WPA mode: 2 = WPA2 (also enables WPA2/WPA3 mixed mode if MFP enabled)
+wpa_pairwise=CCMP CCMP-256             # WPA encryption ciphers: AES (CCMP) and AES-256
+rsn_pairwise=CCMP CCMP-256             # RSN/WPA2 encryption ciphers: AES (CCMP) and AES-256
+wpa_psk_file=/etc/hostapd/hostapd.psk  # External file containing SSID and passphrase securely
+
+# === WiFi 5 / 802.11ac (VHT) Settings ===
+require_vht=1                          # Require VHT (Very High Throughput) support (WiFi 5 / 802.11ac)
+ieee80211ac=1                          # Enable 802.11ac features (WiFi 5)
+
+# === Channel Width and Capabilities ===
+ht_capab=[HT40+][SHORT-GI-20][SHORT-GI-40][DSSS_CCK-40][MAX-AMSDU-3839]  
+                                      # High Throughput (802.11n) capabilities:
+                                      # HT40+: use 40 MHz above primary channel
+                                      # SHORT-GI-20/40: short guard interval for higher throughput
+                                      # DSSS_CCK-40: allow legacy 2.4 GHz rates on 40 MHz (mostly ignored on 5 GHz)
+                                      # MAX-AMSDU-3839: maximum A-MSDU size
+
+vht_capab=[MAX-MPDU-3895][SHORT-GI-80][SU-BEAMFORMEE]  
+                                      # Very High Throughput (802.11ac) capabilities:
+                                      # MAX-MPDU-3895: max protocol data unit size
+                                      # SHORT-GI-80: short guard interval for 80 MHz channels
+                                      # SU-BEAMFORMEE: supports single-user beamforming reception
+
+vht_oper_chwidth=0                    # VHT operating channel width: 0 = 40 MHz, 1 = 80 MHz, 2 = 160 MHz
+vht_oper_centr_freq_seg0_idx=38       # Center frequency segment index for 40 MHz channel (CH36 + CH40 = center 38)

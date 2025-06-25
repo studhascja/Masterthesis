@@ -1,0 +1,46 @@
+# === General WiFi Configuration ===
+interface=wlp1s0                         # Wireless interface name (check via `ip link` or `iw dev`)
+driver=nl80211                           # Use nl80211 driver (standard for modern Linux WiFi)
+
+ssid=jh_test                             # SSID (network name) that will be broadcast
+
+country_code=DE                          # Country code for regulatory settings (e.g. frequency limits, Tx power)
+ieee80211d=1                             # Enable 802.11d (adds country info to beacons for roaming clients)
+ieee80211n=1                             # Enable 802.11n (WiFi 4)
+ieee80211ac=1                            # Enable 802.11ac (WiFi 5)
+
+# === Band and Channel Settings ===
+hw_mode=a                                # Use 5 GHz band (802.11a/n/ac/ax)
+channel=36                               # Channel 36 (center freq 5180 MHz, UNII-1 band)
+
+wmm_enabled=1                            # Enable WMM (QoS support for voice/video, required for 802.11n/ac/ax)
+
+# === Security Settings ===
+auth_algs=3                              # Allow both Open System and Shared Key (required for WPA3-SAE)
+macaddr_acl=0                            # MAC address filter: 0 = accept all unless denied
+ignore_broadcast_ssid=0                 # Broadcast SSID (0 = visible network, 1 = hidden)
+okc=1                                    # Opportunistic Key Caching: improves roaming speed
+wpa=2                                    # WPA mode: 2 = WPA2 (also supports mixed WPA2/WPA3 if client supports)
+wpa_pairwise=CCMP CCMP-256               # WPA encryption: CCMP (AES) + 256-bit version
+rsn_pairwise=CCMP CCMP-256               # RSN (WPA2) encryption: same as above
+wpa_psk_file=/etc/hostapd/hostapd.psk    # Store WPA passphrase securely in a separate PSK file
+
+# === WiFi 6 (802.11ax) Configuration ===
+require_vht=1                            # Require 802.11ac support (VHT) for clients
+ieee80211ax=1                            # Enable 802.11ax (WiFi 6)
+
+# === Channel Width and Capabilities ===
+ht_capab=[HT40+][SHORT-GI-20][DSSS_CCK-40][MAX-AMSDU-3839]
+                                         # 802.11n (HT) capabilities:
+                                         # HT40+: use 40 MHz channel width (above primary channel)
+                                         # SHORT-GI-20: shorter guard interval for faster throughput
+                                         # DSSS_CCK-40: support DSSS/CCK rates in 40 MHz mode
+                                         # MAX-AMSDU-3839: maximum aggregate frame size
+
+vht_capab=[MAX-MPDU-3895][SHORT-GI-80][SU-BEAMFORMEE]
+                                         # 802.11ac (VHT) capabilities:
+                                         # MAX-MPDU-3895: larger packet sizes for throughput
+                                         # SHORT-GI-80: short guard interval in 80 MHz mode
+                                         # SU-BEAMFORMEE: support single-user beamforming
+
+vht_oper_chwidth=0                       # VHT channel width: 0 = 40 MHz 
