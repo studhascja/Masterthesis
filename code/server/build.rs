@@ -1,4 +1,5 @@
 use std::env;
+use libbpf_cargo::SkeletonBuilder;
 
 fn main() {
     let kernel_headers = env::var("KERNEL_HEADERS").unwrap_or("/usr/src/kernel".to_string());
