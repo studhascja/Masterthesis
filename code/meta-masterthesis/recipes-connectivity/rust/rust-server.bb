@@ -13,7 +13,7 @@ S = "${WORKDIR}/git/code/server"
 CARGO_SRC_DIR = ""
 PV:append = ".AUTOINC+34313d8f30"
 
-DEPENDS += "clang-native kernel-devsrc pkgconfig-native zlib"
+DEPENDS += "clang-native kernel-devsrc pkgconfig-native zlib elfutils bpftool-native"
 RDEPENDS_${PN} += "libbpf"
 
 SRC_URI[aho-corasick-1.1.3.sha256sum] = "8e60d3430d3a69478ad0993f19238d2df97c507009a52b3c10addcd7f6bcb916"
@@ -188,14 +188,35 @@ SRC_URI += " \
 
 do_compile:prepend() {
     export KERNEL_HEADERS="${STAGING_KERNEL_DIR}"
-     if ! which clang; then
-        bbwarn "clang ist nicht verfügbar, Build wird fehlschlagen!"
-        exit 1
+
+    if ! which clang; then
+        bbfatal "clang nicht verfügbar"
+    fi
+    bbwarn "clang ist verfügbar"
+    bbwarn "STAGING_KERNEL_BUILDDIR=${STAGING_KERNEL_BUILDDIR}"
+    # Korrekter Pfad zur vmlinux-Datei
+    VMLINUX_PATH="VMLINUX_PATH="${TOPDIR}/tmp/work/raspberrypi5-poky-linux/linux-raspberrypi/6.12.1+git/linux-raspberrypi5-standard-build/vmlinux"
+    if [ ! -f "${VMLINUX_PATH}" ]; then
+        bbfatal "vmlinux nicht gefunden unter ${VMLINUX_PATH}"
     fi
 
-    if which clang; then
-	bbwarn "clang ist verfügbar"
-    fi	
+    # bpftool suchen
+    BPFT=$(which bpftool || true)
+    if [ -z "$BPFT" ]; then
+        BPFT="${STAGING_DIR_NATIVE}/usr/sbin/bpftool"
+    fi
+    if [ ! -x "$BPFT" ]; then
+        bbfatal "bpftool nicht gefunden oder nicht ausführbar: ${BPFT}"
+    fi
+
+    # vmlinux.h erzeugen
+    $BPFT btf dump file "${VMLINUX_PATH}" format c > ${S}/src/bpf/vmlinux.h
+
+    export CC=clang
+    export BINDGEN_EXTRA_CLANG_ARGS="--target=bpf -I${S}/src/bpf"
+
+    # Rust-Projekt bauen
+    cargo build --release --target=${TARGET_SYS} --target-dir=${B}
 }
 
 
