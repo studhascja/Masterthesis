@@ -1,32 +1,18 @@
-# General WiFi Configuration
-interface=wlp1s0             # Network interface used for the access point
-driver=nl80211               # Wireless driver interface (nl80211 is common for modern Linux systems)
-ssid=jh_test                 # Name (SSID) of the WiFi network
-country_code=DE             # Country code (affects allowed channels and power limits)
-wpa_psk_file=/etc/hostapd/hostapd.psk # File with WPA/WPA2 passphrase for WiFi network authentication
-
-# Security Settings
-auth_algs=3                 # Authentication algorithms; 3 allows both Open System and Shared Key (needed for WPA3 SAE)
-macaddr_acl=0               # MAC address access control: 0 = accept unless MAC is in deny list
-ignore_broadcast_ssid=0     # 0 = broadcast SSID (visible network), 1 = hidden SSID
-okc=1                       # Opportunistic Key Caching enabled (speeds up roaming)
-wpa=2                       # WPA mode: 2 enables WPA2 (and possibly WPA3 in some setups)
-wpa_pairwise=CCMP CCMP-256  # WPA encryption ciphers (CCMP = AES, CCMP-256 = 256-bit AES)
-rsn_pairwise=CCMP CCMP-256  # RSN (WPA2) encryption ciphers (same as above)
-
-# IEEE 802.11 Features
-ieee80211d=1                # Enables 802.11d (adds country-specific regulatory domain support)
-ieee80211n=1                # Enables 802.11n (WiFi 4)
-
-# Radio Settings
-hw_mode=g                   # WiFi mode: 'g' = 2.4 GHz band (802.11g)
-channel=6                   # Operating channel (2.437 GHz)
-
-# QoS and Performance
-wmm_enabled=1               # Enables WMM (Wireless Multimedia Extensions) for QoS (Quality of Service)
-
-# High Throughput Capabilities for 802.11n
-ht_capab=[SHORT-GI-20][MAX-AMSDU-3839]  
-                            # HT capabilities: 
-                            # SHORT-GI-20 enables short guard interval (better performance)
-                            # MAX-AMSDU-3839 sets max aggregate MSDU size (improves throughput)
+interface=wlan1
+driver=nl80211
+ssid=jh_test
+country_code=DE
+wpa_psk=WIFI_PWD
+auth_algs=3
+macaddr_acl=0
+ignore_broadcast_ssid=0
+okc=1
+wpa=2
+wpa_pairwise=CCMP CCMP-256
+rsn_pairwise=CCMP CCMP-256
+ieee80211d=1
+ieee80211n=1
+hw_mode=g
+channel=6
+wmm_enabled=1
+ht_capab=[SHORT-GI-20][MAX-AMSDU-3839]

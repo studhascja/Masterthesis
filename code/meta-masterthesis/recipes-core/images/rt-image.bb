@@ -28,6 +28,23 @@ IMAGE_INSTALL += " \
   iw \
   linux-firmware \
   networkmanager \
+  pahole \
+  rust-server \
+  libbpf \
+  clang \
+  cargo \
+  rust \
+  libbpf-dev \
+  elfutils \
+  gcc \
+  binutils \
+  make \
+  pkgconfig \
+  libc-dev \
+  packagegroup-core-buildessential \
+  systemd \
+  systemd-serialgetty \
+  perf \
 "
 
 DISTRO_FEATURES:append = " wifi systemd"

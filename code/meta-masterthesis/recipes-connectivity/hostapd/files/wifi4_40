@@ -1,32 +1,18 @@
-# === General WiFi Configuration ===
-interface=wlp1s0                   # Wireless network interface (adjust to your system's device name)
-driver=nl80211                     # WiFi driver (nl80211 is standard for modern Linux systems)
-ssid=jh_test                       # Name (SSID) of the wireless network
-
-country_code=DE                   # Country code for regulatory domain (affects legal channels and power)
-ieee80211d=1                      # Enable 802.11d for country-specific settings (important when roaming)
-ieee80211n=1                      # Enable 802.11n (WiFi 4)
-
-# === Radio and Band Settings ===
-hw_mode=a                         # Use 5 GHz band (802.11a and above)
-channel=36                        # WiFi channel in 5 GHz band (UNII-1), corresponds to 5.180 GHz
-
-wmm_enabled=1                     # Enable WMM (Wireless Multimedia Extensions) for QoS
-
-# === Security Settings ===
-auth_algs=3                       # Authentication algorithms: 3 = both Open System and Shared Key (supports WPA3-SAE)
-macaddr_acl=0                     # MAC address filtering: 0 = accept all except those in deny list
-ignore_broadcast_ssid=0          # SSID broadcast: 0 = visible network, 1 = hidden network
-okc=1                             # Opportunistic Key Caching: speeds up roaming between APs
-wpa=2                             # WPA mode: 2 = WPA2 (also supports WPA2/WPA3 mixed mode)
-wpa_pairwise=CCMP CCMP-256        # WPA encryption ciphers: AES (CCMP) and AES-256
-rsn_pairwise=CCMP CCMP-256        # RSN/WPA2 encryption ciphers: AES (CCMP) and AES-256
-wpa_psk_file=/etc/hostapd/hostapd.psk  # WPA/WPA2/WPA3 password file
-
-# === Channel Width and Capabilities ===
-ht_capab=[HT40+][SHORT-GI-20][DSSS_CCK-40][MAX-AMSDU-3839]  
-                                  # High Throughput (802.11n) capabilities:
-                                  # HT40+: enable 40 MHz channel bonding (above control channel)
-                                  # SHORT-GI-20: short guard interval for better speed
-                                  # DSSS_CCK-40: allow CCK rates in 40 MHz mode (for compatibility)
-                                  # MAX-AMSDU-3839: maximum A-MSDU size (improves throughput)
+interface=wlan1
+driver=nl80211
+ssid=jh_test
+country_code=DE
+ieee80211d=1
+ieee80211n=1
+hw_mode=a
+channel=36
+wmm_enabled=1
+auth_algs=3
+macaddr_acl=0
+ignore_broadcast_ssid=0
+okc=1
+wpa=2
+wpa_pairwise=CCMP CCMP-256
+rsn_pairwise=CCMP CCMP-256
+wpa_psk=WIFI_PWD
+ht_capab=[HT40+][SHORT-GI-20][DSSS_CCK-40][MAX-AMSDU-3839]

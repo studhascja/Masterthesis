@@ -1,42 +1,21 @@
-# === General WiFi Configuration ===
-interface=wlp1s0                       # Wireless network interface (adjust to match your system)
-driver=nl80211                         # Use nl80211 driver (standard for modern Linux wireless)
-ssid=jh_test                           # SSID (name) of the wireless network
-
-country_code=DE                        # Country code (regulatory domain), affects legal channels and TX power
-ieee80211d=1                           # Enable 802.11d (country-specific info in beacons, for roaming)
-ieee80211n=1                           # Enable 802.11n (WiFi 4)
-
-# === Radio and Band Settings ===
-hw_mode=g                              # 2.4 GHz band (802.11b/g/n)
-channel=6                              # Channel 6 in 2.4 GHz band (center freq 2.437 GHz)
-
-wmm_enabled=1                          # Enable WMM (Wireless Multimedia Extensions) for QoS and 802.11n/ac/ax support
-
-# === Security Settings ===
-auth_algs=3                            # 3 = Allow both Open System and Shared Key authentication (required for WPA3-SAE)
-macaddr_acl=0                          # 0 = Accept unless MAC is in deny list
-ignore_broadcast_ssid=0               # 0 = Broadcast SSID (network visible)
-okc=1                                  # Opportunistic Key Caching (fast roaming support)
-wpa=2                                  # WPA mode: 2 = WPA2 (required for WPA2 or WPA3 mixed mode)
-wpa_pairwise=CCMP CCMP-256             # WPA encryption: AES (CCMP) and AES-256
-rsn_pairwise=CCMP CCMP-256             # RSN/WPA2 encryption: same as above
-wpa_psk_file=/etc/hostapd/hostapd.psk  # External PSK file (safer than putting the password in the config)
-
-# ieee80211w=2                         # Optional: Management Frame Protection (2 = required for WPA3)
-
-# === WiFi 6 (802.11ax) Configuration ===
-require_vht=1                          # Require 802.11ac (VHT) support (WiFi 5, prerequisite for WiFi 6)
-ieee80211ax=1                          # Enable 802.11ax (WiFi 6) mode
-
-# === Channel Width and Capabilities ===
-ht_capab=[SHORT-GI-20][MAX-AMSDU-3839]  
-                                       # 802.11n HT capabilities:
-                                       # SHORT-GI-20: Short Guard Interval for higher throughput
-                                       # MAX-AMSDU-3839: Maximum frame aggregation size
-
-vht_capab=[MAX-MPDU-3895][SHORT-GI-80][SU-BEAMFORMEE]  
-                                       # 802.11ac (VHT) capabilities:
-                                       # MAX-MPDU-3895: Max Protocol Data Unit size
-                                       # SHORT-GI-80: Short Guard Interval for 80 MHz channels (not used on 2.4GHz)
-                                       # SU-BEAMFORMEE: Support for beamforming (client side)
+interface=wlan1
+driver=nl80211
+ssid=jh_test
+country_code=DE
+ieee80211d=1
+ieee80211n=1
+hw_mode=g
+channel=6
+wmm_enabled=1
+auth_algs=3
+macaddr_acl=0
+ignore_broadcast_ssid=0
+okc=1
+wpa=2
+wpa_pairwise=CCMP CCMP-256
+rsn_pairwise=CCMP CCMP-256
+wpa_psk=WIFI_PWD
+require_vht=1
+ieee80211ax=1
+ht_capab=[SHORT-GI-20][MAX-AMSDU-3839]
+vht_capab=[MAX-MPDU-3895][SHORT-GI-80][SU-BEAMFORMEE]
