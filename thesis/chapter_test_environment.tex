@@ -28,6 +28,7 @@
     \item distro (version 5.2.1 on the walnascar branch) \begin{itemize}
         \item for mt7925e is a kernelversion of at least 5.7 necessary
         \item walnascar was the newest one to the time of june 2025
+        \item CONFIG\_MT7925E=m
     \end{itemize}
     \item image \begin{itemize}
         \item hostapd
@@ -59,7 +60,7 @@
         \item License file has to be created, because it's an own recipe, so the md5 checksum has to be added
         \item since Distro 5.1 for S ${WORKDIR}/sources$ has to be set, in this path the files are saved
         \item with do install first the folder is created and then the file is saved in the temporary root file system D with the rights 644
-        \item With Files:\${PN} the file is set from the temporaray file system to the final one 
+        \item With Files:\${PN} the file is set from the temporary file system to the final one 
         \item in the local.conf with $RPI\_USE\_OVERLAYS$ and $RPI\_EXTRA\_CONFIG$ the overlay is added to the config.txt
         \item in meta-raspberrypi/conf/machine/include/rpi-base.inc it has to be added in the $RPI\_KERNEL\_DEVICETREE\_OVERLAYS$ 
     \end{itemize}
@@ -69,6 +70,22 @@
             \item all configs are located in /etc/hostapd
             \item same procedure like for the device tree overlay
             \item files are not located in workdir, but in workdir/sources-unpack
+        \end{itemize}
+        \item Rust Server + BPF \begin{itemize}
+            \item Create bitbake blueprint with cargo bitbake git clone https://github.com/meta-rust/cargo-bitbake.git
+            \item Add License
+            \item set always to newest commit SRCREV = "\${AUTOREV}"
+            \item Adjust workdir with S = "\${WORKDIR}/git/code/server"
+            \item It depends on DEPENDS (Build-time dependency) += "clang-native kernel-devsrc pkgconfig-native zlib elfutils bpftool-native"
+            \item (Run Time Dependency) RDEPENDS\_\${PN} += "libbpf"
+            \item in a do\_compile\:prepand() $export KERNEL\_HEADERS="\${STAGING\_KERNEL\_DIR}",  VMLINUX_PATH="\${TOPDIR}/tmp/work/raspberrypi5-poky-linux/linux-raspberrypi/6.12.1+git/linux-raspberrypi5-standard-build/", build vm linux with    \$BPFT btf dump file "\${VMLINUX\_PATH}/vmlinux" format c > \${S}/src/bpf/vmlinux.h, preopare Clan and Bindgen, so that clang ist the compiler and bindgen hast the opportunity to find vmlinux.h export CC=clang export BINDGEN_EXTRA_CLANG_ARGS="--target=bpf -I\${S}/src/bpf", rust target bauen mit cargo build --release --target=\${TARGET_SYS} --target-dir=\${B}$
+            \item add configs (add pahole to recipe)
+            \item config can be seen in /yocto-rpi5/build/tmp/work/raspberrypi5-poky-linux/linux-raspberrypi/6.12.1+git/linux-raspberrypi5-standard-build/.conf 
+            \item with bitbake -c menuconfig virtual/kernel the kernel config can be seen and also the depedencies of the single configs and which are forefilled and which not
+            \item in source/.kernel-meta/cfg/merge\_config\_build.log can be seen if the configuration was noticed ant if it was really taken
+            \item libbpf, clang, cargo, rust, libbpf-dev and elfutils had to be added to the image
+            \item CONFIG\_COMPILE\_TEST=y CONFIG\_DEBUG\_INFO=y, CONFIG\_DEBUG\_INFO\_BTF=y, CONFIG\_FRAME\_POINTER=y, CONFIG\_DEBUG\_INFO\_DWARF4=y
+
         \end{itemize}
     \end{itemize}  
 \end{itemize}
