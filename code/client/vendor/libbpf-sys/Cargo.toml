@@ -10,27 +10,30 @@
 # See Cargo.toml.orig for the original contents.
 
 [package]
-edition = "2018"
+edition = "2021"
+rust-version = "1.82"
 name = "libbpf-sys"
-version = "1.5.0+v1.5.0"
+version = "1.5.2+v1.5.1"
 authors = [
     "Alex Forster <alex@alexforster.com>",
     "Dan Siemon <dan@coverfire.com>",
     "Daniel Xu <dxu@dxuuu.xyz>",
 ]
 build = "build.rs"
-links = "libbpf"
+links = "bpf"
 exclude = [
     "/elfutils/tests/*.bz2",
     "/libbpf/assets",
     "/zlib/contrib",
 ]
+autolib = false
 autobins = false
 autoexamples = false
 autotests = false
 autobenches = false
 description = "Rust bindings to libbpf from the Linux kernel"
 homepage = "https://github.com/libbpf/libbpf-sys"
+documentation = "https://docs.rs/libbpf-sys"
 readme = "README.md"
 keywords = [
     "bpf",
@@ -40,32 +43,11 @@ keywords = [
 license = "BSD-2-Clause"
 repository = "https://github.com/libbpf/libbpf-sys"
 
-[lib]
-name = "libbpf_sys"
-crate-type = [
-    "lib",
-    "staticlib",
-]
-path = "src/lib.rs"
+[badges.github]
+repository = "libbpf/libbpf-sys"
 
-[[test]]
-name = "tests"
-path = "tests/tests.rs"
-
-[build-dependencies.bindgen]
-version = "^0.70.1"
-optional = true
-
-[build-dependencies.cc]
-version = "^1.1.6"
-
-[build-dependencies.nix]
-version = "^0.29.0"
-features = ["fs"]
-default-features = false
-
-[build-dependencies.pkg-config]
-version = "^0.3.30"
+[badges.maintenance]
+status = "passively-maintained"
 
 [features]
 bindgen-source = ["bindgen"]
@@ -88,8 +70,29 @@ vendored-libbpf = ["static-libbpf"]
 vendored-libelf = ["static-libelf"]
 vendored-zlib = ["static-zlib"]
 
-[badges.github]
-repository = "libbpf/libbpf-sys"
+[lib]
+name = "libbpf_sys"
+crate-type = [
+    "lib",
+    "staticlib",
+]
+path = "src/lib.rs"
 
-[badges.maintenance]
-status = "passively-maintained"
+[[test]]
+name = "tests"
+path = "tests/tests.rs"
+
+[build-dependencies.bindgen]
+version = "^0.72"
+optional = true
+
+[build-dependencies.cc]
+version = "^1.1.6"
+
+[build-dependencies.nix]
+version = "^0.30.0"
+features = ["fs"]
+default-features = false
+
+[build-dependencies.pkg-config]
+version = "^0.3.30"
