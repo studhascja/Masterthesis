@@ -16,3 +16,6 @@ bytemuck= { version = "1.14", features = ["derive"]}
 once_cell = "1.19.0"
 [build-dependencies]
 libbpf-cargo = "0.22"
+
+[target.'cfg(windows)'.dependencies]
+windows = "0.52.0"
