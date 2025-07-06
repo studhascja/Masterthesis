@@ -231,8 +231,10 @@ do_install() {
 FILES:${PN} += "/code \
                 /code/* \
                 /code/server/* \
+		/code/server/vendor/* \
                 /code/server/src/* \
-                /code/server/src/bpf/*"
+                /code/server/src/bpf/* \
+"
 
 LIC_FILES_CHKSUM = "file://${THISDIR}/files/server/LICENSE;md5=477dfa54ede28e2f361e7db05941d7a7"
 
