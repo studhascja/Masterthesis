@@ -6,7 +6,7 @@ import re  # Importieren der `re`-Bibliothek für reguläre Ausdrücke
 
 SSID = "jh_test"
 PASSWORD = os.environ.get("WIFI_PASSWORD")
-IFACE = "wlp1s0"
+IFACE = "wlan1"
 
 def connect_to_wifi():
     """Versucht, mit einem bestimmten WLAN zu verbinden."""
@@ -37,7 +37,7 @@ def disconnect_wifi():
 
 def get_bandwidth():
     try:
-        output = subprocess.check_output(["iw", "dev", "wlp1s0", "info"], text=True)
+        output = subprocess.check_output(["iw", "dev", IFACE, "info"], text=True)
         match = re.search(r'width:\s*(\d+)\s*(?=MHz)', output)
         if match:
             return int(match.group(1))  
@@ -62,7 +62,7 @@ def get_wifi_band(frequency):
 
 def get_freq():
     try:
-        output = subprocess.check_output(["iw", "dev", "wlp1s0", "link"], text=True)
+        output = subprocess.check_output(["iw", "dev", IFACE, "link"], text=True)
         match = re.search(r'freq:\s*(\d+\.\d+)', output)
         if match:
             frequency = float(match.group(1))
@@ -76,7 +76,7 @@ def get_freq():
 
 def get_wifi_version():
     try:
-        output = subprocess.check_output(["iw", "dev", "wlp1s0", "link"], text=True).lower()
+        output = subprocess.check_output(["iw", "dev", IFACE, "link"], text=True).lower()
 
         if "he" in output:
             return 6
@@ -148,7 +148,7 @@ def main():
         all_results.append((i + 1, result))
 
         # Rust-Code ausführen
-        os.chdir("/home/jakob/Masterthesis/code/client")
+        os.chdir("/code/client")
         subprocess.run(["cargo", "run"])
 
         disconnect_wifi()

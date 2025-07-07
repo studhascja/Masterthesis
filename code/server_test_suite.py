@@ -11,34 +11,34 @@ def run_config_script(param, process_container):
 
     filename = param if param else "hostapd.conf"
     config_file = "/etc/dnsmasq.conf"
-    interface = "wlp1s0"
+    interface = "wlan1"
     dhcp_range = "dhcp-range=192.168.1.10,192.168.1.100,12h"
 
     # Configure DHCP-Server
     with open(config_file, 'r') as f:
         content = f.read()
     if f"interface={interface}" not in content:
-        subprocess.run(['sudo', 'tee', '-a', config_file], input=f"interface={interface}\n", text=True)
+        subprocess.run(['tee', '-a', config_file], input=f"interface={interface}\n", text=True)
     if dhcp_range not in content:
-        subprocess.run(['sudo', 'tee', '-a', config_file], input=f"{dhcp_range}\n", text=True)
+        subprocess.run(['tee', '-a', config_file], input=f"{dhcp_range}\n", text=True)
     print("Configured DHCP-server")
 
     # Configure network interface
-    subprocess.run(['sudo', 'ifconfig', interface, '192.168.1.1', 'netmask', '255.255.255.0', 'up'])
+    subprocess.run(['ifconfig', interface, '192.168.1.1', 'netmask', '255.255.255.0', 'up'])
     print("Configure Interface")
 
     # Stop systemd-resolved if running
     result = subprocess.run(['systemctl', 'is-active', '--quiet', 'systemd-resolved'])
     if result.returncode == 0:
-        subprocess.run(['sudo', 'systemctl', 'stop', 'systemd-resolved'])
+        subprocess.run(['systemctl', 'stop', 'systemd-resolved'])
         print("Stopped systemd-resolved.")
 
     # Restart dnsmasq
-    subprocess.run(['sudo', 'systemctl', 'restart', 'dnsmasq'])
+    subprocess.run(['systemctl', 'restart', 'dnsmasq'])
     print("Started Dnsmasq.")
 
     # Start hostapd
-    hostapd_cmd = ['sudo', '/home/jakob/hostapd-2.11/hostapd/hostapd', '-dd', f'/etc/hostapd/{filename}']
+    hostapd_cmd = ['hostapd', '-dd', f'/etc/hostapd/{filename}']
     process = subprocess.Popen(hostapd_cmd)
     process_container.append(process)
 
@@ -62,7 +62,7 @@ def process_line(line):
 
     # Starte Rust-Programm mit den ersten 4 Werten
     rust_args = ['cargo', 'run', '--', val1, val2, val3, val4]
-    rust_result = subprocess.run(rust_args, cwd='/home/jakob/Masterthesis/code/server')
+    rust_result = subprocess.run(rust_args, cwd='/code/server')
 
     # config-script.sh beenden
     if config_process_container:
