@@ -6,8 +6,8 @@ INTERFACE="wlan1"
 DHCP_RANGE="dhcp-range=192.168.1.10,192.168.1.100,12h"
 
 # Configure DHCP-Server
-grep -q "^interface=$INTERFACE" "$CONFIG_FILE" || echo "interface=$INTERFACE" | sudo tee -a "$CONFIG_FILE"
-grep -q "^$DHCP_RANGE" "$CONFIG_FILE" || echo "$DHCP_RANGE" | sudo tee -a "$CONFIG_FILE"
+grep -q "^interface=$INTERFACE" "$CONFIG_FILE" || echo "interface=$INTERFACE" | tee -a "$CONFIG_FILE"
+grep -q "^$DHCP_RANGE" "$CONFIG_FILE" || echo "$DHCP_RANGE" | tee -a "$CONFIG_FILE"
 echo "Configured DHCP-server"
 
 # Configure network interface
@@ -25,5 +25,5 @@ systemctl restart dnsmasq
 echo "started Dnsmasq."
 
 # start Hostapd
-sudo hostapd -dd /etc/hostapd/${FILENAME}
+hostapd -dd /etc/hostapd/${FILENAME}
 
