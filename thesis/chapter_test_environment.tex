@@ -72,8 +72,11 @@
             \item files are not located in workdir, but in workdir/sources-unpack
         \end{itemize}
         \item Rust Server + BPF \begin{itemize}
-            \item Create bitbake blueprint with cargo bitbake git clone https://github.com/meta-rust/cargo-bitbake.git
+            \item Create bitbake blueprint with cargo bitbake git clone https://github.com/meta-rust/cargo-bitbake.git (before that the Cargo.toml has to be updated with the URI of the repo)
+            \item with cargo vendor create the vendor folder 
+            \item create .cargo/config.toml
             \item Add License
+            \item Add checksums for the vendor files
             \item set always to newest commit SRCREV = "\${AUTOREV}"
             \item Adjust workdir with S = "\${WORKDIR}/git/code/server"
             \item It depends on DEPENDS (Build-time dependency) += "clang-native kernel-devsrc pkgconfig-native zlib elfutils bpftool-native"
