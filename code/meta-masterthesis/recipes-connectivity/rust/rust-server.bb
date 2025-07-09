@@ -226,12 +226,14 @@ do_compile:prepend() {
 do_install() {
     install -d ${D}/code
     cp -r ${S} ${D}/code/
+    rm -rf ${D}/code/server/.cargo
+    rm -f ${D}/code/server/.gitignore
+    rm -f ${D}/code/server/server_*.bb
 }
 
-FILES:${PN} += "/code \
-                /code/* \
-                /code/server/* \
-		/code/server/vendor/* \
+FILES:${PN} += "/code/server/Cargo.lock \
+		/code/server/Cargo.toml \
+		/code/server/build.rs \
                 /code/server/src/* \
                 /code/server/src/bpf/* \
 "

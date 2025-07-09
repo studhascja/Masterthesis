@@ -221,13 +221,14 @@ do_compile:prepend() {
 do_install() {
     install -d ${D}/code
     cp -r ${S} ${D}/code/
+    rm -rf ${D}/code/client/.cargo
+    rm -f ${D}/code/client/.gitignore
+    rm -f ${D}/code/client/client_0.1.0.bb
 }
 
-INSANE_SKIP:${PN} += "dwarfsrcfiles"
-
-FILES:${PN} += "/code \
-                /code/* \
-                /code/client/* \
+FILES:${PN} += "/code/client/Cargo.lock \
+		/code/client/Cargo.toml \
+		/code/client/build.rs \
                 /code/client/src/* \
                 /code/client/src/bpf/* \
 "

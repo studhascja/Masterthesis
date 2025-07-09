@@ -18,6 +18,8 @@ SRC_URI += " \
 "
 
 do_install:append () {
+readonly WIFI_PWD_PLACEHOLDER="WIFI_PWD"
+readonly WIFI_PWD="${@d.getVar('WIFI_PWD')}"
 install -d ${D}${sysconfdir}/hostapd
 
 for cfg in \
@@ -28,9 +30,8 @@ for cfg in \
     wifi6_6_20 wifi6_6_40 wifi6_6_80 wifi6_6_160; do
 
     install -m 0644 ${WORKDIR}/sources-unpack/$cfg ${D}${sysconfdir}/hostapd/$cfg
+    sed -i 's/${WIFI_PWD_PLACEHOLDER}/${WIFI_PWD}/' ${D}${sysconfdir}/hostapd/$cfg
 done
-
-bbwarn ">>> hostapd.bbappend wurde eingebunden"
 }
 
 FILES:${PN} += " \

@@ -45,6 +45,8 @@ IMAGE_INSTALL += " \
   systemd \
   systemd-serialgetty \
   perf \
+  rust-client \
+  setup \
 "
 
 DISTRO_FEATURES:append = " wifi systemd"

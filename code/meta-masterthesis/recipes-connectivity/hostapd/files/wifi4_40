@@ -14,5 +14,5 @@ okc=1
 wpa=2
 wpa_pairwise=CCMP CCMP-256
 rsn_pairwise=CCMP CCMP-256
-wpa_psk=WIFI_PWD
+wpa_passphrase=WIFI_PWD
 ht_capab=[HT40+][SHORT-GI-20][DSSS_CCK-40][MAX-AMSDU-3839]
