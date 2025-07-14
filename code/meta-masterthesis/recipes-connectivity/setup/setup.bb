@@ -12,6 +12,9 @@ do_install() {
     cp ${S}/server_test_suite.py ${D}/code/
     cp ${S}/setup_qos.sh ${D}/code/
     cp ${S}/test_configuration ${D}/code/
+    cp ${S}/pwd ${D}/code/
+  
+    sed -i 's/WIFI_PWD/${WIFI_PWD}/' ${D}/code/pwd
 }
 
 FILES:${PN} += "/code \

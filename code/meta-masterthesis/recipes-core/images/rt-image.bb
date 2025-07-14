@@ -48,6 +48,8 @@ IMAGE_INSTALL += " \
   rust-client \
   setup \
   base-files \
+  openssh-sftp-server \
+  dhcpcd \
 "
 
 DISTRO_FEATURES:append = " wifi systemd"
