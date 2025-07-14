@@ -87,8 +87,9 @@
             \item with bitbake -c menuconfig virtual/kernel the kernel config can be seen and also the depedencies of the single configs and which are forefilled and which not
             \item in source/.kernel-meta/cfg/merge\_config\_build.log can be seen if the configuration was noticed ant if it was really taken
             \item libbpf, clang, cargo, rust, libbpf-dev and elfutils had to be added to the image
-            \item CONFIG\_COMPILE\_TEST=y CONFIG\_DEBUG\_INFO=y, CONFIG\_DEBUG\_INFO\_BTF=y, CONFIG\_FRAME\_POINTER=y, CONFIG\_DEBUG\_INFO\_DWARF4=y
-
+            \item CONFIG\_COMPILE\_TEST=y CONFIG\_DEBUG\_INFO=y, CONFIG\_DEBUG\_INFO\_BTF=y, CONFIG\_FRAME\_POINTER=y, CONFIG\_DEBUG\_INFO\_DWARF4=y, CONFIG\_UPROBES=y, CONFIG\_URETPROBES
+            \item set wifi password in yocto via environment variable
+            \item set wifi password in the final os with a script that triggers when a shell is started 
         \end{itemize}
     \end{itemize}  
 \end{itemize}
