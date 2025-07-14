@@ -4,7 +4,7 @@ import time
 import os
 import signal
 
-CONFIG_PATH = "test_configurations.save"  # Dateiname mit den Konfigurationszeilen
+CONFIG_PATH = "test_configuration" 
 
 def run_config_script(param, process_container):
     import shlex

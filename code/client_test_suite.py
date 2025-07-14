@@ -2,7 +2,7 @@ import subprocess
 import time
 import os
 import unittest
-import re  # Importieren der `re`-Bibliothek für reguläre Ausdrücke
+import re  
 
 SSID = "jh_test"
 PASSWORD = os.environ.get("WIFI_PASSWORD")
