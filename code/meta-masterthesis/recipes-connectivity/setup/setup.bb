@@ -11,7 +11,7 @@ do_install() {
     cp ${S}/config-script.sh ${D}/code/
     cp ${S}/server_test_suite.py ${D}/code/
     cp ${S}/setup_qos.sh ${D}/code/
-    cp ${S}/test_configurations.save ${D}/code/
+    cp ${S}/test_configuration ${D}/code/
 }
 
 FILES:${PN} += "/code \
