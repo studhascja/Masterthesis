@@ -31,7 +31,7 @@ for cfg in \
     wifi6_6_20 wifi6_6_40 wifi6_6_80 wifi6_6_160; do
 
     install -m 0644 ${WORKDIR}/sources-unpack/$cfg ${D}${sysconfdir}/hostapd/$cfg
-    sed -i 's/${WIFI_PWD_PLACEHOLDER}/${WIFI_PWD}/' ${D}${sysconfdir}/hostapd/$cfg
+    sed -i 's/WIFI_PWD/${WIFI_PWD}/' ${D}${sysconfdir}/hostapd/$cfg
 done
 }
 
