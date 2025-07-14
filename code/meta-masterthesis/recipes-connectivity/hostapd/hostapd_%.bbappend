@@ -17,9 +17,10 @@ SRC_URI += " \
     file://wifi6_6_160 \
 "
 
+
 do_install:append () {
 readonly WIFI_PWD_PLACEHOLDER="WIFI_PWD"
-readonly WIFI_PWD="${@d.getVar('WIFI_PWD')}"
+#readonly WIFI_PWD="${WIFI_PWD}"
 install -d ${D}${sysconfdir}/hostapd
 
 for cfg in \
