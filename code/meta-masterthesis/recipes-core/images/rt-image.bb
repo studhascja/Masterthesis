@@ -47,6 +47,7 @@ IMAGE_INSTALL += " \
   perf \
   rust-client \
   setup \
+  base-files \
 "
 
 DISTRO_FEATURES:append = " wifi systemd"
