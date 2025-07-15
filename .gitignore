@@ -51,6 +51,7 @@ latex.fls
 # Build directories
 build/
 output/
+results/
 
 #Other
 *.pygtex
