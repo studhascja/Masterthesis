@@ -14,12 +14,12 @@ def connect_to_wifi():
 
     while True:
         attempt_counter += 1
-        subprocess.run(["wpa_supplicant", "-i", IFACE, "-c", "/code/wpa.conf"])
+        subprocess.run(["wpa_supplicant", "-i", IFACE, "-c", "/code/wpa.conf", "-d"])
         result = subprocess.run(
-            ["nmcli", "-t", "-f", "ACTIVE,SSID", "dev", "wifi"],
+            ["iw", "dev", IFACE, "link"],
             capture_output=True, text=True
         )
-        if f"yes:{SSID}" in result.stdout:
+        if f"{SSID}" in result.stdout:
             print(f"✅ Verbunden mit {SSID}")
             return
         elif attempt_counter % 5 == 0:

@@ -100,7 +100,7 @@ bpf_probe_read(&tcph, sizeof(tcph), tcp_header);
 u8 tcp_header_len = tcph.doff * 4;
 
 
-if(d == 43){
+if(d == 20){
 	char *payload = tcp_header + tcp_header_len;
 
 	/*
@@ -179,7 +179,7 @@ if (iph.protocol != IPPROTO_TCP)
 		bpf_probe_read(&tcph, sizeof(tcph), tcp_header);
 		u8 tcp_header_len = tcph.doff * 4;
 
-		if(d == 1 && dd == 43){
+		if(d == 1 && dd == 20){
         		char *payload = tcp_header + tcp_header_len;
 
         		struct Message msg = {};
