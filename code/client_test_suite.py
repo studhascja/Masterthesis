@@ -14,7 +14,7 @@ def connect_to_wifi():
 
     while True:
         attempt_counter += 1
-        subprocess.run(["nmcli", "con", "up", SSID, "passwd-file", "pwd"])
+        subprocess.run(["wpa_supplicant", "-i", IFACE, "-c", "/code/wpa.conf"])
         result = subprocess.run(
             ["nmcli", "-t", "-f", "ACTIVE,SSID", "dev", "wifi"],
             capture_output=True, text=True

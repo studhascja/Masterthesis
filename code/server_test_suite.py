@@ -12,7 +12,7 @@ def run_config_script(param, process_container):
     filename = param if param else "hostapd.conf"
     config_file = "/etc/dnsmasq.conf"
     interface = "wlan1"
-    dhcp_range = "dhcp-range=192.168.1.10,192.168.1.100,12h"
+    dhcp_range = "dhcp-range=192.168.1.43,192.168.1.43,12h"
 
     # Configure DHCP-Server
     with open(config_file, 'r') as f:
