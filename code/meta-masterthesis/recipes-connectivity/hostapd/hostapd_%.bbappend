@@ -1,6 +1,7 @@
 FILESEXTRAPATHS:append := "${THISDIR}/files:"
 
 SRC_URI += " \
+    file://defconfig \
     file://wifi4 \
     file://wifi4_20 \
     file://wifi4_40 \
@@ -17,10 +18,13 @@ SRC_URI += " \
     file://wifi6_6_160 \
 "
 
+do_configure:prepend() {
+    cp ${WORKDIR}/sources-unpack/defconfig ${S}/.config
+}
 
 do_install:append () {
 readonly WIFI_PWD_PLACEHOLDER="WIFI_PWD"
-#readonly WIFI_PWD="${WIFI_PWD}"
+
 install -d ${D}${sysconfdir}/hostapd
 
 for cfg in \
