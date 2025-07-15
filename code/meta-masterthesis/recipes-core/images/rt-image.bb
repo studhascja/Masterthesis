@@ -50,6 +50,7 @@ IMAGE_INSTALL += " \
   base-files \
   openssh-sftp-server \
   dhcpcd \
+  procps \
 "
 
 DISTRO_FEATURES:append = " wifi systemd"
