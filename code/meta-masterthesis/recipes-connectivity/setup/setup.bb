@@ -11,10 +11,10 @@ do_install() {
     cp ${S}/config-script.sh ${D}/code/
     cp ${S}/server_test_suite.py ${D}/code/
     cp ${S}/setup_qos.sh ${D}/code/
-    cp ${S}/test_configuration ${D}/code/
-    cp ${S}/pwd ${D}/code/
-  
-    sed -i 's/WIFI_PWD/${WIFI_PWD}/' ${D}/code/pwd
+    cp ${S}/test_configuration ${D}/code/  
+    cp ${S}/wpa.conf ${D}/code/
+    
+    sed -i 's/WIFI_PWD/${WIFI_PWD}/' ${D}/code/wpa.conf
 }
 
 FILES:${PN} += "/code \
