@@ -13,6 +13,7 @@ def run_config_script(param, process_container):
     config_file = "/etc/dnsmasq.conf"
     interface = "wlan1"
     dhcp_range = "dhcp-range=192.168.1.20,192.168.1.21,12h"
+    dhcp_host="dhcp-host=76:35:72:d4:9d:1b,192.168.1.43"
 
     # Configure DHCP-Server
     with open(config_file, 'r') as f:
@@ -21,6 +22,9 @@ def run_config_script(param, process_container):
         subprocess.run(['tee', '-a', config_file], input=f"interface={interface}\n", text=True)
     if dhcp_range not in content:
         subprocess.run(['tee', '-a', config_file], input=f"{dhcp_range}\n", text=True)
+    if dhcp_host not in content:
+        subprocess.run(['tee', '-a', config_file], input=f"{dhcp_host}\n", text=True)
+
     print("Configured DHCP-server")
 
     # Configure network interface
@@ -57,7 +61,6 @@ def process_line(line):
     config_thread = threading.Thread(target=run_config_script, args=(param, config_process_container))
     config_thread.start()
 
-    # Warte kurz, um sicherzustellen, dass das Script läuft
     time.sleep(5)
 
     # Starte Rust-Programm mit den ersten 4 Werten

@@ -177,7 +177,7 @@ if (iph.protocol != IPPROTO_TCP)
                 bpf_probe_read(&tcph, sizeof(tcph), tcp_header);
                 u8 tcp_header_len = tcph.doff * 4;
 
-                if(d == 20 && dd == 1){
+                if(d == 43 && dd == 1){
                         char *payload = tcp_header + tcp_header_len;
 
                         struct Message msg = {};

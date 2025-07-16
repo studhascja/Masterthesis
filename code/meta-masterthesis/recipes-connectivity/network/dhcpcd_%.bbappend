@@ -6,6 +6,7 @@ SRC_URI += " \
 
 do_install:append() {
     install -m 0644 ${WORKDIR}/sources-unpack/dhcpcd.conf ${D}${sysconfdir}/dhcpcd.conf
+    sed -i 's/MAC/${CLIENT_MAC}/' ${D}${sysconfdir}/dhcpcd.conf
 }
 
 FILES:${PN} += " \

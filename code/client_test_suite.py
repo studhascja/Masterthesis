@@ -3,35 +3,52 @@ import time
 import os
 import unittest
 import re  
+import threading
 
 SSID = "jh_test"
 PASSWORD = os.environ.get("WIFI_PASSWORD")
 IFACE = "wlan1"
+wpa_process = None  
 
-def connect_to_wifi():
+def start_wpa_supplicant(wifi6):
+    global wpa_process
+    subprocess.run(["killall", "wpa_supplicant"])
+    subprocess.run(["ip", "link", "set", IFACE, "address", "76:35:72:d4:9d:1b"])
+    
+    if wifi6:
+        cmd = ["wpa_supplicant", "-i", IFACE, "-c", "/code/wpa.conf"]
+    else:
+        cmd = ["wpa_supplicant", "-i", IFACE, "-c", "/code/wpa2.conf"]
+    
+    # Popen statt run, damit wir nicht blockieren
+    wpa_process = subprocess.Popen(cmd)
+
+
+def connect_to_wifi(wifi6):
     """Versucht, mit einem bestimmten WLAN zu verbinden."""
     attempt_counter = 0
-
+    thread = threading.Thread(target=start_wpa_supplicant, args=(wifi6,))
+    thread.start()
     while True:
-        attempt_counter += 1
-        subprocess.run(["wpa_supplicant", "-i", IFACE, "-c", "/code/wpa.conf", "-d"])
+        
+        time.sleep(10)
         result = subprocess.run(
             ["iw", "dev", IFACE, "link"],
             capture_output=True, text=True
         )
         if f"{SSID}" in result.stdout:
+            subprocess.run(["systemctl", "restart", "dhcpcd"])
             print(f"✅ Verbunden mit {SSID}")
             return
-        elif attempt_counter % 5 == 0:
-            print(f"Restart Networkmanager")
-            subprocess.run(["iw", "reg", "set", "DE"])
-            subprocess.run(["systemctl", "restart", "NetworkManager"])
         else:
             print(f"❌ Verbindung zu {SSID} fehlgeschlagen. Neuer Versuch...")
-            time.sleep(5)
 
 def disconnect_wifi():
-    subprocess.run(["nmcli", "dev", "disconnect", IFACE])
+    global wpa_process
+    if wpa_process:
+        wpa_process.terminate()
+        wpa_process.wait()
+    subprocess.run(["killall", "wpa_supplicant"])
     print("🔌 Verbindung getrennt.")
     time.sleep(2)
 
@@ -113,7 +130,6 @@ def main():
         raise EnvironmentError("❌ Umgebungsvariable WIFI_PASSWORD ist nicht gesetzt!")
 
     subprocess.run(["iw", "reg", "set", "DE"])
-    subprocess.run(["systemctl", "restart", "NetworkManager"])
     all_results = []
     with open("test_configuration", "r") as config:
         lines = config.readlines()
@@ -128,8 +144,11 @@ def main():
         bw = int(parts[2])
 
         print(f"\n🔁 Test {i+1}: SSID={SSID}, Standard=WiFi {wifi_version}, Freq={freq} GHz, Bandbreite={bw} MHz")
-
-        connect_to_wifi()
+	
+        if wifi_version == 6:
+                connect_to_wifi(1)
+        else:
+                connect_to_wifi(0)
 
         
         suite = unittest.TestSuite()

@@ -6,6 +6,7 @@ SRC_URI += " \
 
 do_install:append () {
     install -m 0644 ${WORKDIR}/sources-unpack/dnsmasq.conf ${D}${sysconfdir}/dnsmasq.conf
+    sed -i 's/MAC/${CLIENT_MAC}/' ${D}${sysconfdir}/dnsmasq.conf
 }
 
 FILES:${PN} += " \

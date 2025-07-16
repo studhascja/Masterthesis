@@ -3,10 +3,13 @@
 FILENAME="${1:-hostapd.conf}"
 CONFIG_FILE="/etc/dnsmasq.conf"
 INTERFACE="wlan1"
-DHCP_RANGE="dhcp-range=192.168.1.20,192.168.1.21,12h"
+DHCP_RANGE="dhcp-range=192.168.1.1,192.168.1.99,12h"
+DHCP_HOST="dhcp-host=76:35:72:d4:9d:1b,192.168.1.43"
+
 # Configure DHCP-Server
 grep -q "^interface=$INTERFACE" "$CONFIG_FILE" || echo "interface=$INTERFACE" | tee -a "$CONFIG_FILE"
 grep -q "^$DHCP_RANGE" "$CONFIG_FILE" || echo "$DHCP_RANGE" | tee -a "$CONFIG_FILE"
+grep -q "^$DHCP_HOST" "$CONFIG_FILE" || echo "$DHCP_HOST" | tee -a "$CONFIG_FILE"
 
 echo "Configured DHCP-server"
 
