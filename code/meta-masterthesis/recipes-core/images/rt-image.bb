@@ -27,7 +27,6 @@ IMAGE_INSTALL += " \
   wpa-supplicant \
   iw \
   linux-firmware \
-  networkmanager \
   pahole \
   rust-server \
   libbpf \
@@ -51,6 +50,8 @@ IMAGE_INSTALL += " \
   openssh-sftp-server \
   dhcpcd \
   procps \
+  iproute2 \
+  iptables \
 "
 
 DISTRO_FEATURES:append = " wifi systemd"
