@@ -7,6 +7,7 @@ SRC_URI += " \
     file://config-preempt-rt.cfg \
     file://config-enable-bpf-btf.cfg \
     file://config-enable-mt7925e.cfg \
+    file://config-network.cfg \
 "
 
 
