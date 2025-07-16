@@ -209,6 +209,7 @@ fn wait_for_event(number: u64, msg_t: MessageType, event_t: u8) -> Event {
             let mut queue = queue_arc.lock().unwrap();
             while let Some(evt) = queue.pop_front() {
                 if let Ok(msg_type) = MessageType::try_from(evt.data.msg_type) {
+		    println!("MSG-Type: {:?}", msg_type);
                     if msg_type == msg_t && evt.data.seq == number && evt.event_type == event_t {
 			return evt;
                     }
@@ -405,6 +406,7 @@ fn handle_time(
                     println!("#{i}: Incomplete timestamp set");
                 }
             }
+	    println!("Start Calculation");
 
             let mut points = Vec::with_capacity(NUM_POINTS);
             let mut latency: Vec<CalcTimestampSet> = vec![CalcTimestampSet::default(); NUM_POINTS];
