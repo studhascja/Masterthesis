@@ -16,31 +16,37 @@ def run_config_script(param, process_container):
     dhcp_host="dhcp-host=76:35:72:d4:9d:1b,192.168.1.43"
 
     # Configure DHCP-Server
-    with open(config_file, 'r') as f:
-        content = f.read()
-    if f"interface={interface}" not in content:
-        subprocess.run(['tee', '-a', config_file], input=f"interface={interface}\n", text=True)
-    if dhcp_range not in content:
-        subprocess.run(['tee', '-a', config_file], input=f"{dhcp_range}\n", text=True)
-    if dhcp_host not in content:
-        subprocess.run(['tee', '-a', config_file], input=f"{dhcp_host}\n", text=True)
+#    with open(config_file, 'r') as f:
+#        content = f.read()
+#    if f"interface={interface}" not in content:
+#        subprocess.run(['tee', '-a', config_file], input=f"interface={interface}\n", text=True)
+#    if dhcp_range not in content:
+#        subprocess.run(['tee', '-a', config_file], input=f"{dhcp_range}\n", text=True)
+#    if dhcp_host not in content:
+#        subprocess.run(['tee', '-a', config_file], input=f"{dhcp_host}\n", text=True)
 
-    print("Configured DHCP-server")
+#    print("Configured DHCP-server")
 
     # Configure network interface
-    subprocess.run(['ifconfig', interface, '192.168.1.1', 'netmask', '255.255.255.0', 'up'])
-    print("Configure Interface")
+#    subprocess.run(['ifconfig', interface, '192.168.1.1', 'netmask', '255.255.255.0', 'up'])
+#    print("Configure Interface")
 
     # Stop systemd-resolved if running
-    result = subprocess.run(['systemctl', 'is-active', '--quiet', 'systemd-resolved'])
-    if result.returncode == 0:
-        subprocess.run(['systemctl', 'stop', 'systemd-resolved'])
-        print("Stopped systemd-resolved.")
+#    result = subprocess.run(['systemctl', 'is-active', '--quiet', 'systemd-resolved'])
+#    if result.returncode == 0:
+#        subprocess.run(['systemctl', 'stop', 'systemd-resolved'])
+#        print("Stopped systemd-resolved.")
 
     # Restart dnsmasq
-    subprocess.run(['systemctl', 'restart', 'dnsmasq'])
-    print("Started Dnsmasq.")
+#    subprocess.run(['systemctl', 'restart', 'dnsmasq'])
+#    print("Started Dnsmasq.")
+    static_ip = "192.168.1.1"
+    netmask = "255.255.255.0"
 
+# Setze statische IP für wlan1
+    subprocess.run(['ip', 'addr', 'flush', 'dev', interface])
+    subprocess.run(['ip', 'addr', 'add', f'{static_ip}/24', 'dev', interface])
+    subprocess.run(['ip', 'link', 'set', interface, 'up'])
     # Start hostapd
     hostapd_cmd = ['hostapd', '-dd', f'/etc/hostapd/{filename}']
     process = subprocess.Popen(hostapd_cmd)
