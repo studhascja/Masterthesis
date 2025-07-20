@@ -10,19 +10,31 @@ PASSWORD = os.environ.get("WIFI_PASSWORD")
 IFACE = "wlan1"
 wpa_process = None  
 
+def replace_wpa_conf(new_conf_path, interfaces_path="/etc/network/interfaces"):
+    with open(interfaces_path, "r") as f:
+        content = f.read()
+
+    # Ersetze nur die Zeile, die mit "wpa-conf" beginnt
+    content = re.sub(r"^\s*wpa-conf\s+.*$", f"    wpa-conf {new_conf_path}", content, flags=re.MULTILINE)
+
+    with open(interfaces_path, "w") as f:
+        f.write(content)
+
+
 def start_wpa_supplicant(wifi6):
     global wpa_process
     subprocess.run(["killall", "wpa_supplicant"])
-    subprocess.run(["ip", "link", "set", IFACE, "address", "76:35:72:d4:9d:1b"])
-    
-    if wifi6:
-        cmd = ["wpa_supplicant", "-i", IFACE, "-c", "/code/wpa.conf"]
-    else:
-        cmd = ["wpa_supplicant", "-i", IFACE, "-c", "/code/wpa2.conf"]
-    
-    # Popen statt run, damit wir nicht blockieren
-    wpa_process = subprocess.Popen(cmd)
+#    subprocess.run(["ip", "link", "set", IFACE, "down"])
+#    subprocess.run(["ip", "link", "set", IFACE, "address", "76:35:72:d4:9d:1b"])
+#    subprocess.run(["ip", "link", "set", IFACE, "up"])    
 
+    if wifi6:
+        replace_wpa_conf("/code/wpa.conf")
+    else:
+         replace_wpa_conf("/code/wpa2.conf")
+    
+    subprocess.run(["ifdown", IFACE])
+    subprocess.run(["ifup", IFACE])
 
 def connect_to_wifi(wifi6):
     """Versucht, mit einem bestimmten WLAN zu verbinden."""
@@ -37,7 +49,7 @@ def connect_to_wifi(wifi6):
             capture_output=True, text=True
         )
         if f"{SSID}" in result.stdout:
-            subprocess.run(["systemctl", "restart", "dhcpcd"])
+ #           subprocess.run(["systemctl", "restart", "dhcpcd"])
             print(f"✅ Verbunden mit {SSID}")
             return
         else:
