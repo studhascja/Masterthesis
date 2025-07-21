@@ -52,7 +52,7 @@ latex.fls
 build/
 output/
 results/
-
+result_ohne/
 #Other
 *.pygtex
 *.pygstyle
