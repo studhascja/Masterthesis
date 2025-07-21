@@ -148,30 +148,36 @@ let mut queue_arc = CURRENT_QUEUE_EVENT.get().expect("CURRENT_QUEUE_EVENT not in
 let count = *MESSAGE_COUNT.lock().unwrap() as usize;
 
 let mut queue = queue_arc.lock().unwrap();
+//println!("Queuelen: {}", queue.len());
+//println!("Queue count: {} Msg count: {}", queue.len(), count);
 for i in 1..queue.len() {
-        if queue.len() >= count && (queue[queue.len() - i].timestamp - get_kernel_zero()) < timestamp {
+	//let actual_timestamp = queue[queue.len() -i].timestamp;
+	//println!("{:?} {:?}", actual_timestamp, timestamp);
+        if queue.len() >= (count -1) && (queue[queue.len() - i].timestamp - get_kernel_zero()) < timestamp {
                 return Some(queue[queue.len() - i].clone());
         }
-        thread::sleep(Duration::from_nanos(50));
+        thread::sleep(Duration::from_nanos(5));
     }
-println!("Falsch");
-return None;
+//println!("Queue count: {} Msg count: {}", queue.len(), count);
+return Some(queue[queue.len() - 1].clone());
 }
 
 fn wait_for_event(number: u64, msg_t: MessageType, event_t: u8) -> Event {
         let mut queue_arc = CURRENT_EVENT.get().expect("CURRENT_EVENT not initialized");
         loop {
         {
+	    let i = 0;
             let mut queue = queue_arc.lock().unwrap();
             while let Some(evt) = queue.pop_front() {
+		//println!("{}", i);
                 if let Ok(msg_type) = MessageType::try_from(evt.data.msg_type) {
-                    if msg_type == msg_t && evt.data.seq == number && evt.event_type == event_t {
-                        return evt;
+                    if msg_type == msg_t && evt.data.seq == number && evt.event_type == event_t {  
+			return evt;
                     }
                 }
             }
         }
-        thread::sleep(Duration::from_nanos(50));
+        thread::sleep(Duration::from_nanos(5));
     }
 }
 
@@ -261,11 +267,11 @@ fn main() -> Result<()> {
                 	test_diff,
                 	usersp,
                 	Duration::from_nanos(kernel_diff),
-        );
+        ); 
 
 	}*/
-	0 
-    })?;
+	0
+    })?; 
     let mut ringbuf = ringbuf_builder.build()?;
 
 // Separate Thread für Polling des Ringbuffers starten
@@ -341,9 +347,10 @@ let handle = thread::spawn(move || {
 				increment_message_count();
 			}, 
 			Ok(MessageType::PTP_Result) => {
+				println!("ist angekommen");
 				let offset_diff = msg.i_val;
   				difference = difference + offset_diff;
-		/*
+		
 				thread::spawn(|| {
                                         let mut status = Command::new("iperf3")
                                                 .arg("-c")
@@ -361,7 +368,7 @@ let handle = thread::spawn(move || {
                                                 .expect("Failed to start iperf3");
 
                                         let _ = status.wait().expect("Failed to wait for iperf3 process");
-                                });*/
+                                });
                                 println!("Störer ausgeführt");
 			},
 
@@ -370,6 +377,28 @@ let handle = thread::spawn(move || {
 				(msg.first_f64, msg.second_f64) {
 					let y = radius * theta.sin();
 					let number = msg.seq;
+					if number == 0 {
+						thread::spawn(|| {
+                                        	let mut status = Command::new("iperf3")
+                                                	.arg("-c")
+                                                	.arg("192.168.1.1")
+                                                	.arg("-u")
+                                                	.arg("-b")
+                                                	.arg("15M")
+                                                	.arg("-t")
+                                                	.arg("12")
+                                                	.arg("-p")
+                                                	.arg("5202")
+                                                	.stderr(Stdio::piped())
+                                                	.stdout(Stdio::piped())
+                                                	.spawn()
+                                                	.expect("Failed to start iperf3");
+
+                                        	let _ = status.wait().expect("Failed to wait for iperf3 process");
+                                	});
+
+ 					}
+					let start = Instant::now();
                                 	let event_snapshot = wait_for_event(number, MessageType::Calc, 1);
                                 	let client_receive = event_snapshot.timestamp - get_kernel_zero();
 
@@ -383,7 +412,9 @@ let handle = thread::spawn(move || {
 	                                client_sent_time = (event_snapshot_send.timestamp - get_kernel_zero()) as u128;
 						
 					let event_snapshot_queue = wait_for_queue_event(client_sent_time as u64);
-                                        client_queue_time = (event_snapshot_queue.unwrap().timestamp - get_kernel_zero()) as u128
+                                        client_queue_time = (event_snapshot_queue.unwrap().timestamp - get_kernel_zero()) as u128;
+					let dauer = start.elapsed();
+			//		println!("Funktion dauerte: {:.4?}", dauer);
 				}
 			}
 		}

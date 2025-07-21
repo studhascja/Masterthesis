@@ -192,7 +192,10 @@ let mut queue_arc = CURRENT_QUEUE_EVENT.get().expect("CURRENT_QUEUE_EVENT not in
 let count = *MESSAGE_COUNT.lock().unwrap() as usize;  
 
 let mut queue = queue_arc.lock().unwrap();
+//println!("Queue count: {} Msg count: {}", queue.len(), count);
 for i in 1..queue.len() {
+	//let actual_timestamp = queue[queue.len() -i].timestamp;
+	//println!("{:?} {:?}", actual_timestamp, timestamp);
         if queue.len() >= count && (queue[queue.len() - i].timestamp - get_kernel_zero()) < timestamp {
                 return Some(queue[queue.len() - i].clone());        
         }  
@@ -209,7 +212,11 @@ fn wait_for_event(number: u64, msg_t: MessageType, event_t: u8) -> Event {
             let mut queue = queue_arc.lock().unwrap();
             while let Some(evt) = queue.pop_front() {
                 if let Ok(msg_type) = MessageType::try_from(evt.data.msg_type) {
-		    println!("MSG-Type: {:?}", msg_type);
+//		    println!("MSG-Type: {:?}", msg_type);
+		    let seq = evt.data.seq;
+		    let even = evt.event_type;
+//		    println!("Number: {}, Actual: {}", number, seq);
+//		    println!("Event: {}, Actual: {}", event_t, even);
                     if msg_type == msg_t && evt.data.seq == number && evt.event_type == event_t {
 			return evt;
                     }
@@ -262,7 +269,9 @@ fn handle_time(
             let mut needed_time = u128::MAX;
             let mut ptp_diff = u128::MAX;
             let mut i = 0;
-            while needed_time > 500000 {
+	    let mut ntp_regulation = 500000;
+
+            while needed_time > 1000000 {
                 let start_time = Instant::now();
                 let elapsed_start_time = start_time.duration_since(read_user_zero());
 		println!("{}", i);
@@ -296,6 +305,7 @@ fn handle_time(
                 wait_until(next_tick);
                 next_tick += interval;
                 i += 1;
+                //ntp_regulation += 1;
             }
 	
             // let test = unsafe{measure_instant()};
@@ -303,8 +313,9 @@ fn handle_time(
 
             println!("--------------------Start PTP Mechanism---------------------");
             let mut j = 0;
+	    let mut ptp_regulation = 1000;
             let mut next_tick = Instant::now() + interval;
-            while ptp_diff > 1000 {
+            while ptp_diff > 10000 {
                 let start_time = Instant::now();
                 let encoded_msg = encode_message(MessageType::PTP, j, 0, 0, 0, 0.0, 0.0, 0)?;
                 if let Err(e) = stream.write_all(&encoded_msg) {
@@ -328,6 +339,9 @@ fn handle_time(
                     _ => eprintln!("Error while receiving"),
                 }
 		j += 1;
+		//if j % 10 == 0 {
+		//	ptp_regulation += 1;
+		//}
                 wait_until(next_tick);
                 next_tick += interval;
             }	
@@ -406,7 +420,27 @@ fn handle_time(
                     println!("#{i}: Incomplete timestamp set");
                 }
             }
-	    println!("Start Calculation");
+/*
+
+		let start_time_ptp_result = Instant::now();
+                let elapsed_time_ptp_result = start_time_ptp_result.duration_since(read_user_zero());
+                let encoded_msg_ptp_result = encode_message(
+                    MessageType::PTP_Result,
+                    0,
+                    elapsed_time_ptp_result.as_nanos(),
+                    0,
+                    0,
+                    0.0,
+                    0.0,
+                    0,
+                )?;
+                if let Err(e) = stream.write_all(&encoded_msg_ptp_result) {
+                    eprintln!("Error while sending: {}", e);
+                    return Ok(());
+                }
+                increment_message_count();
+*/
+	    	println!("Start Calculation");
 
             let mut points = Vec::with_capacity(NUM_POINTS);
             let mut latency: Vec<CalcTimestampSet> = vec![CalcTimestampSet::default(); NUM_POINTS];
