@@ -2,21 +2,11 @@ FILESEXTRAPATHS:append := "${THISDIR}/files:"
 
 SRC_URI += " \
     file://defconfig \
-    file://wifi4 \
-    file://wifi4_20 \
-    file://wifi4_40 \
-    file://wifi5_20 \
-    file://wifi5_40 \
-    file://wifi5_80 \
-    file://wifi6 \
-    file://wifi6_5_20 \
-    file://wifi6_5_40 \
-    file://wifi6_5_80 \
-    file://wifi6_6_20 \
-    file://wifi6_6_40 \
-    file://wifi6_6_80 \
-    file://wifi6_6_160 \
 "
+SRC_URI += "git://github.com/studhascja/Masterthesis.git;protocol=https;nobranch=1;branch=main"
+SRCREV = "${AUTOREV}"
+S = "${WORKDIR}/git/code/hostapd"
+HOMEPAGE = "https://github.com/studhascja/Masterthesis.git"
 
 do_configure:prepend() {
     cp ${WORKDIR}/sources-unpack/defconfig ${S}/.config
@@ -26,6 +16,7 @@ do_install:append () {
 readonly WIFI_PWD_PLACEHOLDER="WIFI_PWD"
 
 install -d ${D}${sysconfdir}/hostapd
+cp -r ${S} ${D}${sysconfdir}/hostapd
 
 for cfg in \
     wifi4 wifi4_20 wifi4_40 \
@@ -34,7 +25,6 @@ for cfg in \
     wifi6_5_20 wifi6_5_40 wifi6_5_80 \
     wifi6_6_20 wifi6_6_40 wifi6_6_80 wifi6_6_160; do
 
-    install -m 0644 ${WORKDIR}/sources-unpack/$cfg ${D}${sysconfdir}/hostapd/$cfg
     sed -i 's/WIFI_PWD/${WIFI_PWD}/' ${D}${sysconfdir}/hostapd/$cfg
 done
 }
