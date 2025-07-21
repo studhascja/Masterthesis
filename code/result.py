@@ -7,7 +7,10 @@ from tkinter import filedialog
 bar_scale = 400
 x_offset = 350
 
-def select_file(title="Datei auswählen"):
+latency_filename = ""
+circlepoints_filename = ""
+
+def select_file(title="Select File"):
     root = tk.Tk()
     root.withdraw()
     initial_path = os.path.join(os.getcwd(), "results")
@@ -15,8 +18,16 @@ def select_file(title="Datei auswählen"):
     root.destroy()
     return filename
 
-latency_filename = select_file("Latenzdatei auswählen")
-circlepoints_filename = latency_filename.replace("latencys", "circle_points")
+def get_filename():
+    selected_file = select_file("Choose desired test")
+    global latency_filename
+    global circlepoints_filename
+    if "latencys" in selected_file:
+        latency_filename = selected_file
+        circlepoints_filename = latency_filename.replace("latencys", "circle_points")
+    else:
+        circlepoints_filename = selected_file
+        latency_filename = circlepoints_filename.replace("circle_points", "latencys")
 
 def read_points(filename):
     points = []
@@ -75,6 +86,7 @@ def calculate_latency_statistics(latencies):
     return avg_latency, min_latency, max_latency, jitter, avg_jitter
 
 def main():
+    get_filename()
     pygame.init()
     screen = pygame.display.set_mode((1800, 1000))
     pygame.display.set_caption("WiFi-Circle Test")
