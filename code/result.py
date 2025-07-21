@@ -36,7 +36,7 @@ def read_points(filename):
             for line in file:
                 try:
                     x, y = map(float, line.strip().split(','))
-                    points.append((int(x * 15 + 1500), int(-y * 15 + 200)))
+                    points.append((int(x * 15 + 1600), int(-y * 15 + 200)))
                 except ValueError:
                     print(f"Fehlerhafte Zeile: {line.strip()}")
     except FileNotFoundError:
@@ -57,6 +57,15 @@ def read_latencies(filename):
         print("Datei mit Latenzen nicht gefunden!")
     return latencies
 
+def render_label(screen, font, y, color, text):
+    # Erstelle zwei Renderings: einen farbigen Strich und weißen Text
+    dash_surface = font.render(text.split(" ")[0], True, color)
+    text_surface = font.render(" " + " ".join(text.split(" ")[1:]), True, (255, 255, 255))
+    
+    # Blit die beiden nacheinander mit etwas Abstand
+    screen.blit(dash_surface, (30, y))
+    screen.blit(text_surface, (30 + dash_surface.get_width(), y))
+
 def calculate_latency_statistics(latencies):
     if not latencies:
         return None, None, None, None, None
@@ -68,6 +77,24 @@ def calculate_latency_statistics(latencies):
     client_queue = [tupel[4] for tupel in latencies]
     client_send = [tupel[5] for tupel in latencies]   
     cycle_times = [tupel[6] for tupel in latencies]    
+
+    avg_server_do = round((sum(server_do) / len(server_do)) / 1_000_000, 3)
+    max_server_do = round (max(server_do) / 1_000_000, 3)
+
+    avg_server_queue = round((sum(server_queue) / len(server_queue)) / 1_000_000, 3)
+    max_server_queue = round (max(server_queue) / 1_000_000, 3)
+
+    avg_server_send = round((sum(server_send) / len(server_send)) / 1_000_000, 3)
+    max_server_send = round (max(server_send) / 1_000_000, 3)
+
+    avg_client_do = round((sum(client_do) / len(client_do)) / 1_000_000, 3)
+    max_client_do = round (max(client_do) / 1_000_000, 3)
+
+    avg_client_queue = round((sum(client_queue) / len(client_queue)) / 1_000_000, 3)
+    max_client_queue = round (max(client_queue) / 1_000_000, 3)
+
+    avg_client_send = round((sum(client_send) / len(client_send)) / 1_000_000, 3)
+    max_client_send = round (max(client_send) / 1_000_000, 3)
 
     avg_latency = round((sum(cycle_times) / len(cycle_times)) / 1_000_000, 3)
     min_latency = round(min(cycle_times) / 1_000_000, 3)
@@ -92,7 +119,7 @@ def main():
     pygame.display.set_caption("WiFi-Circle Test")
     clock = pygame.time.Clock()
     
-    circle_window_width = 950
+    circle_window_width = 750
     circle_window_height = 420
     circle_window = pygame.Surface((circle_window_width, circle_window_height))
     
@@ -105,7 +132,7 @@ def main():
     diagramm_window.fill((140, 140, 140))
 
     legende_window_width = 250
-    legende_window_height = 330
+    legende_window_height = 500
     legende_window = pygame.Surface((legende_window_width, legende_window_height))
  
     legende_window.fill((110,110,110))
@@ -130,6 +157,24 @@ def main():
     cycle_times = [tupel[6] for tupel in latencies]
     avg_latency, min_latency, max_latency, jitter, avg_jitter = calculate_latency_statistics(latencies)
     
+    avg_server_do = round((sum(server_do) / len(server_do)) / 1_000_000, 3)
+    max_server_do = round (max(server_do) / 1_000_000, 3)
+
+    avg_server_queue = round((sum(server_queue) / len(server_queue)) / 1_000_000, 3)
+    max_server_queue = round (max(server_queue) / 1_000_000, 3)
+
+    avg_server_send = round((sum(server_send) / len(server_send)) / 1_000_000, 3)
+    max_server_send = round (max(server_send) / 1_000_000, 3)
+
+    avg_client_do = round((sum(client_do) / len(client_do)) / 1_000_000, 3)
+    max_client_do = round (max(client_do) / 1_000_000, 3)
+
+    avg_client_queue = round((sum(client_queue) / len(client_queue)) / 1_000_000, 3)
+    max_client_queue = round (max(client_queue) / 1_000_000, 3)
+
+    avg_client_send = round((sum(client_send) / len(client_send)) / 1_000_000, 3)
+    max_client_send = round (max(client_send) / 1_000_000, 3)
+
     print(f"Durchschnittliche Latenz: {avg_latency:.2f} ms")
     print(f"Kleinste Latenz: {min_latency} ms")
     print(f"Größte Latenz: {max_latency} ms")
@@ -146,9 +191,9 @@ def main():
     running = True
     while running:
         screen.fill((120, 120, 120)) 
-        screen.blit(circle_window, (850, 0))
+        screen.blit(circle_window, (1050, 0))
         screen.blit(diagramm_window, (0, 420))
-        screen.blit(legende_window, (20, 620))
+        screen.blit(legende_window, (20, 450))
 
         # Draw points
         for point in points:
@@ -195,10 +240,10 @@ def main():
             
            # pygame.draw.rect(screen, (0, 0, 0), (x_pos, 950 - c_bar_height, bar_width, c_bar_height))
             pygame.draw.rect(screen, (0, 0, 0), (x_pos, 950 - lh_bar_height, bar_width, lh_bar_height))
-            pygame.draw.rect(screen, (255, 0, 0), (x_pos, 950 - sd_bar_height, bar_width, sd_bar_height))
+            pygame.draw.rect(screen, (50, 50, 50), (x_pos, 950 - sd_bar_height, bar_width, sd_bar_height))
             pygame.draw.rect(screen, (0, 255, 0), (x_pos, 950 - sd_bar_height - sq_bar_height, bar_width, sq_bar_height))
             pygame.draw.rect(screen, (0, 0, 255), (x_pos, 950 - sd_bar_height - sq_bar_height - ss_bar_height, bar_width, ss_bar_height))
-            pygame.draw.rect(screen, (255, 255, 0), (x_pos, 950 - sd_bar_height - sq_bar_height - ss_bar_height - cd_bar_height, bar_width, cd_bar_height))
+            pygame.draw.rect(screen, (255, 0, 255), (x_pos, 950 - sd_bar_height - sq_bar_height - ss_bar_height - cd_bar_height, bar_width, cd_bar_height))
             pygame.draw.rect(screen, (0, 255, 255), (x_pos, 950 - sd_bar_height - sq_bar_height - ss_bar_height - cd_bar_height - cq_bar_height, bar_width, cq_bar_height))
             pygame.draw.rect(screen, (100, 100, 0), (x_pos, 950 - sd_bar_height - sq_bar_height - ss_bar_height - cd_bar_height - cq_bar_height - cs_bar_height, bar_width, cs_bar_height))
 
@@ -230,48 +275,90 @@ def main():
         screen.blit(label, (30, 25))
 
 
-        label = font.render(f"Count of transmitted packages: {latency_count}", True, (255, 255, 255))
+        label = font.render(f"Count packages: {latency_count}", True, (255, 255, 255))
         screen.blit(label, (30, 75))
 
-        label = font.render(f"Count of real time violations: {over_3ms_count}", True, (255, 255, 255))
+        label = font.render(f"Count rt violations: {over_3ms_count}", True, (255, 255, 255))
         screen.blit(label, (30, 100))
 
 
-        label = font.render(f"Average Latency: {avg_latency} ms", True, (255, 255, 255))
+        label = font.render(f"Avg Lat: {avg_latency} ms", True, (255, 255, 255))
         screen.blit(label, (30, 150))
 
-        label = font.render(f"Minimal Latency: {min_latency} ms", True, (255, 255, 255))
+        label = font.render(f"Min Lat: {min_latency} ms", True, (255, 255, 255))
         screen.blit(label, (30, 175))
 
-        label = font.render(f"Maximum Latency: {max_latency} ms", True, (255, 255, 255))
+        label = font.render(f"Max Lat: {max_latency} ms", True, (255, 255, 255))
         screen.blit(label, (30, 200))
 
         
-        label = font.render(f"Average Jitter: {avg_jitter} ms", True, (255, 255, 255))
+        label = font.render(f"Avg Jitter: {avg_jitter} ms", True, (255, 255, 255))
         screen.blit(label, (30, 250))
 
-        label = font.render(f"Maximum Jitter: {jitter} ms", True, (255, 255, 255))
+        label = font.render(f"Max Jitter: {jitter} ms", True, (255, 255, 255))
         screen.blit(label, (30, 275))
 
+        label = font.render(f"Max. server_do: {max_server_do} ms", True, (255, 255, 255))
+        screen.blit(label, (330, 75))
 
-        label = font.render("-- Average Latency", True, (0, 255, 255))
-        screen.blit(label, (30, 950 - 80))
-       
-        label = font.render("-- Average Jitter", True, (255, 255, 0))
-        screen.blit(label, (30, 950 - 130))
-        
-        label = font.render("-- 3ms barrier", True, (255, 0, 0))
-        screen.blit(label, (30, 950 - 180))
+        label = font.render(f"Avg. server_do: {avg_server_do} ms", True, (255, 255, 255))
+        screen.blit(label, (700, 75))
 
-        label = font.render("-- Latency", True, (0, 0, 0))
-        screen.blit(label, (30, 950 - 230))
+        label = font.render(f"Max. server_queue: {max_server_queue} ms", True, (255, 255, 255))
+        screen.blit(label, (330, 100))
+
+        label = font.render(f"Avg. server_queue: {avg_server_queue} ms", True, (255, 255, 255))
+        screen.blit(label, (700, 100))
+
+        label = font.render(f"Max. server_send: {max_server_send} ms", True, (255, 255, 255))
+        screen.blit(label, (330, 125))
+
+        label = font.render(f"Avg. server_send: {avg_server_send} ms", True, (255, 255, 255))
+        screen.blit(label, (700, 125))
+
+
+        label = font.render(f"Max. client_do: {max_client_do} ms", True, (255, 255, 255))
+        screen.blit(label, (330, 175))
+
+        label = font.render(f"Avg. client_do: {avg_client_do} ms", True, (255, 255, 255))
+        screen.blit(label, (700, 175))
+
+        label = font.render(f"Max. client_queue: {max_client_queue} ms", True, (255, 255, 255))
+        screen.blit(label, (330, 200))
+
+        label = font.render(f"Avg. client_queue: {avg_client_queue} ms", True, (255, 255, 255))
+        screen.blit(label, (700, 200))
+
+        label = font.render(f"Max. client_send: {max_client_send} ms", True, (255, 255, 255))
+        screen.blit(label, (330, 225))
+
+        label = font.render(f"Avg. client_send: {avg_client_send} ms", True, (255, 255, 255))
+        screen.blit(label, (700, 225))
+
+
+	
+
+
+        render_label(screen, font, 950 - 390, (0, 255, 255), "[---] Average Latency")
+        render_label(screen, font, 950 - 420, (255, 255, 0), "[---] Average Jitter")
+        render_label(screen, font, 950 - 450, (255, 0, 0), "[---] 3ms barrier")
+
+        render_label(screen, font, 950 - 340, (50, 50, 50), "[---] server_do")
+        render_label(screen, font, 950 - 310, (0, 255, 0), "[---] server_queue")
+        render_label(screen, font, 950 - 280, (0, 0, 255), "[---] server_send")
+        render_label(screen, font, 950 - 250, (255, 0, 255), "[---] client_do") 
+        render_label(screen, font, 950 - 220, (0, 255, 255), "[---] client_queue")
+        render_label(screen, font, 950 - 190, (100, 100, 0), "[---] client_send")
+
+       # label = font.render("-- Latency", True, (0, 0, 0))
+       # screen.blit(label, (30, 950 - 450))
 
         label = title.render("Legende", True, (255, 255, 255))
-        screen.blit(label, (30, 950 - 300))
+        screen.blit(label, (30, 950 - 500))
 
 
         label = title.render("Visualisation of the circle", True, (255, 255, 255))
-        screen.blit(label, (900, 50))
+        screen.blit(label, (1100, 50))
 
         label = title.render("Visualisation of the Test-Data", True, (255, 255, 255))
         screen.blit(label, (700, 450))
