@@ -95,30 +95,37 @@ def plot_dashboard(results):
         for phase in phases:
             if phase == 'RT-violation count':
                 avg_data[phase].append(stat[phase])
-                max_data[phase].append(stat[phase])  
             else:
                 avg_data[phase].append(stat[phase][0])
                 max_data[phase].append(stat[phase][1])
 
-    # Plot
     fig, axes = plt.subplots(2, 4, figsize=(24, 12))
     axes = axes.flatten()
 
     x = np.arange(len(labels))
-    width = 0.35
+    width = 0.45
 
     for i, phase in enumerate(phases):
         ax = axes[i]
-        ax.bar(x - width/2, avg_data[phase], width, label='Avg', color='skyblue')
-        ax.bar(x + width/2, max_data[phase], width, label='Max', color='orange')
+        if phase == 'RT-violation count':
+        # Nur ein einzelner Balken
+            ax.bar(x, avg_data[phase], width, color='gray', label='RT Violations')
+        else:
+            avg_vals = avg_data[phase]
+            max_vals = max_data[phase]
+            diff_vals = [max_v - avg_v for avg_v, max_v in zip(avg_vals, max_vals)]
+
+            ax.bar(x, avg_vals, width, label='Avg', color='skyblue')
+            ax.bar(x, diff_vals, width, bottom=avg_vals, label='Max - Avg', color='orange')
+
         ax.set_title(phase)
         ax.set_ylabel("ms" if phase != 'RT-violation count' else "Anzahl")
         ax.set_xticks(x)
         ax.set_xticklabels(labels, rotation=45, ha='right', fontsize=8)
         ax.grid(axis='y', linestyle='--', alpha=0.5)
+
         if i == 0:
             ax.legend()
-
     plt.tight_layout()
     plt.show()
 
