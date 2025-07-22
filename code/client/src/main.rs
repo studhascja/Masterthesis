@@ -18,6 +18,9 @@ use std::env;
 use std::time::Instant;
 use std::collections::VecDeque;
 use once_cell::sync::Lazy;
+use thread_priority::{ThreadPriority, ThreadSchedulePolicy, set_thread_priority_and_policy, set_current_thread_priority};
+use libc::{sched_param, pthread_setschedparam, pthread_self, SCHED_FIFO, SCHED_OTHER, sched_setscheduler};
+use std::os::unix::process::CommandExt;
 
 static CURRENT_EVENT: OnceLock<Arc<Mutex<VecDeque<Event>>>> = OnceLock::new();
 static CURRENT_QUEUE_EVENT: OnceLock<Arc<Mutex<VecDeque<Event>>>> = OnceLock::new();
@@ -116,6 +119,17 @@ fn encode_message(
     Ok(encoded.to_vec())
 }
 
+fn set_rt_priority(prio: i32) {
+    unsafe {
+        let mut param = sched_param { sched_priority: prio };
+        let ret = pthread_setschedparam(pthread_self(), SCHED_FIFO, &mut param);
+        if ret != 0 {
+            eprintln!("Failed to set RT priority: {}", ret);
+        } else {
+            println!("RT priority set to {}", prio);
+        }
+    }
+}
 
 fn adjust_time(diff: i128) -> u128 {
     let adjusted_time = if diff >= 0 {
@@ -203,6 +217,7 @@ fn read_user_zero() -> Instant {
 
 
 fn main() -> Result<()> {
+    set_rt_priority(99);
     let event_queue = Arc::new(Mutex::new(VecDeque::new()));
     let queue_event_queue = Arc::new(Mutex::new(VecDeque::new()));
 
@@ -351,8 +366,17 @@ let handle = thread::spawn(move || {
 				let offset_diff = msg.i_val;
   				difference = difference + offset_diff;
 		
-				thread::spawn(|| {
-                                        let mut status = Command::new("iperf3")
+},
+
+			Ok(MessageType::Calc) => {
+				if let (theta, radius) =
+				(msg.first_f64, msg.second_f64) {
+					let y = radius * theta.sin();
+					let number = msg.seq;
+					if number == 0 {
+					thread::spawn(|| {
+                                        let mut binding = Command::new("iperf3");
+                                        let mut cmd = binding
                                                 .arg("-c")
                                                 .arg("192.168.1.1")
                                                 .arg("-u")
@@ -364,38 +388,18 @@ let handle = thread::spawn(move || {
                                                 .arg("5202")
                                                 .stderr(Stdio::piped())
                                                 .stdout(Stdio::piped())
-                                                .spawn()
-                                                .expect("Failed to start iperf3");
-
+                                                .pre_exec(|| {
+                                                        // Setze den Scheduling-Modus auf normal
+                                                        let param = sched_param { sched_priority: 0 };
+                                                        let ret = unsafe { sched_setscheduler(0, SCHED_OTHER, &param) };
+                                                        if ret != 0 {
+                                                                return Err(std::io::Error::last_os_error());
+                                                        }
+                                                        Ok(())
+                                                });
+                                        let mut status = cmd.spawn().expect("Failed to spawn iperf3");
                                         let _ = status.wait().expect("Failed to wait for iperf3 process");
                                 });
-                                println!("Störer ausgeführt");
-			},
-
-			Ok(MessageType::Calc) => {
-				if let (theta, radius) =
-				(msg.first_f64, msg.second_f64) {
-					let y = radius * theta.sin();
-					let number = msg.seq;
-					if number == 0 {
-						thread::spawn(|| {
-                                        	let mut status = Command::new("iperf3")
-                                                	.arg("-c")
-                                                	.arg("192.168.1.1")
-                                                	.arg("-u")
-                                                	.arg("-b")
-                                                	.arg("15M")
-                                                	.arg("-t")
-                                                	.arg("12")
-                                                	.arg("-p")
-                                                	.arg("5202")
-                                                	.stderr(Stdio::piped())
-                                                	.stdout(Stdio::piped())
-                                                	.spawn()
-                                                	.expect("Failed to start iperf3");
-
-                                        	let _ = status.wait().expect("Failed to wait for iperf3 process");
-                                	});
 
  					}
 					let start = Instant::now();
