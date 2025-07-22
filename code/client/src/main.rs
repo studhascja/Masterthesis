@@ -19,8 +19,9 @@ use std::time::Instant;
 use std::collections::VecDeque;
 use once_cell::sync::Lazy;
 use thread_priority::{ThreadPriority, ThreadSchedulePolicy, set_thread_priority_and_policy, set_current_thread_priority};
-use libc::{sched_param, pthread_setschedparam, pthread_self, SCHED_FIFO, SCHED_OTHER, sched_setscheduler};
+use libc::{sched_param, pthread_setschedparam, pthread_self, SCHED_RR, SCHED_OTHER, sched_setscheduler};
 use std::os::unix::process::CommandExt;
+use std::fs::OpenOptions;
 
 static CURRENT_EVENT: OnceLock<Arc<Mutex<VecDeque<Event>>>> = OnceLock::new();
 static CURRENT_QUEUE_EVENT: OnceLock<Arc<Mutex<VecDeque<Event>>>> = OnceLock::new();
@@ -122,7 +123,7 @@ fn encode_message(
 fn set_rt_priority(prio: i32) {
     unsafe {
         let mut param = sched_param { sched_priority: prio };
-        let ret = pthread_setschedparam(pthread_self(), SCHED_FIFO, &mut param);
+        let ret = pthread_setschedparam(pthread_self(), SCHED_RR, &mut param);
         if ret != 0 {
             eprintln!("Failed to set RT priority: {}", ret);
         } else {
@@ -193,6 +194,15 @@ fn wait_for_event(number: u64, msg_t: MessageType, event_t: u8) -> Event {
         }
         thread::sleep(Duration::from_nanos(5));
     }
+}
+
+fn notify_python() {
+
+    let mut pipe = OpenOptions::new()
+        .write(true)
+        .open("/tmp/notify_pipe")
+        .expect("Pipe nicht geöffnet");
+    writeln!(pipe, "START").unwrap();
 }
 
 fn set_kernel_zero(value: u64) {
@@ -398,6 +408,7 @@ let handle = thread::spawn(move || {
                                                         Ok(())
                                                 });
                                         let mut status = cmd.spawn().expect("Failed to spawn iperf3");
+					notify_python();
                                         let _ = status.wait().expect("Failed to wait for iperf3 process");
                                 });
 

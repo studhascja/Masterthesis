@@ -4,6 +4,7 @@ import time
 import os
 import signal
 import shlex
+import unittest
 
 CONFIG_PATH = "test_configuration" 
 
@@ -64,6 +65,33 @@ def process_line(line):
 
     # clean-script.sh aufrufen
     subprocess.run(['bash', 'clean-script.sh'])
+
+def get_prio():
+    try:
+        output_server = subprocess.check_output(["ps", "-eLo", "comm,pri", "|", "grep", "server"], text=True).lower()
+        output_iperf = subprocess.check_output(["ps", "-eLo", "comm,pri", "|", "grep", "iperf"], text=True).lower()
+
+        result_server = False;
+        result_iperf = False;
+
+        if "139" in output_server:
+            result_client = True;
+        if "139" not in output_iperf:
+            result_iperf = True;
+
+        return result_server, result_iperf
+
+    except subprocess.CalledProcessError as e:
+        print(f"Fehler beim Ausf  hren von iw: {e}")
+        return False, False
+
+class WifiTest(unittest.TestCase):
+
+    def test_prio(self):
+        server_prio, iperf_prio = get_prio()
+        self.assertTrue(server_prio)
+        self.assertTrue(iperf_prio)
+
 
 def main():
     rust_build = ['cargo', 'build']

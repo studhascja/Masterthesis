@@ -9,6 +9,7 @@ SSID = "jh_test"
 PASSWORD = os.environ.get("WIFI_PASSWORD")
 IFACE = "wlan1"
 wpa_process = None  
+pipe_path = "/tmp/notify_pipe"
 
 def replace_wpa_conf(new_conf_path, interfaces_path="/etc/network/interfaces"):
     with open(interfaces_path, "r") as f:
@@ -103,6 +104,25 @@ def get_freq():
         print(f"Fehler beim Ausführen von iw: {e}")
         return None
 
+def get_prio():
+    try:
+        output_client = subprocess.check_output(["ps", "-eLo", "comm,pri", "|", "grep", "client"], shell=True, capture_output=True, text=True)
+        output_iperf = subprocess.check_output(["ps", "-eLo", "comm,pri", "|", "grep", "iperf"], shell=True, capture_output=True, text=True)    
+        
+        result_client = False;
+        result_iperf = False;
+
+        if "139" in output_client:
+            result_client = True;
+        if "139" not in output_iperf:
+            result_iperf = True;
+
+        return result_client, result_iperf
+    
+    except subprocess.CalledProcessError as e:
+        print(f"Fehler beim Ausf  hren von iw: {e}")
+        return False, False
+
 def get_wifi_version():
     try:
         output = subprocess.check_output(["iw", "dev", IFACE, "link"], text=True).lower()
@@ -121,6 +141,7 @@ def get_wifi_version():
 class WifiTest(unittest.TestCase):
 
     def test_bandwidth(self):
+        print("blblbbl")
         bandwidth = get_bandwidth()
         self.assertEqual(self.bw_expected, bandwidth)  
 
@@ -136,6 +157,17 @@ class WifiTest(unittest.TestCase):
         self.freq_expected = freq
         self.bw_expected = bw
         self.version_expected = version
+
+    def test_prio(self):
+        client_prio, iperf_prio = get_prio()
+        self.assertTrue(client_prio)
+        self.assertTrue(iperf_prio)
+
+def run_rust(process_container):
+        rust_result = ['./client/target/debug/client']
+        process = subprocess.Popen(rust_result)
+        process_container.append(process)
+        process.wait()
 
 def main():
     if PASSWORD is None:
@@ -165,27 +197,50 @@ def main():
         else:
                 connect_to_wifi(0)
 
-        
-        suite = unittest.TestSuite()
-        test_bandwidth = WifiTest('test_bandwidth')
-        test_freq = WifiTest('test_freq')
-        test_version = WifiTest('test_version')
-        test_bandwidth.configure(freq, bw, wifi_version)
-        test_freq.configure(freq, bw, wifi_version)
-        test_version.configure(freq, bw, wifi_version)
-        suite.addTest(test_freq)
-        suite.addTest(test_bandwidth)
-        suite.addTest(test_version)
-        #runner = unittest.TextTestRunner()
-        result = unittest.TestResult()
-        suite.run(result)
-        all_results.append((i + 1, result))
+       
+        rust_process_container = []
 
-        # Rust-Code ausführen
-        rust_args = ['./client']
-        rust_result = subprocess.run(rust_args, cwd='/code/client/target/debug')
+        rust_thread = threading.Thread(target=run_rust, args=(rust_process_container,))
+        rust_thread.start()
+	
+        print("test")
+        if not os.path.exists(pipe_path):
+            os.mkfifo(pipe_path)  # Erstellt die named pipe
 
-        disconnect_wifi()
+        with open(pipe_path, 'r') as pipe:
+            while True:
+                line = pipe.readline()
+                if line.strip() == "START":
+                    print("Tests starten")
+                    
+                    suite = unittest.TestSuite()
+                    test_bandwidth = WifiTest('test_bandwidth')
+                    test_freq = WifiTest('test_freq')
+                    test_version = WifiTest('test_version')
+                    test_prio = WifiTest('test_prio')
+                    test_bandwidth.configure(freq, bw, wifi_version)
+                    test_freq.configure(freq, bw, wifi_version)
+                    test_version.configure(freq, bw, wifi_version)
+                    suite.addTest(test_freq)
+                    suite.addTest(test_bandwidth)
+                    suite.addTest(test_version)
+                    suite.addTest(test_prio)
+                    result = unittest.TestResult()
+                    suite.run(result)
+                    all_results.append((i + 1, result))
+
+        #if rust_process_container:
+        #    rust_process = rust_process_container[0]
+        #    rust_process.terminate()
+        #    try:
+        #        rust_process.wait(timeout=5)
+        #    except subprocess.TimeoutExpired:
+        #        rust_process.kill()
+
+                    rust_thread.join()
+                    print("test2")
+                    disconnect_wifi()
+                    break
 
     print("\n📋 Gesamtergebnis der Testläufe:")
     for i, result in all_results:
