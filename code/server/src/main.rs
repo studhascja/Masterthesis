@@ -1,7 +1,7 @@
 use anyhow::Result;
-use bytemuck::{bytes_of, from_bytes, Pod, Zeroable};
+use bytemuck::{Pod, Zeroable};
 use libbpf_rs::skel::{OpenSkel, Skel, SkelBuilder};
-use libbpf_rs::{Program, RingBufferBuilder, UprobeOpts};
+use libbpf_rs::RingBufferBuilder;
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
 use std::collections::VecDeque;
@@ -16,6 +16,7 @@ use std::sync::OnceLock;
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::{Duration, Instant, SystemTime};
+use std::process::Command;
 
 include!("bpf/monitore.skel.rs");
 
@@ -44,9 +45,9 @@ enum Data {
 enum MessageType {
     Start = 0,
     NTP = 1,
-    NTP_Result = 2,
+    NtpResult = 2,
     PTP = 3,
-    PTP_Result = 4,
+    PtpResult = 4,
     Calc = 5,
 }
 
@@ -136,9 +137,9 @@ impl TryFrom<u8> for MessageType {
         match value {
             0 => Ok(MessageType::Start),
             1 => Ok(MessageType::NTP),
-            2 => Ok(MessageType::NTP_Result),
+            2 => Ok(MessageType::NtpResult),
             3 => Ok(MessageType::PTP),
-            4 => Ok(MessageType::PTP_Result),
+            4 => Ok(MessageType::PtpResult),
             5 => Ok(MessageType::Calc),
             _ => panic!("False Value for MessageType: {}", value),
         }
@@ -188,10 +189,10 @@ pub fn increment_message_count() -> u64 {
 }
 
 fn wait_for_queue_event(timestamp: u64) -> Option<Event> {
-let mut queue_arc = CURRENT_QUEUE_EVENT.get().expect("CURRENT_QUEUE_EVENT not initialized");
+let queue_arc = CURRENT_QUEUE_EVENT.get().expect("CURRENT_QUEUE_EVENT not initialized");
 let count = *MESSAGE_COUNT.lock().unwrap() as usize;  
 
-let mut queue = queue_arc.lock().unwrap();
+let queue = queue_arc.lock().unwrap();
 //println!("Queue count: {} Msg count: {}", queue.len(), count);
 for i in 1..queue.len() {
 	//let actual_timestamp = queue[queue.len() -i].timestamp;
@@ -206,15 +207,15 @@ return None;
 }
 
 fn wait_for_event(number: u64, msg_t: MessageType, event_t: u8) -> Event {
-    	let mut queue_arc = CURRENT_EVENT.get().expect("CURRENT_EVENT not initialized");
+    	let queue_arc = CURRENT_EVENT.get().expect("CURRENT_EVENT not initialized");
 	loop {
         {
             let mut queue = queue_arc.lock().unwrap();
             while let Some(evt) = queue.pop_front() {
-                if let Ok(msg_type) = MessageType::try_from(evt.data.msg_type) {
+                 if let Ok(msg_type) = MessageType::try_from(evt.data.msg_type) {
 //		    println!("MSG-Type: {:?}", msg_type);
-		    let seq = evt.data.seq;
-		    let even = evt.event_type;
+//		    let seq = evt.data.seq;
+//		    let even = evt.event_type;
 //		    println!("Number: {}, Actual: {}", number, seq);
 //		    println!("Event: {}, Actual: {}", event_t, even);
                     if msg_type == msg_t && evt.data.seq == number && evt.event_type == event_t {
@@ -355,7 +356,7 @@ fn handle_time(
                 let start_time = Instant::now();
                 let elapsed_time = start_time.duration_since(read_user_zero());
                 let encoded_msg = encode_message(
-                    MessageType::NTP_Result,
+                    MessageType::NtpResult,
                     i,
                     elapsed_time.as_nanos(),
                     0,
@@ -369,7 +370,7 @@ fn handle_time(
                     return Ok(());
                 }
 		increment_message_count();
-                let event_snapshot_sending = wait_for_event(i, MessageType::NTP_Result, 2);
+                let event_snapshot_sending = wait_for_event(i, MessageType::NtpResult, 2);
                 let server_kernel_sent = event_snapshot_sending.timestamp - get_kernel_zero();
 
                 match stream.read(&mut buffer) {
@@ -377,7 +378,7 @@ fn handle_time(
                         let end_time = Instant::now();
                         let msg: Message = *bytemuck::from_bytes::<Message>(&buffer);
                         let number = msg.seq;
-                        let event_snapshot = wait_for_event(number, MessageType::NTP_Result, 1);
+                        let event_snapshot = wait_for_event(number, MessageType::NtpResult, 1);
                         let server_arrival = end_time.duration_since(read_user_zero());
                         let server_arrival_kernel = event_snapshot.timestamp - get_kernel_zero();
 
@@ -417,29 +418,10 @@ fn handle_time(
                         diff_test_offset, whole, first_offset, second_offset
                     );
                 } else {
-                    println!("#{i}: Incomplete timestamp set");
+                       println!("#{i}: Incomplete timestamp set");
                 }
-            }
-/*
+             }
 
-		let start_time_ptp_result = Instant::now();
-                let elapsed_time_ptp_result = start_time_ptp_result.duration_since(read_user_zero());
-                let encoded_msg_ptp_result = encode_message(
-                    MessageType::PTP_Result,
-                    0,
-                    elapsed_time_ptp_result.as_nanos(),
-                    0,
-                    0,
-                    0.0,
-                    0.0,
-                    0,
-                )?;
-                if let Err(e) = stream.write_all(&encoded_msg_ptp_result) {
-                    eprintln!("Error while sending: {}", e);
-                    return Ok(());
-                }
-                increment_message_count();
-*/
 	    	println!("Start Calculation");
 
             let mut points = Vec::with_capacity(NUM_POINTS);
@@ -693,7 +675,7 @@ fn main() -> Result<(), libbpf_rs::Error> {
     let mut ringbuf = ringbuf_builder.build()?;
 
     // Separate Thread für Polling des Ringbuffers starten
-    let handle = thread::spawn(move || {
+    let _handle = thread::spawn(move || {
         while r.load(Ordering::Relaxed) {
             ringbuf.poll(Duration::from_millis(100)).unwrap();
         }
