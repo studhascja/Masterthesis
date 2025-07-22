@@ -3,43 +3,19 @@ import threading
 import time
 import os
 import signal
+import shlex
 
 CONFIG_PATH = "test_configuration" 
 
+def run_iperf_server(process_container):
+    iperf_cmd = ['iperf3', '-s', '-p', '5202']
+    process = subprocess.Popen(iperf_cmd)
+    process_container.append(process)
+
 def run_config_script(param, process_container):
-    import shlex
-
     filename = param if param else "hostapd.conf"
-    config_file = "/etc/dnsmasq.conf"
     interface = "wlan1"
-    dhcp_range = "dhcp-range=192.168.1.20,192.168.1.21,12h"
-    dhcp_host="dhcp-host=76:35:72:d4:9d:1b,192.168.1.43"
 
-    # Configure DHCP-Server
-#    with open(config_file, 'r') as f:
-#        content = f.read()
-#    if f"interface={interface}" not in content:
-#        subprocess.run(['tee', '-a', config_file], input=f"interface={interface}\n", text=True)
-#    if dhcp_range not in content:
-#        subprocess.run(['tee', '-a', config_file], input=f"{dhcp_range}\n", text=True)
-#    if dhcp_host not in content:
-#        subprocess.run(['tee', '-a', config_file], input=f"{dhcp_host}\n", text=True)
-
-#    print("Configured DHCP-server")
-
-    # Configure network interface
-#    subprocess.run(['ifconfig', interface, '192.168.1.1', 'netmask', '255.255.255.0', 'up'])
-#    print("Configure Interface")
-
-    # Stop systemd-resolved if running
-#    result = subprocess.run(['systemctl', 'is-active', '--quiet', 'systemd-resolved'])
-#    if result.returncode == 0:
-#        subprocess.run(['systemctl', 'stop', 'systemd-resolved'])
-#        print("Stopped systemd-resolved.")
-
-    # Restart dnsmasq
-#    subprocess.run(['systemctl', 'restart', 'dnsmasq'])
-#    print("Started Dnsmasq.")
     static_ip = "192.168.1.1"
     netmask = "255.255.255.0"
 
@@ -48,7 +24,7 @@ def run_config_script(param, process_container):
     subprocess.run(['ip', 'addr', 'add', f'{static_ip}/24', 'dev', interface])
     subprocess.run(['ip', 'link', 'set', interface, 'up'])
     # Start hostapd
-    hostapd_cmd = ['hostapd', '-dd', f'/etc/hostapd/{filename}']
+    hostapd_cmd = ['hostapd', f'/etc/hostapd/{filename}']
     process = subprocess.Popen(hostapd_cmd)
     process_container.append(process)
 
@@ -70,8 +46,8 @@ def process_line(line):
     time.sleep(5)
 
     # Starte Rust-Programm mit den ersten 4 Werten
-    rust_args = ['cargo', 'run', '--', val1, val2, val3, val4]
-    rust_result = subprocess.run(rust_args, cwd='/code/server')
+    rust_args = ['./server', '--', val1, val2, val3, val4]
+    rust_result = subprocess.run(rust_args, cwd='/code/server/target/debug')
 
     # config-script.sh beenden
     if config_process_container:
@@ -90,9 +66,28 @@ def process_line(line):
     subprocess.run(['bash', 'clean-script.sh'])
 
 def main():
+    rust_build = ['cargo', 'build']
+    rust_build_result = subprocess.run(rust_build, cwd='/code/server')
+    iperf_process_container = []
+
+    iperf_thread = threading.Thread(target=run_iperf_server, args=(iperf_process_container,))
+    iperf_thread.start()
+
     with open(CONFIG_PATH, 'r') as file:
         for line in file:
             process_line(line)
+
+    if iperf_process_container:
+        print("Beende iperf_script.sh...")
+        iperf_process = iperf_process_container[0]
+        iperf_process.terminate()
+        try:
+            iperf_process.wait(timeout=5)
+        except subprocess.TimeoutExpired:
+            iperf_process.kill()
+
+    iperf_thread.join()
+
 
 if __name__ == '__main__':
     main()

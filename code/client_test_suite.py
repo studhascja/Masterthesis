@@ -140,6 +140,9 @@ class WifiTest(unittest.TestCase):
 def main():
     if PASSWORD is None:
         raise EnvironmentError("❌ Umgebungsvariable WIFI_PASSWORD ist nicht gesetzt!")
+    
+    rust_build = ['cargo', 'build']
+    rust_build_result = subprocess.run(rust_build, cwd='/code/client')
 
     subprocess.run(["iw", "reg", "set", "DE"])
     all_results = []
@@ -179,8 +182,8 @@ def main():
         all_results.append((i + 1, result))
 
         # Rust-Code ausführen
-        os.chdir("/code/client")
-        subprocess.run(["cargo", "run"])
+        rust_args = ['./client']
+        rust_result = subprocess.run(rust_args, cwd='/code/client/target/debug')
 
         disconnect_wifi()
 
