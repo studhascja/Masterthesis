@@ -6,7 +6,7 @@ SRC_URI += "file://interface"
 
 do_install() {
     install -d ${D}${sysconfdir}/network
-    install -m 0644 ${WORKDIR}/interface ${D}${sysconfdir}/network/interfaces
+    install -m 0644 ${WORKDIR}/sources-unpack/interface ${D}${sysconfdir}/network/interfaces
 }
 
 FILES:${PN} += "${sysconfdir}/network/interfaces"

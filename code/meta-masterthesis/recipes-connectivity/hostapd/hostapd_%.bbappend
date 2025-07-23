@@ -5,7 +5,7 @@ SRC_URI += " \
 "
 SRC_URI += "git://github.com/studhascja/Masterthesis.git;protocol=https;nobranch=1;branch=main"
 SRCREV = "${AUTOREV}"
-S = "${WORKDIR}/git/code/hostapd"
+K = "${WORKDIR}/git/code/hostapd"
 HOMEPAGE = "https://github.com/studhascja/Masterthesis.git"
 
 do_configure:prepend() {
@@ -16,7 +16,7 @@ do_install:append () {
 readonly WIFI_PWD_PLACEHOLDER="WIFI_PWD"
 
 install -d ${D}${sysconfdir}/hostapd
-cp -r ${S} ${D}${sysconfdir}/hostapd
+cp -r ${K} ${D}${sysconfdir}
 
 for cfg in \
     wifi4 wifi4_20 wifi4_40 \
