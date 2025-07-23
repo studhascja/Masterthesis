@@ -232,6 +232,7 @@ do_install() {
     install -d ${D}/code
     cp -r ${S} ${D}/code/
     rm -rf ${D}/code/client/.cargo
+    rm -rf ${D}/code/client/vendor
     rm -f ${D}/code/client/.gitignore
     rm -f ${D}/code/client/client_0.1.0.bb
 }
@@ -239,7 +240,7 @@ do_install() {
 FILES:${PN} += "/code/client/Cargo.lock \
 		/code/client/Cargo.toml \
 		/code/client/build.rs \
-                /code/client/src/* \
+                /code/client/src/main.rs \
                 /code/client/src/bpf/* \
 "
 

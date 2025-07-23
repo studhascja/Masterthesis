@@ -51,10 +51,12 @@ IMAGE_INSTALL += " \
   dhcpcd \
   procps \
   iproute2 \
+  iproute2-tc \
   iptables \
-  network-config \
   iftop \
   tcpdump \
+  inotify-tools \
+  trace-cmd \
 "
 
 DISTRO_FEATURES:append = " wifi systemd"
