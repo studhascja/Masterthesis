@@ -18,7 +18,7 @@ use std::thread;
 use std::time::{Duration, Instant, SystemTime};
 use std::process::Command;
 use thread_priority::{ThreadPriority, ThreadSchedulePolicy, set_thread_priority_and_policy, set_current_thread_priority};
-use libc::{sched_param, pthread_setschedparam, pthread_self, SCHED_FIFO};
+use libc::{sched_param, pthread_setschedparam, pthread_self, SCHED_RR};
 
 include!("bpf/monitore.skel.rs");
 
@@ -167,7 +167,7 @@ fn median(values: &Vec<i128>) -> i128 {
 fn set_rt_priority(prio: i32) {
     unsafe {
         let mut param = sched_param { sched_priority: prio };
-        let ret = pthread_setschedparam(pthread_self(), SCHED_FIFO, &mut param);
+        let ret = pthread_setschedparam(pthread_self(), SCHED_RR, &mut param);
         if ret != 0 {
             eprintln!("Failed to set RT priority: {}", ret);
         } else {

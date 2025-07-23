@@ -7,6 +7,8 @@ import shlex
 import unittest
 
 CONFIG_PATH = "test_configuration" 
+all_results = []
+
 
 def run_iperf_server(process_container):
     iperf_cmd = ['iperf3', '-s', '-p', '5202']
@@ -29,11 +31,18 @@ def run_config_script(param, process_container):
     process = subprocess.Popen(hostapd_cmd)
     process_container.append(process)
 
+def run_rust(process_container, val1, val2, val3, val4):
+    rust_result = ['./server/target/debug/server', str(val1), str(val2), str(val3), str(val4)]
+    process = subprocess.Popen(rust_result)
+    process_container.append(process)
+    process.wait()
 
-def process_line(line):
+
+def process_line(line, index):
+    global all_results
     parts = line.strip().split()
     if len(parts) != 5:
-        print(f"Überspringe ungültige Zeile: {line}")
+        print(f" ^|berspringe ung  ltige Zeile: {line}")
         return
 
     val1, val2, val3, val4, param = parts
@@ -46,9 +55,19 @@ def process_line(line):
 
     time.sleep(5)
 
-    # Starte Rust-Programm mit den ersten 4 Werten
-    rust_args = ['./server', '--', val1, val2, val3, val4]
-    rust_result = subprocess.run(rust_args, cwd='/code/server/target/debug')
+    rust_process_container = []
+
+    rust_thread = threading.Thread(target=run_rust, args=(rust_process_container, val1, val2, val3, val4))
+    rust_thread.start()
+
+    suite = unittest.TestSuite()
+    test_prio = WifiTest('test_prio')
+    suite.addTest(test_prio)
+    result = unittest.TestResult()
+    suite.run(result)
+    all_results.append((index + 1, result))
+
+    rust_thread.join()
 
     # config-script.sh beenden
     if config_process_container:
@@ -68,14 +87,13 @@ def process_line(line):
 
 def get_prio():
     try:
-        output_server = subprocess.check_output(["ps", "-eLo", "comm,pri", "|", "grep", "server"], text=True).lower()
-        output_iperf = subprocess.check_output(["ps", "-eLo", "comm,pri", "|", "grep", "iperf"], text=True).lower()
-
+        output_server = subprocess.check_output("ps -eLo comm,pri | grep server", shell=True, text=True)
+        output_iperf = subprocess.check_output("ps -eLo comm,pri | grep iperf", shell=True, text=True)
         result_server = False;
         result_iperf = False;
 
         if "139" in output_server:
-            result_client = True;
+            result_server = True;
         if "139" not in output_iperf:
             result_iperf = True;
 
@@ -94,6 +112,7 @@ class WifiTest(unittest.TestCase):
 
 
 def main():
+    global all_results
     rust_build = ['cargo', 'build']
     rust_build_result = subprocess.run(rust_build, cwd='/code/server')
     iperf_process_container = []
@@ -101,9 +120,11 @@ def main():
     iperf_thread = threading.Thread(target=run_iperf_server, args=(iperf_process_container,))
     iperf_thread.start()
 
-    with open(CONFIG_PATH, 'r') as file:
-        for line in file:
-            process_line(line)
+    with open("test_configuration", "r") as config:
+        lines = config.readlines()
+
+    for i, line in enumerate(lines):
+        process_line(line, i)
 
     if iperf_process_container:
         print("Beende iperf_script.sh...")
@@ -115,6 +136,24 @@ def main():
             iperf_process.kill()
 
     iperf_thread.join()
+
+    print("\n ^=^s^k Gesamtergebnis der Testl  ufe:")
+    for i, result in all_results:
+        print(f"\n ^=   Testdurchlauf {i}:")
+        total_tests = result.testsRun
+        failed = len(result.failures)
+        errored = len(result.errors)
+        successful = total_tests - failed - errored
+
+        print(f"   ^|^e Erfolgreich: {successful}")
+        print(f"   l Fehler: {len(result.failures)}")
+        for test, traceback in result.failures:
+            print(f"    - Fehler in {test.id()}:")
+            print(traceback)
+        print(f"   ^=^r  Fehlerhafte Ausf  hrung: {len(result.errors)}")
+        for test, traceback in result.errors:
+            print(f"    - Fehler in {test.id()}:")
+            print(traceback)
 
 
 if __name__ == '__main__':
