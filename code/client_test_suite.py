@@ -25,9 +25,6 @@ def replace_wpa_conf(new_conf_path, interfaces_path="/etc/network/interfaces"):
 def start_wpa_supplicant(wifi6):
     global wpa_process
     subprocess.run(["killall", "wpa_supplicant"])
-#    subprocess.run(["ip", "link", "set", IFACE, "down"])
-#    subprocess.run(["ip", "link", "set", IFACE, "address", "76:35:72:d4:9d:1b"])
-#    subprocess.run(["ip", "link", "set", IFACE, "up"])    
 
     if wifi6:
         replace_wpa_conf("/code/wpa.conf")
@@ -50,7 +47,6 @@ def connect_to_wifi(wifi6):
             capture_output=True, text=True
         )
         if f"{SSID}" in result.stdout:
- #           subprocess.run(["systemctl", "restart", "dhcpcd"])
             print(f"✅ Verbunden mit {SSID}")
             return
         else:
@@ -106,9 +102,8 @@ def get_freq():
 
 def get_prio():
     try:
-        output_client = subprocess.check_output(["ps", "-eLo", "comm,pri", "|", "grep", "client"], shell=True, capture_output=True, text=True)
-        output_iperf = subprocess.check_output(["ps", "-eLo", "comm,pri", "|", "grep", "iperf"], shell=True, capture_output=True, text=True)    
-        
+        output_client = subprocess.check_output("ps -eLo comm,pri | grep client", shell=True, text=True)
+        output_iperf = subprocess.check_output("ps -eLo comm,pri | grep iperf", shell=True, text=True)    
         result_client = False;
         result_iperf = False;
 
@@ -120,7 +115,7 @@ def get_prio():
         return result_client, result_iperf
     
     except subprocess.CalledProcessError as e:
-        print(f"Fehler beim Ausf  hren von iw: {e}")
+        print(f"Fehler beim Ausf  hren von ps: {e}")
         return False, False
 
 def get_wifi_version():
@@ -141,7 +136,6 @@ def get_wifi_version():
 class WifiTest(unittest.TestCase):
 
     def test_bandwidth(self):
-        print("blblbbl")
         bandwidth = get_bandwidth()
         self.assertEqual(self.bw_expected, bandwidth)  
 
@@ -203,7 +197,6 @@ def main():
         rust_thread = threading.Thread(target=run_rust, args=(rust_process_container,))
         rust_thread.start()
 	
-        print("test")
         if not os.path.exists(pipe_path):
             os.mkfifo(pipe_path)  # Erstellt die named pipe
 
@@ -211,7 +204,6 @@ def main():
             while True:
                 line = pipe.readline()
                 if line.strip() == "START":
-                    print("Tests starten")
                     
                     suite = unittest.TestSuite()
                     test_bandwidth = WifiTest('test_bandwidth')
@@ -229,16 +221,7 @@ def main():
                     suite.run(result)
                     all_results.append((i + 1, result))
 
-        #if rust_process_container:
-        #    rust_process = rust_process_container[0]
-        #    rust_process.terminate()
-        #    try:
-        #        rust_process.wait(timeout=5)
-        #    except subprocess.TimeoutExpired:
-        #        rust_process.kill()
-
                     rust_thread.join()
-                    print("test2")
                     disconnect_wifi()
                     break
 

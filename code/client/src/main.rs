@@ -173,7 +173,7 @@ for i in 1..queue.len() {
         }
         thread::sleep(Duration::from_nanos(5));
     }
-//println!("Queue count: {} Msg count: {}", queue.len(), count);
+println!("Queue count: {} Msg count: {}", queue.len(), count);
 return Some(queue[queue.len() - 1].clone());
 }
 
@@ -429,7 +429,9 @@ let handle = thread::spawn(move || {
 					let event_snapshot_queue = wait_for_queue_event(client_sent_time as u64);
                                         client_queue_time = (event_snapshot_queue.unwrap().timestamp - get_kernel_zero()) as u128;
 					let dauer = start.elapsed();
-			//		println!("Funktion dauerte: {:.4?}", dauer);
+					if dauer.as_millis() > 2 {
+						println!("Funktion dauerte: {:.4?}", dauer);
+					}
 				}
 			}
 		}
