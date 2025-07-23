@@ -52,8 +52,7 @@ IMAGE_INSTALL += " \
   procps \
   iproute2 \
   iptables \
-  inotify-tools \
-  trace-cmd \
+  network-config \
 "
 
 DISTRO_FEATURES:append = " wifi systemd"
