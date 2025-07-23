@@ -1,46 +1,45 @@
-use libbpf_rs::skel::{OpenSkel, SkelBuilder, Skel};
-use libbpf_rs::{RingBufferBuilder, Program, UprobeOpts};
-use std::io::{self, Write, Read};
-use std::net::TcpStream;
-use std::process;
-use std::process::{Command, Stdio};
-use std::time::{SystemTime, Duration};
-use std::thread;
+use std::{
+    convert::TryFrom,
+    fs::OpenOptions,
+    io::{Read, Write},
+    mem::{MaybeUninit},
+    net::TcpStream,
+    process::{self, Command, Stdio},
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        Arc, Mutex, OnceLock,
+    },
+    thread,
+    time::{Duration, Instant},
+    collections::VecDeque,
+    os::unix::process::CommandExt
+};
 use anyhow::Result;
-use serde::{Serialize, Deserialize};
-use bytemuck::{Pod, Zeroable, bytes_of, from_bytes};
-use std::convert::TryFrom;
-use std::mem::{MaybeUninit, align_of};
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::{Arc, Mutex};
-use std::sync::OnceLock;
-use std::env;
-use std::time::Instant;
-use std::collections::VecDeque;
+use bytemuck::{bytes_of, from_bytes, Pod, Zeroable};
+use libbpf_rs::RingBufferBuilder;
+use libbpf_rs::skel::{OpenSkel, Skel, SkelBuilder};
 use once_cell::sync::Lazy;
-use thread_priority::{ThreadPriority, ThreadSchedulePolicy, set_thread_priority_and_policy, set_current_thread_priority};
-use libc::{sched_param, pthread_setschedparam, pthread_self, SCHED_RR, SCHED_OTHER, sched_setscheduler};
-use std::os::unix::process::CommandExt;
-use std::fs::OpenOptions;
+use serde::{Deserialize, Serialize};
+use libc::{sched_param, pthread_setschedparam, pthread_self, SCHED_OTHER, SCHED_RR, sched_setscheduler};
 
+include!("bpf/monitore.skel.rs");
+
+// Global state
 static CURRENT_EVENT: OnceLock<Arc<Mutex<VecDeque<Event>>>> = OnceLock::new();
 static CURRENT_QUEUE_EVENT: OnceLock<Arc<Mutex<VecDeque<Event>>>> = OnceLock::new();
 static MESSAGE_COUNT: Lazy<Mutex<u64>> = Lazy::new(|| Mutex::new(1));
-
 static USER_ZERO: Lazy<Mutex<Instant>> = Lazy::new(|| Mutex::new(Instant::now()));
 static KERNEL_ZERO: Lazy<Mutex<u64>> = Lazy::new(|| Mutex::new(0));
-static TEST: OnceLock<Instant> = OnceLock::new();
-
-include!("bpf/monitore.skel.rs");
+//static TEST: OnceLock<Instant> = OnceLock::new();
 
 #[repr(u8)]
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 enum MessageType {
     Start = 0,
     NTP = 1,
-    NTP_Result = 2,
+    NtpResult = 2,
     PTP = 3,
-    PTP_Result = 4,
+    PtpResult = 4,
     Calc = 5,
 }
 
@@ -75,25 +74,24 @@ struct Event {
     data: BpfData,
 }
 
-
-
+// Convert u8 to MessageType
 impl TryFrom<u8> for MessageType {
-    type Error = std::convert::Infallible; 
+    type Error = std::convert::Infallible;
 
     fn try_from(value: u8) -> Result<Self, Self::Error> {
-        match value {
-            0 => Ok(MessageType::Start),
-            1 => Ok(MessageType::NTP),
-            2 => Ok(MessageType::NTP_Result),
-            3 => Ok(MessageType::PTP),
-            4 => Ok(MessageType::PTP_Result),
-            5 => Ok(MessageType::Calc),
-            _ => panic!("False Value for MessageType: {}", value), 
-        }
+        Ok(match value {
+            0 => MessageType::Start,
+            1 => MessageType::NTP,
+            2 => MessageType::NtpResult,
+            3 => MessageType::PTP,
+            4 => MessageType::PtpResult,
+            5 => MessageType::Calc,
+            _ => panic!("Invalid MessageType value: {}", value),
+        })
     }
 }
 
-
+// Encodes a message struct into a byte vector
 fn encode_message(
     msg_type: MessageType,
     seq: u64,
@@ -103,347 +101,325 @@ fn encode_message(
     first_f64: f64,
     second_f64: f64,
     i_val: i128,
-) -> Result<Vec<u8>, anyhow::Error> {
+) -> Result<Vec<u8>> {
     let msg = Message {
         msg_type: msg_type as u8,
-        seq: seq,
-        timestamp: timestamp,
-        first_u128: first_u128,
-        second_u128: second_u128,
-        first_f64: first_f64,
-        second_f64: second_f64,
-        i_val: i_val,
+        seq,
+        timestamp,
+        first_u128,
+        second_u128,
+        first_f64,
+        second_f64,
+        i_val,
         _padding: [0u8; 7],
     };
 
-    let encoded: &[u8] = bytemuck::bytes_of(&msg);
-    Ok(encoded.to_vec())
+    Ok(bytes_of(&msg).to_vec())
 }
 
-fn set_rt_priority(prio: i32) {
+// Set real-time thread priority using SCHED_RR
+fn set_rt_priority(priority: i32) {
     unsafe {
-        let mut param = sched_param { sched_priority: prio };
-        let ret = pthread_setschedparam(pthread_self(), SCHED_RR, &mut param);
-        if ret != 0 {
-            eprintln!("Failed to set RT priority: {}", ret);
+        let mut param = sched_param {
+            sched_priority: priority,
+        };
+        if pthread_setschedparam(pthread_self(), SCHED_RR, &mut param) != 0 {
+            eprintln!("⚠️ Failed to set RT priority.");
         } else {
-            println!("RT priority set to {}", prio);
+            println!("✅ RT priority set to {}", priority);
         }
     }
 }
 
-fn adjust_time(diff: i128) -> u128 {
-    let adjusted_time = if diff >= 0 {
-        SystemTime::now() - Duration::from_nanos(diff as u64)
+// Notify external process (e.g., Python script)
+fn notify_python() {
+    if let Ok(mut pipe) = OpenOptions::new().write(true).open("/tmp/notify_pipe") {
+        let _ = writeln!(pipe, "START");
     } else {
-        SystemTime::now() + Duration::from_nanos((-diff) as u64)
-    };
-
-    let timestamp_ns = adjusted_time
-        .duration_since(SystemTime::UNIX_EPOCH)
-        .expect("Systemtime is before UNIX-Time")
-        .as_nanos();
-
-    timestamp_ns as u128
+        eprintln!("⚠️ Could not open /tmp/notify_pipe.");
+    }
 }
 
 #[no_mangle]
-pub extern "C" fn measure_instant() -> Instant {
-    Instant::now()
+pub extern "C" fn measure_instant() {
+    let mut time = USER_ZERO.lock().unwrap();
+    *time = Instant::now();
 }
 
-pub fn increment_message_count() -> u64 {
+// Atomic message counter
+fn increment_message_count() -> u64 {
     let mut count = MESSAGE_COUNT.lock().unwrap();
     *count += 1;
     *count
 }
 
-fn wait_for_queue_event(timestamp: u64) -> Option<Event> {
-let mut queue_arc = CURRENT_QUEUE_EVENT.get().expect("CURRENT_QUEUE_EVENT not initialized");
-let count = *MESSAGE_COUNT.lock().unwrap() as usize;
-
-let mut queue = queue_arc.lock().unwrap();
-//println!("Queuelen: {}", queue.len());
-//println!("Queue count: {} Msg count: {}", queue.len(), count);
-for i in 1..queue.len() {
-	//let actual_timestamp = queue[queue.len() -i].timestamp;
-	//println!("{:?} {:?}", actual_timestamp, timestamp);
-        if queue.len() >= (count -1) && (queue[queue.len() - i].timestamp - get_kernel_zero()) < timestamp {
-                return Some(queue[queue.len() - i].clone());
-        }
-        thread::sleep(Duration::from_nanos(5));
-    }
-println!("Queue count: {} Msg count: {}", queue.len(), count);
-return Some(queue[queue.len() - 1].clone());
-}
-
-fn wait_for_event(number: u64, msg_t: MessageType, event_t: u8) -> Event {
-        let mut queue_arc = CURRENT_EVENT.get().expect("CURRENT_EVENT not initialized");
-        loop {
-        {
-	    let i = 0;
-            let mut queue = queue_arc.lock().unwrap();
-            while let Some(evt) = queue.pop_front() {
-		//println!("{}", i);
-                if let Ok(msg_type) = MessageType::try_from(evt.data.msg_type) {
-                    if msg_type == msg_t && evt.data.seq == number && evt.event_type == event_t {  
-			return evt;
-                    }
-                }
-            }
-        }
-        thread::sleep(Duration::from_nanos(5));
-    }
-}
-
-fn notify_python() {
-
-    let mut pipe = OpenOptions::new()
-        .write(true)
-        .open("/tmp/notify_pipe")
-        .expect("Pipe nicht geöffnet");
-    writeln!(pipe, "START").unwrap();
-}
-
+// Global time helpers
 fn set_kernel_zero(value: u64) {
     let mut kernel = KERNEL_ZERO.lock().unwrap();
     *kernel = value;
 }
 
 fn get_kernel_zero() -> u64 {
-    let kernel = KERNEL_ZERO.lock().unwrap();
-    *kernel
+    *KERNEL_ZERO.lock().unwrap()
 }
 
 fn update_user_zero() {
-    let mut time = USER_ZERO.lock().unwrap();
-    *time = measure_instant();
+    measure_instant();
 }
 
+/*
 fn read_user_zero() -> Instant {
-    let time = USER_ZERO.lock().unwrap();
-    *time
+    *USER_ZERO.lock().unwrap()
+}
+*/
+fn wait_for_event(seq: u64, msg_type: MessageType, event_type: u8) -> Event {
+    let queue = CURRENT_EVENT
+        .get()
+        .expect("CURRENT_EVENT not initialized")
+        .clone();
+
+    loop {
+        {
+            let mut queue_lock = queue.lock().unwrap();
+            while let Some(event) = queue_lock.pop_front() {
+                 let Ok(t) = MessageType::try_from(event.data.msg_type);
+                    if t == msg_type && event.data.seq == seq && event.event_type == event_type {
+                        return event;
+                    }
+            }
+        }
+        thread::sleep(Duration::from_nanos(5));
+    }
 }
 
+fn wait_for_queue_event(timestamp: u64) -> Option<Event> {
+    let queue = CURRENT_QUEUE_EVENT
+        .get()
+        .expect("CURRENT_QUEUE_EVENT not initialized")
+        .clone();
+
+    let count = *MESSAGE_COUNT.lock().unwrap() as usize;
+
+    let queue_lock = queue.lock().unwrap();
+    for i in 1..queue_lock.len() {
+        let idx = queue_lock.len() - i;
+        let event = &queue_lock[idx];
+
+        if queue_lock.len() >= count.saturating_sub(1)
+            && (event.timestamp - get_kernel_zero()) < timestamp
+        {
+            return Some(event.clone());
+        }
+
+        thread::sleep(Duration::from_nanos(5));
+    }
+
+    queue_lock.back().cloned()
+}
 
 fn main() -> Result<()> {
     set_rt_priority(99);
+
     let event_queue = Arc::new(Mutex::new(VecDeque::new()));
     let queue_event_queue = Arc::new(Mutex::new(VecDeque::new()));
-
     CURRENT_EVENT.set(event_queue.clone()).unwrap();
     CURRENT_QUEUE_EVENT.set(queue_event_queue.clone()).unwrap();
 
-    let event_ref = CURRENT_EVENT.get().expect("CURRENT_EVENT not initialized");
-    let queue_event_ref = CURRENT_QUEUE_EVENT.get().expect("CURRENT_EVENT not initialized");
-
-
-    let mut client_sent_time = 0;
-    let mut client_queue_time = 0;
-
-    let open_skel = MonitoreSkelBuilder::default().open();
-    println!("Skelett geöffnet.");
-
-    let mut skel = open_skel?.load()?;
-    println!("Skelett geladen.");
-
+    // Initialize and load BPF skeleton
+    let open_skel = MonitoreSkelBuilder::default().open()?;
+    println!("✅ BPF skeleton opened.");
+    let mut skel = open_skel.load()?;
+    println!("✅ BPF skeleton loaded.");
     skel.attach()?;
+    println!("✅ eBPF program attached and running.");
 
-    println!("eBPF-Programm läuft …");
+    let event_ref = CURRENT_EVENT.get().unwrap().clone();
+    let queue_event_ref = CURRENT_QUEUE_EVENT.get().unwrap().clone();
     let running = Arc::new(AtomicBool::new(true));
-    let r = running.clone();
     let maps = skel.maps();
-    // Callback-Funktion, wird bei jedem Ringbuffer-Event aufgerufen
+
+    // Setup ring buffer with callback
     let mut ringbuf_builder = RingBufferBuilder::new();
     ringbuf_builder.add(maps.events(), move |data: &[u8]| {
-            if data.len() != std::mem::size_of::<Event>() {
-                eprintln!("Unexpected data size: {}", data.len());
-                return 0;
+        if data.len() != std::mem::size_of::<Event>() {
+            eprintln!("⚠️ Invalid event size: {}", data.len());
+            return 0;
+        }
+
+        let event = *from_bytes::<Event>(data);
+
+        match event.event_type {
+            0 => set_kernel_zero(event.timestamp),
+            3 => {
+                let mut queue = queue_event_ref.lock().unwrap();
+                queue.push_back(event);
             }
-
-        let event = bytemuck::from_bytes::<Event>(data);
-	if event.event_type == 0 {
-            set_kernel_zero(event.timestamp);
-        }
-	else if event.event_type == 3 {
-            let mut queue = queue_event_ref.lock().unwrap();
-            queue.push_back(*event);
-        }
-        else {
+            _ => {
                 let mut queue = event_ref.lock().unwrap();
-                queue.push_back(*event);
-
+                queue.push_back(event);
+            }
         }
 
+        0
+    })?;
 
-    	/*
-	println!(
-        	"Latenz: {:?} (User: {:?} - Kernel: {:?})",
-        	diff_ns,
-        	elapsed,
-        	Duration::from_nanos(kernel_diff),
-    	);
-	if let Some(val) = TEST.get(){
-		let usersp = val.duration_since(*USER_ZERO.get().unwrap());
-		let test_diff = usersp.as_nanos() as i128 - kernel_diff as i128;
-		
-		println!(
-                	"TEST: Latenz: {:?} (User: {:?} - Kernel: {:?})",
-                	test_diff,
-                	usersp,
-                	Duration::from_nanos(kernel_diff),
-        ); 
+    let ringbuf = ringbuf_builder.build()?;
 
-	}*/
-	0
-    })?; 
-    let mut ringbuf = ringbuf_builder.build()?;
+    // Start polling thread for ring buffer
+    let ring_running = running.clone();
+    let poll_thread = thread::spawn(move || {
+        while ring_running.load(Ordering::Relaxed) {
+            ringbuf.poll(Duration::from_millis(100)).unwrap();
+        }
+    });
 
-// Separate Thread für Polling des Ringbuffers starten
-let handle = thread::spawn(move || {
-      while r.load(Ordering::Relaxed) {
-        ringbuf.poll(Duration::from_millis(100)).unwrap();
-    }
-});
-    let mut difference = 0;
-    let server_address = "192.168.1.1:8080";
-    match TcpStream::connect(server_address) {
+    // Connect to server
+    let server_addr = "192.168.1.1:8080";
+    let mut _difference = 0;
+
+    match TcpStream::connect(server_addr) {
         Ok(mut stream) => {
-            println!("Connected to server: {}", server_address);
-            let encoded_msg = encode_message(MessageType::Start, 0, 0, 0, 0, 0.0, 0.0, 0)?;
-            stream.write_all(&encoded_msg)?;
-	    increment_message_count();
+            println!("✅ Connected to server at {}", server_addr);
+
+            // Send initial START message
+            let start_msg = encode_message(MessageType::Start, 0, 0, 0, 0, 0.0, 0.0, 0)?;
+            stream.write_all(&start_msg)?;
+            increment_message_count();
 
             let mut buffer = [0u8; std::mem::size_of::<Message>()];
-            let mut time_diffs: Vec<(u64, i128)> = Vec::new();   
+            let mut client_sent_time = 0u128;
+            let mut client_queue_time = 0u128;
 
             while let Ok(size) = stream.read(&mut buffer) {
                 if size == 0 {
-                    break; 
+                    break;
                 }
-		
-		
-		let mut raw = MaybeUninit::<Message>::uninit();
-    		let raw_ptr = raw.as_mut_ptr() as *mut u8;
 
-    		unsafe {
-        		std::ptr::copy_nonoverlapping(
-            		buffer.as_ptr(),
-            		raw_ptr,
-            		std::mem::size_of::<Message>(),
-        	);
-		
+                // Deserialize incoming message
+                let mut raw = MaybeUninit::<Message>::uninit();
+                unsafe {
+                    std::ptr::copy_nonoverlapping(
+                        buffer.as_ptr(),
+                        raw.as_mut_ptr() as *mut u8,
+                        std::mem::size_of::<Message>(),
+                    );
+                    let msg = raw.assume_init();
 
-        	let msg = raw.assume_init();
-		
-		
-		match MessageType::try_from(msg.msg_type) {
-			Ok(MessageType::Start) => {
-				println!("Error: Start should not be sent to client");
-			},
-			Ok(MessageType::NTP) => {
-				update_user_zero();
-				let number = msg.seq;
-        			let encoded_msg = encode_message(MessageType::NTP, number, 0, 0, 0, 0.0, 0.0, 0)?;
-				stream.write_all(&encoded_msg)?;
-				increment_message_count();	
-			}, 
-			Ok(MessageType::NTP_Result) => {
-				//let test = unsafe{measure_instant()};
-				//TEST.get_or_init(|| test);
-				let number = msg.seq;
-                                let event_snapshot = wait_for_event(number, MessageType::NTP_Result, 1);
-				let client_receive = event_snapshot.timestamp - get_kernel_zero();
+                    match MessageType::try_from(msg.msg_type) {
+                        Ok(MessageType::Start) => {
+                            println!("⚠️ Received unexpected Start message from server.");
+                        }
+                        Ok(MessageType::NTP) => {
+                            update_user_zero();
+                            let encoded = encode_message(MessageType::NTP, msg.seq, 0, 0, 0, 0.0, 0.0, 0)?;
+                            stream.write_all(&encoded)?;
+                            increment_message_count();
+                        }
+                        Ok(MessageType::NtpResult) => {
+                            let seq = msg.seq;
+                            let event = wait_for_event(seq, MessageType::NtpResult, 1);
+                            let client_recv = event.timestamp - get_kernel_zero();
 
-                                let received_timestamp = msg.timestamp;
-                                let now = Instant::now();
-                                let time_of_depature = now.duration_since(read_user_zero());
-                                let encoded_msg = encode_message(MessageType::NTP_Result, msg.seq, client_sent_time, received_timestamp, client_receive.into(), 0.0, 0.0, 0)?;
-                                stream.write_all(&encoded_msg);
-				increment_message_count();
-				let event_snapshot_send = wait_for_event(number, MessageType::NTP_Result, 2);
-				client_sent_time = (event_snapshot_send.timestamp - get_kernel_zero()) as u128;
-			},
-			Ok(MessageType::PTP) => {
-				update_user_zero();
-                                let number = msg.seq;
-                                let encoded_msg = encode_message(MessageType::PTP, number, 0, 0, 0, 0.0, 0.0, 0)?;
-                                stream.write_all(&encoded_msg)?;
-				increment_message_count();
-			}, 
-			Ok(MessageType::PTP_Result) => {
-				println!("ist angekommen");
-				let offset_diff = msg.i_val;
-  				difference = difference + offset_diff;
-		
-},
+                            //let duration = Instant::now().duration_since(read_user_zero());
+                            let encoded = encode_message(
+                                MessageType::NtpResult,
+                                seq,
+                                client_sent_time,
+                                msg.timestamp,
+                                client_recv as u128,
+                                0.0,
+                                0.0,
+                                0,
+                            )?;
+                            stream.write_all(&encoded)?;
+                            increment_message_count();
 
-			Ok(MessageType::Calc) => {
-				if let (theta, radius) =
-				(msg.first_f64, msg.second_f64) {
-					let y = radius * theta.sin();
-					let number = msg.seq;
-					if number == 0 {
-					thread::spawn(|| {
-                                        let mut binding = Command::new("iperf3");
-                                        let mut cmd = binding
-                                                .arg("-c")
-                                                .arg("192.168.1.1")
-                                                .arg("-u")
-                                                .arg("-b")
-                                                .arg("15M")
-                                                .arg("-t")
-                                                .arg("12")
-                                                .arg("-p")
-                                                .arg("5202")
-                                                .stderr(Stdio::piped())
-                                                .stdout(Stdio::piped())
-                                                .pre_exec(|| {
-                                                        // Setze den Scheduling-Modus auf normal
-                                                        let param = sched_param { sched_priority: 0 };
-                                                        let ret = unsafe { sched_setscheduler(0, SCHED_OTHER, &param) };
-                                                        if ret != 0 {
-                                                                return Err(std::io::Error::last_os_error());
-                                                        }
-                                                        Ok(())
-                                                });
-                                        let mut status = cmd.spawn().expect("Failed to spawn iperf3");
-					notify_python();
-                                        let _ = status.wait().expect("Failed to wait for iperf3 process");
+                            let send_event = wait_for_event(seq, MessageType::NtpResult, 2);
+                            client_sent_time = (send_event.timestamp - get_kernel_zero()) as u128;
+                        }
+                        Ok(MessageType::PTP) => {
+                            update_user_zero();
+                            let encoded = encode_message(MessageType::PTP, msg.seq, 0, 0, 0, 0.0, 0.0, 0)?;
+                            stream.write_all(&encoded)?;
+                            increment_message_count();
+                        }
+                        Ok(MessageType::PtpResult) => {
+                           _difference += msg.i_val;
+                        }
+                        Ok(MessageType::Calc) => {
+                            let (theta, radius) = (msg.first_f64, msg.second_f64);
+                            let y = radius * theta.sin();
+                            let seq = msg.seq;
+
+                            // Launch iperf3 in background
+                            if seq == 0 {
+                                thread::spawn(|| {
+                                    let mut command = Command::new("iperf3");
+                                    let _ = command
+                                        .args(["-c", "192.168.1.1", "-u", "-b", "15M", "-t", "12", "-p", "5202"])
+                                        .stderr(Stdio::piped())
+                                        .stdout(Stdio::piped())
+                                        .pre_exec(|| {
+                                            let param = sched_param { sched_priority: 0 };
+                                            let ret = sched_setscheduler(0, SCHED_OTHER, &param);
+                                            if ret != 0 {
+                                                return Err(std::io::Error::last_os_error());
+                                            }
+                                            Ok(())
+                                        })
+                                        .spawn()
+                                        .and_then(|mut child| {
+                                            notify_python();
+                                            child.wait()?;
+                                            Ok(())
+                                        });
                                 });
+                            }
 
- 					}
-					let start = Instant::now();
-                                	let event_snapshot = wait_for_event(number, MessageType::Calc, 1);
-                                	let client_receive = event_snapshot.timestamp - get_kernel_zero();
+                            let start = Instant::now();
+                            let recv_event = wait_for_event(seq, MessageType::Calc, 1);
+                            let client_recv = recv_event.timestamp - get_kernel_zero();
 
-					let encoded_msg = encode_message(MessageType::Calc, msg.seq, client_queue_time as u128, client_receive as u128, client_sent_time as u128, y, 0.0, 0)?;
-					if let Err(e) = stream.write_all(&encoded_msg) {
-                                        	eprintln!("Error while sending the y coordinate: {}", e);
-                                	}
-					increment_message_count();
+                            let encoded = encode_message(
+                                MessageType::Calc,
+                                seq,
+                                client_queue_time,
+                                client_recv as u128,
+                                client_sent_time,
+                                y,
+                                0.0,
+                                0,
+                            )?;
+                            stream.write_all(&encoded)?;
+                            increment_message_count();
 
-					let event_snapshot_send = wait_for_event(number, MessageType::Calc, 2);
-	                                client_sent_time = (event_snapshot_send.timestamp - get_kernel_zero()) as u128;
-						
-					let event_snapshot_queue = wait_for_queue_event(client_sent_time as u64);
-                                        client_queue_time = (event_snapshot_queue.unwrap().timestamp - get_kernel_zero()) as u128;
-					let dauer = start.elapsed();
-					if dauer.as_millis() > 2 {
-						println!("Funktion dauerte: {:.4?}", dauer);
-					}
-				}
-			}
-		}
-		}
-	} 	
-}
+                            let send_event = wait_for_event(seq, MessageType::Calc, 2);
+                            client_sent_time = (send_event.timestamp - get_kernel_zero()) as u128;
+
+                            let queue_event = wait_for_queue_event(client_sent_time as u64);
+                            if let Some(evt) = queue_event {
+                                client_queue_time = (evt.timestamp - get_kernel_zero()) as u128;
+                            }
+
+                            let duration = start.elapsed();
+                            if duration.as_millis() > 2 {
+                                println!("⚠️ Calc function took {:.4?} ms", duration);
+                            }
+                        }
+                        Err(_) => {
+                            eprintln!("⚠️ Unknown message type: {}", msg.msg_type);
+                        }
+                    }
+                }
+            }
+        }
         Err(e) => {
-            eprintln!("Error while connection to server: {}", e);
+            eprintln!("❌ Could not connect to server: {}", e);
             process::exit(1);
         }
     }
 
+    running.store(false, Ordering::Relaxed);
+    let _ = poll_thread.join();
     Ok(())
 }
-
