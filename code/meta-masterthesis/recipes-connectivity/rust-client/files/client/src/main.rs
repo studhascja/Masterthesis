@@ -18,6 +18,10 @@ use std::env;
 use std::time::Instant;
 use std::collections::VecDeque;
 use once_cell::sync::Lazy;
+use thread_priority::{ThreadPriority, ThreadSchedulePolicy, set_thread_priority_and_policy, set_current_thread_priority};
+use libc::{sched_param, pthread_setschedparam, pthread_self, SCHED_RR, SCHED_OTHER, sched_setscheduler};
+use std::os::unix::process::CommandExt;
+use std::fs::OpenOptions;
 
 static CURRENT_EVENT: OnceLock<Arc<Mutex<VecDeque<Event>>>> = OnceLock::new();
 static CURRENT_QUEUE_EVENT: OnceLock<Arc<Mutex<VecDeque<Event>>>> = OnceLock::new();
@@ -116,6 +120,17 @@ fn encode_message(
     Ok(encoded.to_vec())
 }
 
+fn set_rt_priority(prio: i32) {
+    unsafe {
+        let mut param = sched_param { sched_priority: prio };
+        let ret = pthread_setschedparam(pthread_self(), SCHED_RR, &mut param);
+        if ret != 0 {
+            eprintln!("Failed to set RT priority: {}", ret);
+        } else {
+            println!("RT priority set to {}", prio);
+        }
+    }
+}
 
 fn adjust_time(diff: i128) -> u128 {
     let adjusted_time = if diff >= 0 {
@@ -148,31 +163,46 @@ let mut queue_arc = CURRENT_QUEUE_EVENT.get().expect("CURRENT_QUEUE_EVENT not in
 let count = *MESSAGE_COUNT.lock().unwrap() as usize;
 
 let mut queue = queue_arc.lock().unwrap();
+//println!("Queuelen: {}", queue.len());
+//println!("Queue count: {} Msg count: {}", queue.len(), count);
 for i in 1..queue.len() {
-        if queue.len() >= count && (queue[queue.len() - i].timestamp - get_kernel_zero()) < timestamp {
+	//let actual_timestamp = queue[queue.len() -i].timestamp;
+	//println!("{:?} {:?}", actual_timestamp, timestamp);
+        if queue.len() >= (count -1) && (queue[queue.len() - i].timestamp - get_kernel_zero()) < timestamp {
                 return Some(queue[queue.len() - i].clone());
         }
-        thread::sleep(Duration::from_nanos(50));
+        thread::sleep(Duration::from_nanos(5));
     }
-println!("Falsch");
-return None;
+println!("Queue count: {} Msg count: {}", queue.len(), count);
+return Some(queue[queue.len() - 1].clone());
 }
 
 fn wait_for_event(number: u64, msg_t: MessageType, event_t: u8) -> Event {
         let mut queue_arc = CURRENT_EVENT.get().expect("CURRENT_EVENT not initialized");
         loop {
         {
+	    let i = 0;
             let mut queue = queue_arc.lock().unwrap();
             while let Some(evt) = queue.pop_front() {
+		//println!("{}", i);
                 if let Ok(msg_type) = MessageType::try_from(evt.data.msg_type) {
-                    if msg_type == msg_t && evt.data.seq == number && evt.event_type == event_t {
-                        return evt;
+                    if msg_type == msg_t && evt.data.seq == number && evt.event_type == event_t {  
+			return evt;
                     }
                 }
             }
         }
-        thread::sleep(Duration::from_nanos(50));
+        thread::sleep(Duration::from_nanos(5));
     }
+}
+
+fn notify_python() {
+
+    let mut pipe = OpenOptions::new()
+        .write(true)
+        .open("/tmp/notify_pipe")
+        .expect("Pipe nicht geöffnet");
+    writeln!(pipe, "START").unwrap();
 }
 
 fn set_kernel_zero(value: u64) {
@@ -197,6 +227,7 @@ fn read_user_zero() -> Instant {
 
 
 fn main() -> Result<()> {
+    set_rt_priority(99);
     let event_queue = Arc::new(Mutex::new(VecDeque::new()));
     let queue_event_queue = Arc::new(Mutex::new(VecDeque::new()));
 
@@ -261,11 +292,11 @@ fn main() -> Result<()> {
                 	test_diff,
                 	usersp,
                 	Duration::from_nanos(kernel_diff),
-        );
+        ); 
 
 	}*/
-	0 
-    })?;
+	0
+    })?; 
     let mut ringbuf = ringbuf_builder.build()?;
 
 // Separate Thread für Polling des Ringbuffers starten
@@ -341,11 +372,21 @@ let handle = thread::spawn(move || {
 				increment_message_count();
 			}, 
 			Ok(MessageType::PTP_Result) => {
+				println!("ist angekommen");
 				let offset_diff = msg.i_val;
   				difference = difference + offset_diff;
-		/*
-				thread::spawn(|| {
-                                        let mut status = Command::new("iperf3")
+		
+},
+
+			Ok(MessageType::Calc) => {
+				if let (theta, radius) =
+				(msg.first_f64, msg.second_f64) {
+					let y = radius * theta.sin();
+					let number = msg.seq;
+					if number == 0 {
+					thread::spawn(|| {
+                                        let mut binding = Command::new("iperf3");
+                                        let mut cmd = binding
                                                 .arg("-c")
                                                 .arg("192.168.1.1")
                                                 .arg("-u")
@@ -357,19 +398,22 @@ let handle = thread::spawn(move || {
                                                 .arg("5202")
                                                 .stderr(Stdio::piped())
                                                 .stdout(Stdio::piped())
-                                                .spawn()
-                                                .expect("Failed to start iperf3");
-
+                                                .pre_exec(|| {
+                                                        // Setze den Scheduling-Modus auf normal
+                                                        let param = sched_param { sched_priority: 0 };
+                                                        let ret = unsafe { sched_setscheduler(0, SCHED_OTHER, &param) };
+                                                        if ret != 0 {
+                                                                return Err(std::io::Error::last_os_error());
+                                                        }
+                                                        Ok(())
+                                                });
+                                        let mut status = cmd.spawn().expect("Failed to spawn iperf3");
+					notify_python();
                                         let _ = status.wait().expect("Failed to wait for iperf3 process");
-                                });*/
-                                println!("Störer ausgeführt");
-			},
+                                });
 
-			Ok(MessageType::Calc) => {
-				if let (theta, radius) =
-				(msg.first_f64, msg.second_f64) {
-					let y = radius * theta.sin();
-					let number = msg.seq;
+ 					}
+					let start = Instant::now();
                                 	let event_snapshot = wait_for_event(number, MessageType::Calc, 1);
                                 	let client_receive = event_snapshot.timestamp - get_kernel_zero();
 
@@ -383,7 +427,11 @@ let handle = thread::spawn(move || {
 	                                client_sent_time = (event_snapshot_send.timestamp - get_kernel_zero()) as u128;
 						
 					let event_snapshot_queue = wait_for_queue_event(client_sent_time as u64);
-                                        client_queue_time = (event_snapshot_queue.unwrap().timestamp - get_kernel_zero()) as u128
+                                        client_queue_time = (event_snapshot_queue.unwrap().timestamp - get_kernel_zero()) as u128;
+					let dauer = start.elapsed();
+					if dauer.as_millis() > 2 {
+						println!("Funktion dauerte: {:.4?}", dauer);
+					}
 				}
 			}
 		}

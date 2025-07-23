@@ -53,6 +53,8 @@ IMAGE_INSTALL += " \
   iproute2 \
   iptables \
   network-config \
+  iftop \
+  tcpdump \
 "
 
 DISTRO_FEATURES:append = " wifi systemd"
