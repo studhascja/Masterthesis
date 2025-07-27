@@ -21,21 +21,26 @@ It consists of two Raspberry Pi 5 devices, whose exact composition is described 
 One Raspberry Pi acts as the server, while the other functions as the client. 
 Both devices run the same operating system.
 
-There are two communication links between the server and the client.
-One link which transfers real-time data and another one for transfering non-real-time bulk data.
-The  
-These connections are handled by separate programs but operate within the same network. 
-The server provides an access point to which the client connects, thereby establishing a peer-to-peer connection.
-
-In summary, the goal of the test environment is to transmit both real-time data and standard (non-real-time) data over the same wireless network interface. 
-While the bulk data throughput should be maximized, the primary focus is to ensure that no real-time violations occur on the real-time connection.
-
 \begin{figure}[ht]
     \centering
      \includegraphics[width=0.8\textwidth]{figures/Pi_general.drawio.pdf}
     \caption{Outline of the overall test environment}
     \label{fig:pi_wifi_general}
 \end{figure}
+
+There are two communication links between the server and the client.
+One link which transfers \ac{rt-data} and another one for transfering \ac{non-rt-data}.
+These two links are illustraded in Figure \ref{fig:pi_wifi_general} in blue and red.
+These connections are handled by separate programs but operate within the same network. 
+The server provides an access point to which the client connects, thereby establishing a peer-to-peer connection.
+
+In summary, the goal of the test environment is to transmit both \ac{rt-data} and \ac{non-rt-data} data over the same wireless network interface. 
+While the bulk data throughput should be maximized, the primary focus is to ensure that no real-time violations occur on the real-time connection.
+
+Since the test system is intended to transmit, among normal data, \ac{rt-data}, it must fulfill the requirements of a \ac{rt-system}. 
+Therefore, the following section first outlines the general requirements of \acp{rt-system}. 
+Subsequently, additional requirements that go beyond standard \ac{rt} criteria and are specifically relevant for this system within the given test environment are discussed in more detail.
+
 \subsection{Requirements Real Time}
 
 \subsection{Requirements Test System}
