@@ -1,13 +1,45 @@
 \chapter{Test Environment}
-\section{Test concept}
-\subsection{Requirements}
-\subsection{Used Technologies}
-\subsection{Server and Client Implementation}
-\subsection{Monitoring}
-\subsection{Test Automatization}
-\subsection{Access point configuration}
-\section{Operating System}
-\subsection{Requirements}
+In this chapter, the test environment is examined in more detail.
+In the following, the terms test environment, test system, and operating system are used. 
+The test environment comprises both the test system and the operating system. 
+The test system refers exclusively to the applications that are part of the test environment and run on top of the operating system. 
+Accordingly, the test system does not include the underlying hardware or the operating system itself.
+
+This chapter is divided into the three parts requirements, test system and the operating system. 
+A detailed analysis of the requirements is provided at the outset, as they serve as the basis for both the development of the operating system and the test concept. 
+Thus, the requirements constitute the foundation for the overall design of the test environment.
+Afterwards the operating system, as it forms the foundation on which the test system will later be implemented, will be described.
+Finally, the test system itself will be discussed in more detail.
+
+\section{Requirements}
+In this section, the requirements of the test environment are analyzed in greater detail. 
+The discussion begins with a description of the system architecture, followed by an outline of general real-time requirements. 
+These are then used to define the specific requirements applicable to the test system.
+
+The test environment is illustrated in Figure \ref{fig:pi_wifi_general}. 
+It consists of two Raspberry Pi 5 devices, whose exact composition is described in detail in Chapter \ref{sec:used_hardware}. 
+One Raspberry Pi acts as the server, while the other functions as the client. 
+Both devices run the same operating system.
+
+There are two communication links between the server and the client.
+One link which transfers real-time data and another one for transfering non-real-time bulk data.
+The  
+These connections are handled by separate programs but operate within the same network. 
+The server provides an access point to which the client connects, thereby establishing a peer-to-peer connection.
+
+In summary, the goal of the test environment is to transmit both real-time data and standard (non-real-time) data over the same wireless network interface. 
+While the bulk data throughput should be maximized, the primary focus is to ensure that no real-time violations occur on the real-time connection.
+
+\begin{figure}[ht]
+    \centering
+     \includegraphics[width=0.8\textwidth]{figures/Pi_general.drawio.pdf}
+    \caption{Outline of the overall test environment}
+    \label{fig:pi_wifi_general}
+\end{figure}
+\subsection{Requirements Real Time}
+
+\subsection{Requirements Test System}
+
 \begin{itemize}
     \item As less background noise on the system as possible
     \item Capable for hard real time
@@ -15,12 +47,15 @@
     \item Capability to use the Wi-Fi Card
     \item Network tools, to manage my Wi-Fi interface and generate the workload
 \end{itemize}
+
+\section{Operating System}
+
 \subsection{Yocto}
 \begin{itemize}
     \item Open source advantage reduce costs of licensing, full control over product, flexibility, 
 \end{itemize}
 \subsection{Implementation}
-
+\cite{The_Linux_Foundation_2011}
 \begin{itemize}
     \item local.conf \begin{itemize}
         \item set machine to raspberrypi 5
@@ -109,3 +144,19 @@
 def hallo():
     print("Hallo Welt")
 \end{minted}
+
+\section{Test system}
+
+\begin{figure}[ht]
+    \centering
+     \includegraphics[width=0.8\textwidth]{figures/PI_Overview.drawio.pdf}
+    \caption{Presentation of the test system overview}
+    \label{fig:pi_wifi_schematic}
+\end{figure}
+
+\subsection{Requirements}
+\subsection{Used Technologies}
+\subsection{Server and Client Implementation}
+\subsection{Monitoring}
+\subsection{Test Automatization}
+\subsection{Access point configuration}

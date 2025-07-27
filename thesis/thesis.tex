@@ -48,13 +48,20 @@
 \usepackage{framed}			% shaded Umgebung
 \definecolor{shadecolor}{gray}{.85}%
 \usepackage{minted}
+\usepackage{asymptote}
 % Links im PDF
 \usepackage[colorlinks=false,
             pdfborder={0 0 0},
             breaklinks=true,
             pdfpagelabels=true]
             {hyperref}
-
+\usepackage{tikz}
+\usepackage[margin=1in]{geometry}
+\usetikzlibrary{shapes.geometric, arrows.meta, positioning, calc}
+\usetikzlibrary{3d, calc}
+\usepackage{tikz-3dplot}
+\usepackage{xcolor}
+\definecolor{gold}{rgb}{1,0.84,0} % Define gold color
 % Einstellungen für Bild-/Tabellenbeschriftung neben dem Bild
 \floatsetup[figure]{capbesideposition={inside,top}}
 \floatsetup[table]{capbesideposition={inside,top},style=plaintop}
@@ -110,8 +117,9 @@
 \appendix
 \include{append}
 
+
 \cleardoublepage
 
-\bibliographystyle{natger}  % this is intended to be used together with German language settings; replace if you desire a different style
+\bibliographystyle{plainnat}  % this is intended to be used together with German language settings; replace if you desire a different style
 \bibliography{thesis}
 \end{document}
