@@ -104,10 +104,30 @@ This includes the availability of essential programming languages and user-space
 
 Moreover, the operating system should be as minimal as possible, containing only the components explicitly required for the test environment. 
 This reduces background activity and minimizes potential sources of interference or error, thereby ensuring a more stable and predictable testing environment.
-\subsection{Real Time Requirements}
 
-\subsection{Requirements Test System}
+In addition to the operating system, the test system also has non‑real‑time requirements.
+These are highlighted in yellow under “Test System” in Figure \ref{fig:requirements}. 
+The test system must be capable of transmitting both \ac{rt} and non-real-time data concurrently over the same network, with the \ac{rt} traffic maintaining a maximum round-trip delay of 3 ms. 
+This timing constraint stems from the fact that this work seeks to characterize Wi‑Fi’s \ac{rt} capabilities and the factors that influence them, and to assess whether Wi‑Fi can be employed in an industrial \ac{rt} environment. 
+As discussed in Chapter \ref{sec:real_time}, such environments commonly impose a 3 ms deadline.
 
+Furthermore, the application under test must be instrumented so that its \ac{rt} performance can be measured accurately, enabling meaningful conclusions to be drawn. 
+This requires comprehensive monitoring and debugging facilities to precisely identify and isolate any sources of \ac{rt} violations.
+
+For the non‑real‑time traffic, as much data as possible should be transmitted without degrading the \ac{rt} application’s performance. 
+This measn, only throughput and packet‑loss metrics need be considered for this traffic in the monitoring.
+
+Moreover, this study will compare the \ac{rt} performance of the algorithms underpinning different Wi‑Fi standards. 
+To that end, the server must support access points for Wi-Fi 4, 5, and 6 across all relevant frequency bands (2.4 GHz, 5 GHz, and 6 GHz). 
+The impact of QoS on \ac{rt} capability will also be evaluated, so the test system must be able to mark network packets with QoS parameters. 
+Given the large number of combinations of Wi‑Fi standards, frequency bands, and QoS settings, an automated test framework is required to generate a comprehensive dataset for all test cases, from which reliable insights can be derived.
+
+In this chapter, the requirements for the test environment were defined. 
+The following sections will discuss how these requirements are implemented. 
+The focus will first be on the selection and configuration of the operating system.
+
+\section{Operating System}
+Auswahl zwischen RTOS und Linux mit RT-Patch
 \begin{itemize}
     \item As less background noise on the system as possible
     \item Capable for hard real time
@@ -115,9 +135,6 @@ This reduces background activity and minimizes potential sources of interference
     \item Capability to use the Wi-Fi Card
     \item Network tools, to manage my Wi-Fi interface and generate the workload
 \end{itemize}
-
-\section{Operating System}
-Auswahl zwischen RTOS und Linux mit RT-Patch
 \subsection{Yocto}
 \begin{itemize}
     \item Open source advantage reduce costs of licensing, full control over product, flexibility, 
