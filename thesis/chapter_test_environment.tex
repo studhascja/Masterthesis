@@ -13,7 +13,7 @@ Finally, the test system itself will be discussed in more detail.
 
 \section{Requirements}
 In this section, the requirements of the test environment are analyzed in greater detail. 
-The discussion begins with a description of the system architecture, followed by an outline of general real-time requirements. 
+The discussion begins with a description of the system architecture, followed by an outline of general \ac{rt} requirements. 
 These are then used to define the specific requirements applicable to the test system.
 
 The test environment is illustrated in Figure \ref{fig:pi_wifi_general}. 
@@ -35,45 +35,75 @@ These connections are handled by separate programs but operate within the same n
 The server provides an access point to which the client connects, thereby establishing a peer-to-peer connection.
 
 In summary, the goal of the test environment is to transmit both \ac{rt-data} and \ac{non-rt-data} data over the same wireless network interface. 
-While the bulk data throughput should be maximized, the primary focus is to ensure that no real-time violations occur on the real-time connection.
+While the bulk data throughput should be maximized, the primary focus is to ensure that no \ac{rt} violations occur on the \ac{rt} connection.
 
 Since the test system is intended to transmit, among normal data, \ac{rt-data}, it must fulfill the requirements of a \ac{rt-system}. 
 Therefore, the following section first outlines the general requirements of \acp{rt-system}. 
 Subsequently, additional requirements that go beyond standard \ac{rt} criteria and are specifically relevant for this system within the given test environment are discussed in more detail.
 
 \subsection{Requirements Real Time}
-To enable a system to achieve real-time capability, numerous factors must be considered. 
-Since this work aims to evaluate the real-time capabilities of WiFi, an interface that is not inherently real-time capable—and given that hardware-based requirements would have little impact in this context while significantly broadening the scope of this thesis, only software-related requirements will be addressed.
+To enable a system to achieve \ac{rt} capability, numerous factors must be considered. 
+Since this work aims to evaluate the \ac{rt} capabilities of Wi-Fi, an interface that is not inherently \ac{rt} capable—and given that hardware-based requirements would have little impact in this context while significantly broadening the scope of this thesis, only software-related requirements will be addressed.
 
-As previously mentioned in Chapter \ref{sec:real_time}, the primary objective of a real-time system is predictability. 
+As previously mentioned in Chapter \ref{sec:real_time}, the primary objective of a \ac{rt} system is predictability. 
 According to Buttazzo \cite[p. 10]{Buttazzo_2024}, predictability can only be achieved if the system ensures timeliness, meaning that the value of a process depends not only on its correct output but also on its timely execution—specifically, meeting deadlines.
 
-To fulfill these requirements, the software foundation, particularly the operating system kernel, must be tailored to real-time needs.
+To fulfill these requirements, the software foundation, particularly the operating system kernel, must be tailored to \ac{rt} needs.
 Key aspects include preemptiveness, scheduling, inter-task synchronization, inter-task communication, memory management, interrupt handling, and timers.
-The necessity for these mechanisms to be implemented differently in real-time capable kernels compared to non-real-time ones is discussed in detail in Chapter \ref{subsec:real_time_kernel} and will therefore not be reiterated here.
+The necessity for these mechanisms to be implemented differently in \ac{rt} capable kernels compared to non-real-time ones is discussed in detail in Chapter \ref{subsec:real_time_kernel} and will therefore not be reiterated here.
 
-However, these mechanisms must not only be real-time capable at the kernel level—they also need to be considered during the development of applications intended to operate in a real-time context. 
+However, these mechanisms must not only be \ac{rt} capable at the kernel level—they also need to be considered during the development of applications intended to operate in a \ac{rt} context. 
 As Buttazzo outlines in \cite[p. 13 - 20]{Buttazzo_2024}, particular attention must be paid to the choice of programming language, memory usage, and synchronization and communication between processes.
+It follows that, as shown in Figure \ref{fig:requirements} memory management, inter-task communication and inter-task-synchronsiation are not only requirements for the \ac{OS}, but must also be taken into account in the test system.
 
-In \cite[p. 17, 18]{Buttazzo_2024} Buttazzo emphasizes that the choice of programming language for real-time systems should avoid the use of dynamic data structures and recursion. 
+In \cite[p. 17, 18]{Buttazzo_2024} Buttazzo emphasizes that the choice of programming language for \ac{rt} systems should avoid the use of dynamic data structures and recursion. 
 This is because dynamic memory allocation and deallocation introduce unpredictability in execution time, making it impossible to determine the program's timing behavior in advance. 
 Therefore, memory must be allocated statically and prior to execution. 
 Similarly, recursion poses a challenge, as it is difficult to predict the amount of memory required and the number of recursive calls during runtime.
 
-Furthermore, Buttazzo argues that a programming language suitable for real-time applications should support bounded loops, meaning that the number of iterations is fixed and known at compile time. 
-In general, programming languages for real-time systems should offer the capability to explicitly define timing constraints and ensure adherence to the aforementioned principles—ideally enforcing them.
-As programming languages, Buttazzo suggests Real-Time Concurrent C and Real-Time Euclid, both of which fulfill all the stated requirements.
+Furthermore, Buttazzo argues that a programming language suitable for \ac{rt} applications should support bounded loops, meaning that the number of iterations is fixed and known at compile time. 
+In general, programming languages for \ac{rt} systems should offer the capability to explicitly define timing constraints and ensure adherence to the aforementioned principles—ideally enforcing them.
+As programming languages, Buttazzo suggests \texttt{Real-Time Concurrent C} and \texttt{Real-Time Euclid}, both of which fulfill all the stated requirements.
 
-By contrast, Michael P. Rooney et al. describe in \cite[p. 1]{10321761} a study involving the development of a Supervisory Control and Data Acquisition (SCADA) real-time application implemented in the four different programming languages C, Rust, Numba Python and Cython.
-All of these languages were successfully used to achieve real-time performance. 
+By contrast, Michael P. Rooney et al. describe in \cite[p. 1]{10321761} a study involving the development of a \ac{SCADA} \ac{rt} application implemented in the four different programming languages C, Rust, Numba Python and Cython.
+All of these languages were successfully used to achieve \ac{rt} performance. 
 Notably, Rust demonstrated a power consumption profile comparable to C, indicating similar efficiency.
 
 While the characteristics outlined by Buttazzo are not mandatory in any of these languages, they can be implemented with appropriate discipline and design. 
-Thus, these languages are also suitable for real-time application development, provided that the specific constraints related to memory management, recursion, and timing predictability are consciously observed and enforced by the developer, as they are not inherently guaranteed by the language itself.
+Thus, these languages are also suitable for \ac{rt} application development, provided that the specific constraints related to memory management, recursion, and timing predictability are consciously observed and enforced by the developer, as they are not inherently guaranteed by the language itself.
 
-The chosen programming languages and specific implementation-level requirements for achieving real-time capability and how these are addressed are discussed in detail in Chapter \ref{subsec:impl}.
+The chosen programming languages and specific implementation-level requirements for achieving \ac{rt} capability and how these are addressed are discussed in detail in Chapter \ref{subsec:impl}.
 
-\subsection{Requirements Test System}
+To summarize the requirements of the test environment are illustrated in Figure \ref{fig:requirements}.
+There the requirements are split between \ac{OS} and test system.
+Furthermore, a distinction is made between \ac{rt} and non-real-time requirements.
+In this section the requirements shown in blue where stated.
+
+\begin{figure}[ht]
+    \centering
+     \includegraphics[width=\textwidth]{figures/Requirements.drawio.pdf}
+    \caption[Illustration of the requirements for the test environment]{Illustration of the requirements for the test environment: Requirements caused by the real-time capability are shown in blue. Requirements relating to the test system are shown in yellow.}
+    \label{fig:requirements}
+\end{figure}
+
+\subsection{Requirements Test Environment}
+The following section defines the requirements for the test environment which are shown in yellow in Figure \ref{fig:requirements}.
+These are divided into the requirements for the operating system and the requirements for the test system itself.
+For both the test system and the operating system, the previously defined criteria for \ac{rt} capability are assumed to be fulfilled.
+
+The requirements for the operating system include providing appropriate support for both the hardware and the software components of the test evnironment. 
+As described in Chapter \ref{sec:used_hardware}, this work utilizes a Raspberry Pi 5, to which a MediaTek 7925B22M and an Atheros AR5BXB92 Wi-Fi module can be connected via PCIe.
+Accordingly, the operating system have to support the Raspberry Pi 5 architecture and offer compatibility with the drivers mt76, mt7925e, and ath9k.
+
+Furthermore, the mt7925e driver is only available starting from Linux kernel version 6.8 and receives extended feature support with newer versions. 
+These enhancements primarily concern functionality related to Wi-Fi 6E and Wi-Fi 7. 
+Since these standards are also within the scope of this work, the operating system should support the most recent possible version of the mt7925e driver to ensure full access to these capabilities.
+
+In addition to hardware compatibility, the operating system must also ensure compatibility with the required software components. 
+This includes the availability of essential programming languages and user-space networking and diagnostic tools which are necessary to run the test-system.
+
+Moreover, the operating system should be as minimal as possible, containing only the components explicitly required for the test environment. 
+This reduces background activity and minimizes potential sources of interference or error, thereby ensuring a more stable and predictable testing environment.
 
 \begin{itemize}
     \item As less background noise on the system as possible
