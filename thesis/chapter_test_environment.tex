@@ -29,8 +29,8 @@ Both devices run the same operating system.
 \end{figure}
 
 There are two communication links between the server and the client.
-One link which transfers \ac{rt-data} and another one for transfering \ac{non-rt-data}.
-These two links are illustraded in Figure \ref{fig:pi_wifi_general} in blue and red.
+One link which transfers \ac{rt-data} and another one for transferring \ac{non-rt-data}.
+These two links are illustrated in Figure \ref{fig:pi_wifi_general} in blue and red.
 These connections are handled by separate programs but operate within the same network. 
 The server provides an access point to which the client connects, thereby establishing a peer-to-peer connection.
 
@@ -42,6 +42,36 @@ Therefore, the following section first outlines the general requirements of \acp
 Subsequently, additional requirements that go beyond standard \ac{rt} criteria and are specifically relevant for this system within the given test environment are discussed in more detail.
 
 \subsection{Requirements Real Time}
+To enable a system to achieve real-time capability, numerous factors must be considered. 
+Since this work aims to evaluate the real-time capabilities of WiFi, an interface that is not inherently real-time capable—and given that hardware-based requirements would have little impact in this context while significantly broadening the scope of this thesis, only software-related requirements will be addressed.
+
+As previously mentioned in Chapter \ref{sec:real_time}, the primary objective of a real-time system is predictability. 
+According to Buttazzo \cite[p. 10]{Buttazzo_2024}, predictability can only be achieved if the system ensures timeliness, meaning that the value of a process depends not only on its correct output but also on its timely execution—specifically, meeting deadlines.
+
+To fulfill these requirements, the software foundation, particularly the operating system kernel, must be tailored to real-time needs.
+Key aspects include preemptiveness, scheduling, inter-task synchronization, inter-task communication, memory management, interrupt handling, and timers.
+The necessity for these mechanisms to be implemented differently in real-time capable kernels compared to non-real-time ones is discussed in detail in Chapter \ref{subsec:real_time_kernel} and will therefore not be reiterated here.
+
+However, these mechanisms must not only be real-time capable at the kernel level—they also need to be considered during the development of applications intended to operate in a real-time context. 
+As Buttazzo outlines in \cite[p. 13 - 20]{Buttazzo_2024}, particular attention must be paid to the choice of programming language, memory usage, and synchronization and communication between processes.
+
+In \cite[p. 17, 18]{Buttazzo_2024} Buttazzo emphasizes that the choice of programming language for real-time systems should avoid the use of dynamic data structures and recursion. 
+This is because dynamic memory allocation and deallocation introduce unpredictability in execution time, making it impossible to determine the program's timing behavior in advance. 
+Therefore, memory must be allocated statically and prior to execution. 
+Similarly, recursion poses a challenge, as it is difficult to predict the amount of memory required and the number of recursive calls during runtime.
+
+Furthermore, Buttazzo argues that a programming language suitable for real-time applications should support bounded loops, meaning that the number of iterations is fixed and known at compile time. 
+In general, programming languages for real-time systems should offer the capability to explicitly define timing constraints and ensure adherence to the aforementioned principles—ideally enforcing them.
+As programming languages, Buttazzo suggests Real-Time Concurrent C and Real-Time Euclid, both of which fulfill all the stated requirements.
+
+By contrast, Michael P. Rooney et al. describe in \cite[p. 1]{10321761} a study involving the development of a Supervisory Control and Data Acquisition (SCADA) real-time application implemented in the four different programming languages C, Rust, Numba Python and Cython.
+All of these languages were successfully used to achieve real-time performance. 
+Notably, Rust demonstrated a power consumption profile comparable to C, indicating similar efficiency.
+
+While the characteristics outlined by Buttazzo are not mandatory in any of these languages, they can be implemented with appropriate discipline and design. 
+Thus, these languages are also suitable for real-time application development, provided that the specific constraints related to memory management, recursion, and timing predictability are consciously observed and enforced by the developer, as they are not inherently guaranteed by the language itself.
+
+The chosen programming languages and specific implementation-level requirements for achieving real-time capability and how these are addressed are discussed in detail in Chapter \ref{subsec:impl}.
 
 \subsection{Requirements Test System}
 
@@ -54,7 +84,7 @@ Subsequently, additional requirements that go beyond standard \ac{rt} criteria a
 \end{itemize}
 
 \section{Operating System}
-
+Auswahl zwischen RTOS und Linux mit RT-Patch
 \subsection{Yocto}
 \begin{itemize}
     \item Open source advantage reduce costs of licensing, full control over product, flexibility, 
@@ -159,9 +189,8 @@ def hallo():
     \label{fig:pi_wifi_schematic}
 \end{figure}
 
-\subsection{Requirements}
 \subsection{Used Technologies}
-\subsection{Server and Client Implementation}
+\subsection{Server and Client Implementation} \label{subsec:impl}
 \subsection{Monitoring}
 \subsection{Test Automatization}
 \subsection{Access point configuration}
