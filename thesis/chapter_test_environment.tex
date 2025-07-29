@@ -127,7 +127,58 @@ The following sections will discuss how these requirements are implemented.
 The focus will first be on the selection and configuration of the operating system.
 
 \section{Operating System}
-Auswahl zwischen RTOS und Linux mit RT-Patch
+As discussed in the previous chapter, the selection of an appropriate operating system must primarily consider its \ac{rt} capabilities. 
+Such operating systems are referred to as Real-Time Operating Systems (RTOS). 
+There exists a wide variety of RTOS, each differing in architecture, strengths, and limitations.
+
+One RTOS that imposes almost no restrictions in terms of performance and compatibility compared to a general-purpose operating system is RT-Linux. 
+As described by Sampath et al. in \cite{Sampath_2007}, RT-Linux is a Linux-based system enhanced through the PREEMPT\_RT patch, which equips it with real-time capabilities. 
+The authors examine the use of RT-Linux on an industrial controller with strict \ac{rt} requirements and additional \ac{rt} Ethernet demands. 
+Their study demonstrates the suitability of RT-Linux for such applications, reporting a maximum jitter of 380 microseconds over a 24-hour endurance test.
+
+Similarly, Arshiabanu \cite{ARSHIABANU_2014} presents a \ac{rt} system implemented using RT-Linux. 
+The study evaluates the impact of various scheduling policies on \ac{rt} performance and is executed on a Raspberry Pi. 
+Dewit et al. \cite{ae11aecebd4e4fd6896d0b8bb93fa73a} further investigate the influence of RT-Linux in combination with a Raspberry Pi 5 on scheduling latencies, reporting a maximum scheduling latency of 125 microseconds.
+This study is especially relevant for this work, because it uses the same hardware platform.
+
+Despite these studies, there also are more critical perspectives. 
+Siro Arthur et al. \cite{Siro_2007} also evaluated \ac{rt} capabilities of RT-Linux. 
+This study analyzes metrics such as context switch time, memory access latency and TCP latency. 
+It compares not only various Linux preemption models but also contrasts RT-Linux against RTOS specifically designed for \ac{rt} use, such as RTAI and LXRT. 
+The study reveals that while the PREEMPT\_RT patch enhances \ac{rt} capabilities, it does not reach the same level of determinism as systems natively designed for \ac{rt} applications. 
+Furthermore, this analysis was performed on single-core CPUs, where reduced shared resources can change the \ac{rt} behavior. 
+
+There are also studies with multicore platforms which questions the suitability of RT-Linux for hard \ac{rt} environments. 
+Carvalho et al. \cite{9018464} investigated RT-Linux running on a Raspberry Pi, focusing on latency metrics such as polling, timed loops, hardware interrupts, and software interrupts. 
+Their results confirm that although RT-Linux offers certain \ac{rt}  properties, it should only be used in non-critical real-time environments. 
+This conclusion is supported by Betz et al. \cite{5347056}, who state that RT-Linux is appropriate for soft \ac{rt} applications.
+
+Yang et al. \cite{10870260} compare the \ac{rt} performance of NuttX, FreeRTOS, RT-Linux, and Xenomai. 
+A noteworthy aspect of their study is the inclusion of both \ac{rt} capabilities and general-purpose features. 
+While RT-Linux can be used as a standalone system, to match these requirements, pure RTOS like FreeRTOS and NuttX are executed alongside a general-purpose operating system. 
+Also in this study a Raspberry Pi 4 was used as the hardware platform. 
+The results are showin that pure RTOS, especially FreeRTOS, netherless deliver better \ac{rt} performance.
+
+Mariesk et al. \cite{6140739} distinguish between the two fundamental RTOS types kernel-based RTOS and embedded RTOS. 
+In their study, they evaluate systems based on interrupt latency, task switching time, and preemption time. 
+RT-Linux and Xenomai are considered kernel-based RTOS, while eCos represents the embedded type. 
+The results show that kernel-based RTOS are more suitable for multi-task applications due to their lower task-switching overhead. 
+Since this work requires the execution of multiple concurrent tasks, frequent scheduling switches are expected, making a kernel-based RTOS the preferable choice.
+
+In summary, the optimal RTOS depends heavily on the specific application and \ac{rt} requirements. 
+Based on the referenced studies, FreeRTOS appears to offer the best \ac{rt} capabilities. 
+However, additional constraints beyond \ac{rt} performance must be considered when selecting the operating system, like stated in the previous section.
+This means particularly hardware compatibility of the \ac{OS}. 
+The MediaTek 7925B22M Wi-Fi card used in this work lacks drivers outside the Linux ecosystem, thereby excluding FreeRTOS as a viable option.
+
+Considering the experience with RT-Linux on Raspberry Pi systems stated by the studies before and the demonstrated maximum scheduling latency of 125 microseconds along with a maximum jitter of 380 microseconds of the test-system, RT-Linux proves sufficient for the purposes of this work. 
+Given a round-trip time (RTT) requirement of 3 milliseconds, this jitter is acceptable. 
+Furthermore, since Wi-Fi is inherently not \ac{rt} capable, and as discussed in Chapter \ref{sec:used_hardware}, the employed hardware which has, among other shared resources, a split L3 cache, is not optimized for \ac{rt} processing.
+So the minor limitations of RT-Linux do not significantly impact this test-environment.
+
+There are various ways to implement an RT-Linux system. 
+The method chosen for this work, including its setup and configuration, will be described in the following section.
+
 \begin{itemize}
     \item As less background noise on the system as possible
     \item Capable for hard real time
