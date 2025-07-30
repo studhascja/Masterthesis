@@ -1,14 +1,14 @@
 \chapter{Test Environment}
 In this chapter, the test environment is examined in more detail.
-In the following, the terms test environment, test system, and operating system are used. 
-The test environment comprises both the test system and the operating system. 
-The test system refers exclusively to the applications that are part of the test environment and run on top of the operating system. 
-Accordingly, the test system does not include the underlying hardware or the operating system itself.
+In the following, the terms test environment, test system, and \ac{OS} are used. 
+The test environment comprises both the test system and the \ac{OS}. 
+The test system refers exclusively to the applications that are part of the test environment and run on top of the \ac{OS}. 
+Accordingly, the test system does not include the underlying hardware or the \ac{OS} itself.
 
-This chapter is divided into the three parts requirements, test system and the operating system. 
-A detailed analysis of the requirements is provided at the outset, as they serve as the basis for both the development of the operating system and the test concept. 
+This chapter is divided into the three parts requirements, test system and the \ac{OS}. 
+A detailed analysis of the requirements is provided at the outset, as they serve as the basis for both the development of the \ac{OS} and the test concept. 
 Thus, the requirements constitute the foundation for the overall design of the test environment.
-Afterwards the operating system, as it forms the foundation on which the test system will later be implemented, will be described.
+Afterwards the \ac{OS}, as it forms the foundation on which the test system will later be implemented, will be described.
 Finally, the test system itself will be discussed in more detail.
 
 \section{Requirements}
@@ -19,7 +19,7 @@ These are then used to define the specific requirements applicable to the test s
 The test environment is illustrated in Figure \ref{fig:pi_wifi_general}. 
 It consists of two Raspberry Pi 5 devices, whose exact composition is described in detail in Chapter \ref{sec:used_hardware}. 
 One Raspberry Pi acts as the server, while the other functions as the client. 
-Both devices run the same operating system.
+Both devices run the same \ac{OS}.
 
 \begin{figure}[ht]
     \centering
@@ -48,9 +48,9 @@ Since this work aims to evaluate the \ac{rt} capabilities of Wi-Fi, an interface
 As previously mentioned in Chapter \ref{sec:real_time}, the primary objective of a \ac{rt} system is predictability. 
 According to Buttazzo \cite[p. 10]{Buttazzo_2024}, predictability can only be achieved if the system ensures timeliness, meaning that the value of a process depends not only on its correct output but also on its timely execution—specifically, meeting deadlines.
 
-To fulfill these requirements, the software foundation, particularly the operating system kernel, must be tailored to \ac{rt} needs.
+To fulfill these requirements, the software foundation, particularly the \ac{OS} kernel, must be tailored to \ac{rt} needs.
 Key aspects include preemptiveness, scheduling, inter-task synchronization, inter-task communication, memory management, interrupt handling, and timers.
-The necessity for these mechanisms to be implemented differently in \ac{rt} capable kernels compared to non-real-time ones is discussed in detail in Chapter \ref{subsec:real_time_kernel} and will therefore not be reiterated here.
+The necessity for these mechanisms to be implemented differently in \ac{rt} capable kernels compared to non-\ac{rt} ones is discussed in detail in Chapter \ref{subsec:real_time_kernel} and will therefore not be reiterated here.
 
 However, these mechanisms must not only be \ac{rt} capable at the kernel level—they also need to be considered during the development of applications intended to operate in a \ac{rt} context. 
 As Buttazzo outlines in \cite[p. 13 - 20]{Buttazzo_2024}, particular attention must be paid to the choice of programming language, memory usage, and synchronization and communication between processes.
@@ -76,7 +76,7 @@ The chosen programming languages and specific implementation-level requirements 
 
 To summarize the requirements of the test environment are illustrated in Figure \ref{fig:requirements}.
 There the requirements are split between \ac{OS} and test system.
-Furthermore, a distinction is made between \ac{rt} and non-real-time requirements.
+Furthermore, a distinction is made between \ac{rt} and non-\ac{rt} requirements.
 In this section the requirements shown in blue where stated.
 
 \begin{figure}[ht]
@@ -86,28 +86,28 @@ In this section the requirements shown in blue where stated.
     \label{fig:requirements}
 \end{figure}
 
-\subsection{Requirements Test Environment}
+\subsection{Requirements Test Environment} \label{subsec:requirements}
 The following section defines the requirements for the test environment which are shown in yellow in Figure \ref{fig:requirements}.
-These are divided into the requirements for the operating system and the requirements for the test system itself.
-For both the test system and the operating system, the previously defined criteria for \ac{rt} capability are assumed to be fulfilled.
+These are divided into the requirements for the \ac{OS} and the requirements for the test system itself.
+For both the test system and the \ac{OS}, the previously defined criteria for \ac{rt} capability are assumed to be fulfilled.
 
-The requirements for the operating system include providing appropriate support for both the hardware and the software components of the test evnironment. 
+The requirements for the \ac{OS} include providing appropriate support for both the hardware and the software components of the test evnironment. 
 As described in Chapter \ref{sec:used_hardware}, this work utilizes a Raspberry Pi 5, to which a MediaTek 7925B22M and an Atheros AR5BXB92 Wi-Fi module can be connected via PCIe.
-Accordingly, the operating system have to support the Raspberry Pi 5 architecture and offer compatibility with the drivers mt76, mt7925e, and ath9k.
+Accordingly, the \ac{OS} have to support the Raspberry Pi 5 architecture and offer compatibility with the drivers mt76, mt7925e, and ath9k.
 
 Furthermore, the mt7925e driver is only available starting from Linux kernel version 6.8 and receives extended feature support with newer versions. 
 These enhancements primarily concern functionality related to Wi-Fi 6E and Wi-Fi 7. 
-Since these standards are also within the scope of this work, the operating system should support the most recent possible version of the mt7925e driver to ensure full access to these capabilities.
+Since these standards are also within the scope of this work, the \ac{OS} should support the most recent possible version of the mt7925e driver to ensure full access to these capabilities.
 
-In addition to hardware compatibility, the operating system must also ensure compatibility with the required software components. 
+In addition to hardware compatibility, the \ac{OS} must also ensure compatibility with the required software components. 
 This includes the availability of essential programming languages and user-space networking and diagnostic tools which are necessary to run the test-system.
 
-Moreover, the operating system should be as minimal as possible, containing only the components explicitly required for the test environment. 
+Moreover, the \ac{OS} should be as minimal as possible, containing only the components explicitly required for the test environment. 
 This reduces background activity and minimizes potential sources of interference or error, thereby ensuring a more stable and predictable testing environment.
 
-In addition to the operating system, the test system also has non‑real‑time requirements.
+In addition to the \ac{OS}, the test system also has non‑real‑time requirements.
 These are highlighted in yellow under “Test System” in Figure \ref{fig:requirements}. 
-The test system must be capable of transmitting both \ac{rt} and non-real-time data concurrently over the same network, with the \ac{rt} traffic maintaining a maximum round-trip delay of 3 ms. 
+The test system must be capable of transmitting both \ac{rt} and non-\ac{rt} data concurrently over the same network, with the \ac{rt} traffic maintaining a maximum round-trip delay of 3 ms. 
 This timing constraint stems from the fact that this work seeks to characterize Wi‑Fi’s \ac{rt} capabilities and the factors that influence them, and to assess whether Wi‑Fi can be employed in an industrial \ac{rt} environment. 
 As discussed in Chapter \ref{sec:real_time}, such environments commonly impose a 3 ms deadline.
 
@@ -124,31 +124,15 @@ Given the large number of combinations of Wi‑Fi standards, frequency bands, an
 
 In this chapter, the requirements for the test environment were defined. 
 The following sections will discuss how these requirements are implemented. 
-The focus will first be on the selection and configuration of the used technologies, because they are needed for the creation of the \ac{OS}.
-
-
-\section{Test system}
-\subsection{Used Technologies}
-\begin{figure}[ht]
-    \centering
-     \includegraphics[width=\textwidth]{figures/Technologien_Testsystem.drawio.pdf}
-    \caption{Illustration of the test environment including the used technologies.}
-    \label{fig:technologies}
-\end{figure}
-
-\subsection{Server and Client Implementation} \label{subsec:impl}
-\subsection{Monitoring}
-\subsection{Test Automatization}
-\subsection{Access point configuration}
-
+The focus will first be on the selection and configuration of the \ac{OS}, because it forms the foundation of the test environment after the choice of hardware.
 
 \section{Operating System}
-As discussed in the previous chapter, the selection of an appropriate operating system must primarily consider its \ac{rt} capabilities. 
-Such operating systems are referred to as Real-Time Operating Systems (RTOS). 
-There exists a wide variety of RTOS, each differing in architecture, strengths, and limitations.
+As discussed in the previous chapter, the selection of an appropriate \ac{OS} must primarily consider its \ac{rt} capabilities. 
+Such \acp{OS} are referred to as \ac{RTOS}. 
+There exists a wide variety of \ac{RTOS}, each differing in architecture, strengths, and limitations.
 
-One RTOS that imposes almost no restrictions in terms of performance and compatibility compared to a general-purpose operating system is RT-Linux. 
-As described by Sampath et al. in \cite{Sampath_2007}, RT-Linux is a Linux-based system enhanced through the PREEMPT\_RT patch, which equips it with real-time capabilities. 
+One \ac{RTOS} that imposes almost no restrictions in terms of performance and compatibility compared to a general-purpose \ac{OS} is RT-Linux. 
+As described by Sampath et al. in \cite{Sampath_2007}, RT-Linux is a Linux-based system enhanced through the PREEMPT\_RT patch, which equips it with \ac{rt} capabilities. 
 The authors examine the use of RT-Linux on an industrial controller with strict \ac{rt} requirements and additional \ac{rt} Ethernet demands. 
 Their study demonstrates the suitability of RT-Linux for such applications, reporting a maximum jitter of 380 microseconds over a 24-hour endurance test.
 
@@ -160,30 +144,30 @@ This study is especially relevant for this work, because it uses the same hardwa
 Despite these studies, there also are more critical perspectives. 
 Siro Arthur et al. \cite{Siro_2007} also evaluated \ac{rt} capabilities of RT-Linux. 
 This study analyzes metrics such as context switch time, memory access latency and TCP latency. 
-It compares not only various Linux preemption models but also contrasts RT-Linux against RTOS specifically designed for \ac{rt} use, such as RTAI and LXRT. 
+It compares not only various Linux preemption models but also contrasts RT-Linux against \ac{RTOS} specifically designed for \ac{rt} use, such as RTAI and LXRT. 
 The study reveals that while the PREEMPT\_RT patch enhances \ac{rt} capabilities, it does not reach the same level of determinism as systems natively designed for \ac{rt} applications. 
 Furthermore, this analysis was performed on single-core CPUs, where reduced shared resources can change the \ac{rt} behavior. 
 
 There are also studies with multicore platforms which questions the suitability of RT-Linux for hard \ac{rt} environments. 
 Carvalho et al. \cite{9018464} investigated RT-Linux running on a Raspberry Pi, focusing on latency metrics such as polling, timed loops, hardware interrupts, and software interrupts. 
-Their results confirm that although RT-Linux offers certain \ac{rt}  properties, it should only be used in non-critical real-time environments. 
+Their results confirm that although RT-Linux offers certain \ac{rt}  properties, it should only be used in non-critical \ac{rt} environments. 
 This conclusion is supported by Betz et al. \cite{5347056}, who state that RT-Linux is appropriate for soft \ac{rt} applications.
 
 Yang et al. \cite{10870260} compare the \ac{rt} performance of NuttX, FreeRTOS, RT-Linux, and Xenomai. 
 A noteworthy aspect of their study is the inclusion of both \ac{rt} capabilities and general-purpose features. 
-While RT-Linux can be used as a standalone system, to match these requirements, pure RTOS like FreeRTOS and NuttX are executed alongside a general-purpose operating system. 
+While RT-Linux can be used as a standalone system, to match these requirements, pure \ac{RTOS} like FreeRTOS and NuttX are executed alongside a general-purpose \ac{OS}. 
 Also in this study a Raspberry Pi 4 was used as the hardware platform. 
-The results are showin that pure RTOS, especially FreeRTOS, netherless deliver better \ac{rt} performance.
+The results are showin that pure \ac{RTOS}, especially FreeRTOS, netherless deliver better \ac{rt} performance.
 
-Mariesk et al. \cite{6140739} distinguish between the two fundamental RTOS types kernel-based RTOS and embedded RTOS. 
+Mariesk et al. \cite{6140739} distinguish between the two fundamental \ac{RTOS} types kernel-based \ac{RTOS} and embedded \ac{RTOS}. 
 In their study, they evaluate systems based on interrupt latency, task switching time, and preemption time. 
-RT-Linux and Xenomai are considered kernel-based RTOS, while eCos represents the embedded type. 
-The results show that kernel-based RTOS are more suitable for multi-task applications due to their lower task-switching overhead. 
-Since this work requires the execution of multiple concurrent tasks, frequent scheduling switches are expected, making a kernel-based RTOS the preferable choice.
+RT-Linux and Xenomai are considered kernel-based \ac{RTOS}, while eCos represents the embedded type. 
+The results show that kernel-based \ac{RTOS} are more suitable for multi-task applications due to their lower task-switching overhead. 
+Since this work requires the execution of multiple concurrent tasks, frequent scheduling switches are expected, making a kernel-based \ac{RTOS} the preferable choice.
 
-In summary, the optimal RTOS depends heavily on the specific application and \ac{rt} requirements. 
+In summary, the optimal \ac{RTOS} depends heavily on the specific application and \ac{rt} requirements. 
 Based on the referenced studies, FreeRTOS appears to offer the best \ac{rt} capabilities. 
-However, additional constraints beyond \ac{rt} performance must be considered when selecting the operating system, like stated in the previous section.
+However, additional constraints beyond \ac{rt} performance must be considered when selecting the \ac{OS}, like stated in the previous section.
 This means particularly hardware compatibility of the \ac{OS}. 
 The MediaTek 7925B22M Wi-Fi card used in this work lacks drivers outside the Linux ecosystem, thereby excluding FreeRTOS as a viable option.
 
@@ -197,15 +181,81 @@ The method chosen for this work, including its setup and configuration, will be 
 
 \begin{itemize}
     \item As less background noise on the system as possible
-    \item Capable for hard real time
+    \item Capable for hard \ac{rt}
     \item For my test environment the programming languages Python, Rust and the bpftrace library
     \item Capability to use the Wi-Fi Card
     \item Network tools, to manage my Wi-Fi interface and generate the workload
 \end{itemize}
-\subsection{Yocto}
+
+\subsection{Selection of Operating System Implementation Style}
 \begin{itemize}
     \item Open source advantage reduce costs of licensing, full control over product, flexibility, 
 \end{itemize}
+
+\subsection{Structure of Test Environment}
+Figure \ref{fig:technologies} illustrates the test environment along with all relevant components and technologies. 
+As previously described, it consists of a server and a client. 
+First, the structure of the test system is explained in more detail, followed by an analysis of how it satisfies the requirements defined in Section \ref{subsec:requirements}.
+
+The test environment in Figure \ref{fig:technologies} is divided into several elements. 
+The \ac{OS} is excluded from the discussion, and the focus is placed solely on the components of the test system.
+
+The server part of the test system is controlled via the \textbf{Server Test Suite}, which is responsible for executing test runs and automating the overall testing process. 
+For each combination of access point configuration and QoS level, the test suite performs a complete test run. 
+Therefore, the total number of test runs is defined as $N_T = N_{AP} \times N_{QoS}$, where $N_T$ is the total number of test runs, $N_{AP}$ is the number of different access point configurations, and $N_{QoS}$ is the number of different considered QoS levels. 
+The Server Test Suite is essential for the automated execution of these test runs, thereby fulfilling the previously specified requirement for test automation.
+
+A \textbf{server-side test run} comprises the three components Hostapd, Iperf Bulk Server, and Rust-RT Server. 
+Each test run contributes to the overall test automation by ensuring that the required steps to establish both a \ac{rt} and a non-\ac{rt} network link within the same network are executed in the correct order.
+
+The first step in a server-side test run is the creation of the \ac{AP}, which is achieved using the \textbf{Hostapd} software. 
+Hostapd allows the configuration of various Wi-Fi standards, frequencies, and bandwidths, thereby meeting the requirement to support multiple Wi-Fi standards.
+
+Once the \ac{AP} is established, the server for non-\ac{rt} applications is launched using \textbf{Iperf3}. 
+This Software supports differentiation between UDP and TCP traffic, various packet sizes, and data rates. 
+It also provides metrics such as packet loss and jitter, thus fulfilling all previously defined requirements for non-RT data transmission.
+
+\begin{figure}[ht]
+    \centering
+     \includegraphics[width=\textwidth]{figures/Technologien_Testsystem.drawio.pdf}
+    \caption{Illustration of the test environment including the used technologies.}
+    \label{fig:technologies}
+\end{figure}
+
+Finally, the \textbf{Rust-RT Server} is started. 
+This component is implemented in Rust and makes use of \ac{BPF}. 
+This enables both compliance with \ac{rt} requirements and integrated monitoring capabilities. 
+The rationale behind the choice of programming languages is discussed after the explanation of the test system architecture in Section \ref{subsec:used_technologies}.
+
+The \textbf{client-side test system} is structurally similar to the server-side system. 
+As shown in Figure \ref{fig:technologies}, it also consists of a Client Test Suite and a test run. 
+The functionality of the client-side test suite and test run mirrors that of the server-side system. 
+However, the client-side test run differs slightly in structure.
+
+The client-side test run comprises two phases. 
+First, a connection to the server’s \ac{AP} must be established. This is handled using the \textbf{$wpa\_supplicant$} software, which utilizes a configuration file specifying details such as the network password and encryption algorithm. 
+For this reason, client and server test runs must be synchronized.
+Any mismatch in Wi-Fi standards will prevent the client from connecting to the server’s \ac{AP}.
+
+Once a connection is established, the \textbf{Rust-RT Client} is launched. 
+This client establishes a connection to the Rust-RT Server. 
+Unlike the server-side test run, the Iperf client is not launched directly as part of the test run but is instead initiated from within the Rust-RT Client. 
+The reason for this design choice is explained in more detail in Section \ref{subsec:impl}.
+
+After describing the architecture and functionality of the test system and how it satisfies the specified requirements, the following section discusses the selection of technologies and their configuration within the Yocto environment.
+
+\subsection{Used Technologies} \label{subsec:used_technologies}
+\begin{itemize}
+    \item Server Test Suit
+    \item Test Run (Server)\begin{itemize}
+        \item hostapd
+        \item Iperf-Bulk-Server
+        \item Rust-RT-Server
+    \end{itemize}
+    \item Access point
+    \item Connection Establishment
+\end{itemize} 
+
 \subsection{Implementation}
 \cite{The_Linux_Foundation_2011}
 \begin{itemize}
@@ -297,3 +347,11 @@ def hallo():
     print("Hallo Welt")
 \end{minted}
 
+
+
+\section{Test system}
+
+\subsection{Server and Client Implementation} \label{subsec:impl}
+\subsection{Monitoring}
+\subsection{Test Automatization}
+\subsection{Access point configuration}
