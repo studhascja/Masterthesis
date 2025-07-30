@@ -259,17 +259,20 @@ The reason for this design choice is explained in more detail in Section \ref{su
 After describing the architecture and functionality of the test system and how it satisfies the specified requirements, the following section discusses the selection of technologies and their configuration within the Yocto environment.
 
 \subsection{Used Technologies} \label{subsec:used_technologies}
-\begin{itemize}
-    \item Server Test Suit
-    \item Test Run (Server)\begin{itemize}
-        \item hostapd
-        \item Iperf-Bulk-Server
-        \item Rust-RT-Server
-    \end{itemize}
-    \item Access point
-    \item Connection Establishment
-\end{itemize} 
-
+Meisten embedded Real Time Applikationen sind in C oder C++ geschrieben. \cite[p. 86]{dlr212971}
+Rust is as efficient than c \cite[p. 1]{10321761} 
+Rust verhinder Use-after-free, Null-Pointer-Dereferenzierung und Datenrennen.
+Kein Garbage Collector.
+Ownership System \cite[p. 2]{10.5555/3563572.3563603}
+Jeder Wert hat einen Besitzer, nur ein Besitzer, Wert wird ungültig, wenn Besitzer das Scope verlässt.
+Kein undefined behavior.
+Bessere Fehlermeldungen als c und zero-Cost Abstraction.\cite[p. 1]{10.5555/3563572.3563603}
+Erst 10 Jahre alt, wird immer populärer. \cite[p. 2]{dlr212971}
+Wurde aufgrund seiner sktarken speicher sicherheite in den Linuxkernel übernommen. 
+Wie Panter in \cite{10.1145/3674805.3690756} beschreibt, hat dies bereits gute Ergebnisse erziehlt.
+Auf dem Weg DO-178C Zertifizierung zu erhalten. 
+Eine der wichtigsten Zertifizierungen für Flugsoftware\cite{do178} \cite[p. 4]{seidel2024bringingrustsafetycriticalsystems}
+Aufgrund von Speichersicherheit in Android enigebaut, die safety vunkerabiliteis von 76\% auf 35\% gesenkt \cite[p. 1]{seidel2024bringingrustsafetycriticalsystems}
 \subsection{Implementation}
 \cite{The_Linux_Foundation_2011}
 \begin{itemize}

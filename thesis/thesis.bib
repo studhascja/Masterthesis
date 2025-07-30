@@ -116,7 +116,102 @@ institution = "The 18th annual workshop on Operating Systems Platforms for Embed
 	author={Mediatek}, 
 	year={2014}, 
 	month={Nov}}
-	}
+
+
+
+@misc{seidel2024bringingrustsafetycriticalsystems,
+      title={Bringing Rust to Safety-Critical Systems in Space}, 
+      author={Lukas Seidel and Julian Beier},
+      year={2024},
+      eprint={2405.18135},
+      archivePrefix={arXiv},
+      primaryClass={cs.CR},
+      url={https://arxiv.org/abs/2405.18135}, 
+}
+
+@inproceedings{10.5555/3563572.3563603,
+author = {Fulton, Kelsey R. and Chan, Anna and Votipka, Daniel and Hicks, Michael and Mazurek, Michelle L.},
+title = {Benefits and drawbacks of adopting a secure programming language: rust as a case study},
+year = {2021},
+isbn = {978-1-939133-25-0},
+publisher = {USENIX Association},
+address = {USA},
+abstract = {Programming languages such as Rust and Go were developed to combat common and potentially devastating memory-safety-related vulnerabilities. But adoption of new, more secure languages can be fraught and complex. To better understand the benefits and challenges of adopting Rust in particular, we conducted semi-structured interviews with professional, primarily senior software developers who have worked with Rust on their teams or tried to introduce it (n = 16), and we deployed a survey to the Rust development community (n = 178). We asked participants about their personal experiences using Rust, as well as experiences using Rust at their companies. We find a range of positive features, including good tooling and documentation, benefits for the development lifecycle, and improvement of overall secure coding skills, as well as drawbacks including a steep learning curve, limited library support, and concerns about the ability to hire additional Rust developers in the future. Our results have implications for promoting the adoption of Rust specifically and secure programming languages and tools more generally.},
+booktitle = {Proceedings of the Seventeenth USENIX Conference on Usable Privacy and Security},
+articleno = {31},
+numpages = {20},
+series = {SOUPS'21}
+}
+
+
+@misc{sharma2024rustembeddedsystemscurrent,
+      title={Rust for Embedded Systems: Current State, Challenges and Open Problems (Extended Report)}, 
+      author={Ayushi Sharma and Shashank Sharma and Santiago Torres-Arias and Aravind Machiry},
+      year={2024},
+      eprint={2311.05063},
+      archivePrefix={arXiv},
+      primaryClass={cs.CR},
+      url={https://arxiv.org/abs/2311.05063}, 
+}
+
+@inproceedings{dlr212971,
+            year = {2025},
+       booktitle = {7th Workshop on Avionics Systems and Software Engineering},
+          series = {SE 2025 - Companion Proceedings},
+           month = {Februar},
+          author = {Sommer, Jan and Gutierrez Rojo, Tamara and Lund, Andreas and Abdelmaksoud, Hany Ibrahim Erfan and L{\"u}dtke, Daniel},
+       publisher = {Gesellschaft f{\"u}r Informatik},
+           title = {Viability of Rust for Avionics Software Development -- Current status and way forward},
+        keywords = {Rust,
+RTEMS,
+Software,
+Avionics,
+ECSS,
+Qualification,
+Certification,
+Software Development,
+Space},
+        abstract = {The trend towards more software functionality in less time is also true for avionics software.
+New development tools are needed to meet this trend, including the programming language. Rust
+provides language features such as extended memory safety and concurrency that are desired in
+avionics software. However, it must compete with an established software development ecosystem
+around C/C++. We propose requirements that a new programming language should meet to justify
+the effort of adoption in the aerospace industry and evaluate the current state of Rust accordingly.
+As part of the evaluation, we provide an example of how to add support for a new target to the
+Rust compiler for the RTEMS operating system used in the aerospace industry. Overall, Rust looks
+like a promising candidate for avionics software development and offers a gradual path of adoption,
+including qualification to aerospace standards.},
+             url = {https://elib.dlr.de/212971/}
+}
+
+@inproceedings{10.1145/3674805.3690756,
+author = {Panter, Shane and Eisty, Nasir},
+title = {Rusty Linux: Advances in Rust for Linux Kernel Development},
+year = {2024},
+isbn = {9798400710476},
+publisher = {Association for Computing Machinery},
+address = {New York, NY, USA},
+url = {https://doi.org/10.1145/3674805.3690756},
+doi = {10.1145/3674805.3690756},
+abstract = {Context: The integration of Rust into kernel development is a transformative endeavor aimed at enhancing system security and reliability by leveraging Rust’s strong memory safety guarantees. Objective: We aim to find the current advances in using Rust in Kernel development to reduce the number of memory safety vulnerabilities in one of the most critical pieces of software that underpins all modern applications. Method: By analyzing a broad spectrum of studies, we identify the advantages Rust offers, highlight the challenges faced, and emphasise the need for community consensus on Rust’s adoption. Results: Our findings suggest that while the initial implementations of Rust in the kernel show promising results in terms of safety and stability, significant challenges remain. These challenges include achieving seamless interoperability with existing kernel components, maintaining performance, and ensuring adequate support and tooling for developers. Conclusions: This study underscores the need for continued research and practical implementation efforts to fully realize the benefits of Rust. By addressing these challenges, the integration of Rust could mark a significant step forward in the evolution of operating system development towards safer and more reliable systems.},
+booktitle = {Proceedings of the 18th ACM/IEEE International Symposium on Empirical Software Engineering and Measurement},
+pages = {496–502},
+numpages = {7},
+keywords = {Kernel, Linux, Memory safety, Operating System, Rust},
+location = {Barcelona, Spain},
+series = {ESEM '24}
+}
+
+@article{do178,
+author = {Youn, Wonkeun and Hong, Seung and Oh, Kyung and Ahn, Oh},
+year = {2015},
+month = {04},
+pages = {4-13},
+title = {Software Certification of Safety-Critical Avionic Systems: DO-178C and Its Impacts},
+volume = {30},
+journal = {Aerospace and Electronic Systems Magazine, IEEE},
+doi = {10.1109/MAES.2014.140109}
+}
 
 
 
