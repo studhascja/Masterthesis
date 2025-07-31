@@ -1,6 +1,6 @@
 \chapter{Test Environment}
 In this chapter, the test environment is examined in more detail.
-In the following, the terms test environment, test system, and \ac{OS} are used. 
+In the following, the terms test environment, test system and \ac{OS} are used. 
 The test environment comprises both the test system and the \ac{OS}. 
 The test system refers exclusively to the applications that are part of the test environment and run on top of the \ac{OS}. 
 Accordingly, the test system does not include the underlying hardware or the \ac{OS} itself.
@@ -37,7 +37,7 @@ The server provides an access point to which the client connects, thereby establ
 In summary, the goal of the test environment is to transmit both \ac{rt-data} and \ac{non-rt-data} data over the same wireless network interface. 
 While the bulk data throughput should be maximized, the primary focus is to ensure that no \ac{rt} violations occur on the \ac{rt} connection.
 
-Since the test system is intended to transmit, among normal data, \ac{rt-data}, it must fulfill the requirements of a \ac{rt-system}. 
+Since the test system is intended to transmit \ac{rt-data} among normal data, it must fulfill the requirements of a \ac{rt-system}. 
 Therefore, the following section first outlines the general requirements of \acp{rt-system}. 
 Subsequently, additional requirements that go beyond standard \ac{rt} criteria and are specifically relevant for this system within the given test environment are discussed in more detail.
 
@@ -49,11 +49,11 @@ As previously mentioned in Chapter \ref{sec:real_time}, the primary objective of
 According to Buttazzo \cite[p. 10]{Buttazzo_2024}, predictability can only be achieved if the system ensures timeliness, meaning that the value of a process depends not only on its correct output but also on its timely execution—specifically, meeting deadlines.
 
 To fulfill these requirements, the software foundation, particularly the \ac{OS} kernel, must be tailored to \ac{rt} needs.
-Key aspects include preemptiveness, scheduling, inter-task synchronization, inter-task communication, memory management, interrupt handling, and timers.
+Key aspects include preemptiveness, scheduling, inter-task synchronization, inter-task communication, memory management, interrupt handling and timers.
 The necessity for these mechanisms to be implemented differently in \ac{rt} capable kernels compared to non-\ac{rt} ones is discussed in detail in Chapter \ref{subsec:real_time_kernel} and will therefore not be reiterated here.
 
 However, these mechanisms must not only be \ac{rt} capable at the kernel level—they also need to be considered during the development of applications intended to operate in a \ac{rt} context. 
-As Buttazzo outlines in \cite[p. 13 - 20]{Buttazzo_2024}, particular attention must be paid to the choice of programming language, memory usage, and synchronization and communication between processes.
+As Buttazzo outlines in \cite[p. 13 - 20]{Buttazzo_2024}, particular attention must be paid to the choice of programming language, memory usage and synchronization and communication between processes.
 It follows that, as shown in Figure \ref{fig:requirements} memory management, inter-task communication and inter-task-synchronsiation are not only requirements for the \ac{OS}, but must also be taken into account in the test system.
 
 In \cite[p. 17, 18]{Buttazzo_2024} Buttazzo emphasizes that the choice of programming language for \ac{rt} systems should avoid the use of dynamic data structures and recursion. 
@@ -70,33 +70,32 @@ All of these languages were successfully used to achieve \ac{rt} performance.
 Notably, Rust demonstrated a power consumption profile comparable to C, indicating similar efficiency.
 
 While the characteristics outlined by Buttazzo are not mandatory in any of these languages, they can be implemented with appropriate discipline and design. 
-Thus, these languages are also suitable for \ac{rt} application development, provided that the specific constraints related to memory management, recursion, and timing predictability are consciously observed and enforced by the developer, as they are not inherently guaranteed by the language itself.
+Thus, these languages are also suitable for \ac{rt} application development, provided that the specific constraints related to memory management, recursion and timing predictability are consciously observed and enforced by the developer, as they are not inherently guaranteed by the language itself.
 
 The chosen programming languages and specific implementation-level requirements for achieving \ac{rt} capability and how these are addressed are discussed in detail in Chapter \ref{subsec:impl}.
 
 To summarize the requirements of the test environment are illustrated in Figure \ref{fig:requirements}.
 There the requirements are split between \ac{OS} and test system.
 Furthermore, a distinction is made between \ac{rt} and non-\ac{rt} requirements.
-In this section the requirements shown in blue where stated.
+In this section the requirements shown in blue where discussed.
 
 \begin{figure}[ht]
     \centering
      \includegraphics[width=\textwidth]{figures/Requirements.drawio.pdf}
-    \caption[Illustration of the requirements for the test environment]{Illustration of the requirements for the test environment: Requirements caused by the real-time capability are shown in blue. Requirements relating to the test system are shown in yellow.}
+    \caption[Illustration of the requirements for the test environment]{Illustration of the requirements for the test environment: Requirements caused by the real-time capability are shown in blue. Requirements related to the test system are shown in yellow.}
     \label{fig:requirements}
 \end{figure}
 
-\subsection{Requirements Test Environment} \label{subsec:requirements}
+\subsection{Requirements of the Test Environment} \label{subsec:requirements}
 The following section defines the requirements for the test environment which are shown in yellow in Figure \ref{fig:requirements}.
-These are divided into the requirements for the \ac{OS} and the requirements for the test system itself.
 For both the test system and the \ac{OS}, the previously defined criteria for \ac{rt} capability are assumed to be fulfilled.
 
 The requirements for the \ac{OS} include providing appropriate support for both the hardware and the software components of the test evnironment. 
 As described in Chapter \ref{sec:used_hardware}, this work utilizes a Raspberry Pi 5, to which a MediaTek 7925B22M and an Atheros AR5BXB92 Wi-Fi module can be connected via PCIe.
-Accordingly, the \ac{OS} have to support the Raspberry Pi 5 architecture and offer compatibility with the drivers mt76, mt7925e, and ath9k.
+Accordingly, the \ac{OS} have to support the Raspberry Pi 5 architecture and offer compatibility with the drivers mt76, mt7925e and ath9k.
 
 Furthermore, the mt7925e driver is only available starting from Linux kernel version 6.8 and receives extended feature support with newer versions. 
-These enhancements primarily concern functionality related to Wi-Fi 6E and Wi-Fi 7, like can be seen in \cite{mt76}. 
+These enhancements primarily concern functionality related to Wi-Fi 6E and Wi-Fi 7, which is described in \cite{mt76}. 
 Since these standards are also within the scope of this work, the \ac{OS} should support the most recent possible version of the mt7925e driver to ensure full access to these capabilities.
 
 In addition to hardware compatibility, the \ac{OS} must also ensure compatibility with the required software components. 
@@ -108,7 +107,7 @@ This reduces background activity and minimizes potential sources of interference
 In addition to the \ac{OS}, the test system also has non‑real‑time requirements.
 These are highlighted in yellow under “Test System” in Figure \ref{fig:requirements}. 
 The test system must be capable of transmitting both \ac{rt} and non-\ac{rt} data concurrently over the same network, with the \ac{rt} traffic maintaining a maximum round-trip delay of 3 ms. 
-This timing constraint stems from the fact that this work seeks to characterize Wi‑Fi’s \ac{rt} capabilities and the factors that influence them, and to assess whether Wi‑Fi can be employed in an industrial \ac{rt} environment. 
+This timing constraint stems from the fact that this work seeks to characterize Wi‑Fi’s \ac{rt} capabilities and the factors that influence them and to assess whether Wi‑Fi can be employed in an industrial \ac{rt} environment. 
 As discussed in Chapter \ref{sec:real_time}, such environments commonly impose a 3 ms deadline.
 
 Furthermore, the application under test must be instrumented so that its \ac{rt} performance can be measured accurately, enabling meaningful conclusions to be drawn. 
@@ -118,9 +117,9 @@ For the non‑real‑time traffic, as much data as possible should be transmitte
 This means, only throughput and packet‑loss metrics need be considered for this traffic in the monitoring.
 
 Moreover, this study will compare the \ac{rt} performance of the algorithms underpinning different Wi‑Fi standards. 
-To that end, the server must support access points for Wi-Fi 4, 5, and 6 across all relevant frequency bands (2.4 GHz, 5 GHz, and 6 GHz). 
+To that end, the server must support access points for Wi-Fi 4, 5 and 6 across all relevant frequency bands (2.4 GHz, 5 GHz and 6 GHz). 
 The impact of QoS on \ac{rt} capability will also be evaluated, so the test system must be able to mark network packets with QoS parameters. 
-Given the large number of combinations of Wi‑Fi standards, frequency bands, and QoS settings, an automated test framework is required to generate a comprehensive dataset for all test cases, from which reliable insights can be derived.
+Given the large number of combinations of Wi‑Fi standards, frequency bands and QoS settings, an automated test framework is required to generate a comprehensive dataset for all test cases, from which reliable insights can be derived.
 
 In this chapter, the requirements for the test environment were defined. 
 The following sections will discuss how these requirements are implemented. 
@@ -129,8 +128,8 @@ The focus will first be on the selection and configuration of the \ac{OS}, becau
 \section{Operating System}
 As discussed in the previous chapter, the selection of an appropriate \ac{OS} must primarily consider its \ac{rt} capabilities. 
 Such \acp{OS} are referred to as \ac{RTOS}. 
-There exists a wide variety of \ac{RTOS}, each differing in architecture, strengths, and limitations.
-The following section compares the advantages, disadvantages, and performance characteristics of selected \acp{RTOS}. 
+There exists a wide variety of \ac{RTOS}, each differing in architecture, strengths and limitations.
+The following section compares the advantages, disadvantages and performance characteristics of selected \acp{RTOS}. 
 Furthermore, their suitability for the purpose of this work is evaluated.
 
 \subsection{Selection of Operating System}
@@ -151,19 +150,19 @@ It compares not only various Linux preemption models but also contrasts RT-Linux
 The study reveals that while the PREEMPT\_RT patch enhances \ac{rt} capabilities, it does not reach the same level of determinism as systems natively designed for \ac{rt} applications. 
 Furthermore, this analysis was performed on single-core CPUs, where reduced shared resources can change the \ac{rt} behavior. 
 
-There are also studies with multicore platforms which questions the suitability of RT-Linux for hard \ac{rt} environments. 
-Carvalho et al. \cite{9018464} investigated RT-Linux running on a Raspberry Pi, focusing on latency metrics such as polling, timed loops, hardware interrupts, and software interrupts. 
+There are also studies with multicore platforms which question the suitability of RT-Linux for hard \ac{rt} environments. 
+Carvalho et al. \cite{9018464} investigated RT-Linux running on a Raspberry Pi, focusing on latency metrics such as polling, timed loops, hardware interrupts and software interrupts. 
 Their results confirm that although RT-Linux offers certain \ac{rt}  properties, it should only be used in non-critical \ac{rt} environments. 
 This conclusion is supported by Betz et al. \cite{5347056}, who state that RT-Linux is appropriate for soft \ac{rt} applications.
 
-Yang et al. \cite{10870260} compare the \ac{rt} performance of NuttX, FreeRTOS, RT-Linux, and Xenomai. 
+Yang et al. \cite{10870260} compare the \ac{rt} performance of NuttX, FreeRTOS, RT-Linux and Xenomai. 
 A noteworthy aspect of their study is the inclusion of both \ac{rt} capabilities and general-purpose features. 
 While RT-Linux can be used as a standalone system, to match these requirements, pure \ac{RTOS} like FreeRTOS and NuttX are executed alongside a general-purpose \ac{OS}. 
 Also in this study a Raspberry Pi 4 was used as the hardware platform. 
 The results are showin that pure \ac{RTOS}, especially FreeRTOS, netherless deliver better \ac{rt} performance.
 
 Mariesk et al. \cite{6140739} distinguish between the two fundamental \ac{RTOS} types kernel-based \ac{RTOS} and embedded \ac{RTOS}. 
-In their study, they evaluate systems based on interrupt latency, task switching time, and preemption time. 
+In their study, they evaluate systems based on interrupt latency, task switching time and preemption time. 
 RT-Linux and Xenomai are considered kernel-based \ac{RTOS}, while eCos represents the embedded type. 
 The results show that kernel-based \ac{RTOS} are more suitable for multi-task applications due to their lower task-switching overhead. 
 Since this work requires the execution of multiple concurrent tasks, frequent scheduling switches are expected, making a kernel-based \ac{RTOS} the preferable choice.
@@ -176,17 +175,18 @@ The MediaTek 7925B22M Wi-Fi card used in this work lacks drivers outside the Lin
 
 Considering the experience with RT-Linux on Raspberry Pi systems stated by the studies before and the demonstrated maximum scheduling latency of 125 microseconds along with a maximum jitter of 380 microseconds of the test-system, RT-Linux proves sufficient for the purposes of this work. 
 Given a round-trip time (RTT) requirement of 3 milliseconds, this jitter is acceptable. 
-Furthermore, since Wi-Fi is inherently not \ac{rt} capable, and as discussed in Chapter \ref{sec:used_hardware}, the employed hardware which has, among other shared resources, a split L3 cache, is not optimized for \ac{rt} processing.
+Furthermore, since Wi-Fi is inherently not \ac{rt} capable
+and as discussed in Chapter \ref{sec:used_hardware}, the employed hardware which has, among other shared resources, a split L3 cache, is not optimized for \ac{rt} processing.
 So the minor limitations of RT-Linux do not significantly impact this test-environment.
 
 There are various ways to implement an RT-Linux system. 
-As described by Rostedt in \cite{rt_patch}, a  RT-Linux system can be created by extending the kernel with the $PREEMPT_RT$ patch. 
+As described by Rostedt in \cite{rt_patch}, a  RT-Linux system can be created by extending the kernel with the $PREEMPT\_RT$ patch. 
 This results in two primary approaches for building an RT-Linux system. 
-One can either use an existing Linux distribution such as Ubuntu and apply the $PREEMPT_RT$ patch, or build a complete Linux system from scratch using a build system.
+One can either use an existing Linux distribution such as Ubuntu and apply the $PREEMPT\_RT$ patch, or build a complete Linux system from scratch using a build system.
 
 As Vasquez outlines in \cite[Chap. 6]{10163343}, building an \ac{OS} using a build system offers the advantage of full customization tailored to specific needs. 
 Every component of the \ac{OS} can be configured and assembled individually. 
-However, this method is considerably more time-consuming compared to using a pre-built \ac{OS} that is already available for the Raspberry Pi 5, such as a customized Ubuntu version 24.02 or Raspberry Pi OS, which can then be extended with the $PREEMPT_RT$ patch.
+However, this method is considerably more time-consuming compared to using a pre-built \ac{OS} that is already available for the Raspberry Pi 5, such as a customized Ubuntu version 24.02 or Raspberry Pi OS, which can then be extended with the $PREEMPT\_RT$ patch.
 
 Due to the requirements defined in Chapter \ref{subsec:requirements}, the \ac{OS} must be capable of providing a foundation for both software and hardware. 
 For the Wi-Fi card drivers, it is essential, as previously mentioned, that the kernel is as recent as possible. 
@@ -212,28 +212,28 @@ As previously described, it consists of a server and a client.
 First, the structure of the test system is explained in more detail, followed by an analysis of how it satisfies the requirements defined in Section \ref{subsec:requirements}.
 
 The test environment in Figure \ref{fig:technologies} is divided into several elements. 
-The \ac{OS} is excluded from the discussion, and the focus is placed solely on the components of the test system.
+The \ac{OS} is excluded from the discussion and the focus is placed solely on the components of the test system.
 
 The server part of the test system is controlled via the \textbf{Server Test Suite}, which is responsible for executing test runs and automating the overall testing process. 
 For each combination of access point configuration and QoS level, the test suite performs a complete test run. 
-Therefore, the total number of test runs is defined as $N_T = N_{AP} \times N_{QoS}$, where $N_T$ is the total number of test runs, $N_{AP}$ is the number of different access point configurations, and $N_{QoS}$ is the number of different considered QoS levels. 
+Therefore, the total number of test runs is defined as $N_T = N_{AP} \times N_{QoS}$, where $N_T$ is the total number of test runs, $N_{AP}$ is the number of different access point configurations and $N_{QoS}$ is the number of different considered QoS levels. 
 The Server Test Suite is essential for the automated execution of these test runs, thereby fulfilling the previously specified requirement for test automation.
 
 \begin{figure}[ht]
     \centering
      \includegraphics[width=\textwidth]{figures/Technologien_Testsystem.drawio.pdf}
-    \caption{Illustration of the test environment including the used technologies.}
+    \caption{Illustration of the test environment including used technologies.}
     \label{fig:technologies}
 \end{figure}
 
-A \textbf{server-side test run} comprises the three components Hostapd, Iperf Bulk Server, and Rust-RT Server. 
+A \textbf{server-side test run} comprises the three components Hostapd, Iperf Bulk Server and Rust-RT Server. 
 Each test run contributes to the overall test automation by ensuring that the required steps to establish both a \ac{rt} and a non-\ac{rt} network link within the same network are executed in the correct order.
 
 The first step in a server-side test run is the creation of the \ac{AP}, which is achieved using the \textbf{Hostapd} software. 
-Hostapd allows the configuration of various Wi-Fi standards, frequencies, and bandwidths, thereby meeting the requirement to support multiple Wi-Fi standards.
+Hostapd allows the configuration of various Wi-Fi standards, frequencies and bandwidths, thereby meeting the requirement to support multiple Wi-Fi standards.
 
 Once the \ac{AP} is established, the server for non-\ac{rt} applications is launched using \textbf{Iperf3}. 
-This Software supports differentiation between UDP and TCP traffic, various packet sizes, and data rates. 
+This Software supports differentiation between UDP and TCP traffic, various packet sizes and data rates. 
 It also provides metrics such as packet loss and jitter, thus fulfilling all previously defined requirements for non-RT data transmission.
 
 Finally, the \textbf{Rust-RT Server} is started. 
@@ -261,7 +261,7 @@ After describing the architecture and functionality of the test system and how i
 \subsection{Used Technologies} \label{subsec:used_technologies}
 To create an access point on the server, the software \texttt{hostapd} is used, as previously described.  
 As Anderson states in \cite{hostapd}, this is one of the most widely used tools to create an AP that can be configured in detail.  
-With this software, the Wi-Fi standard, frequency, bandwidth, and encryption can be configured, as shown in \cite{hostapd2}.  
+With this software, the Wi-Fi standard, frequency, bandwidth and encryption can be configured, as shown in \cite{hostapd2}.  
 Thus, all previously specified requirements regarding the configurable properties of the Wi-Fi are met by this software.  
 
 To allow the client to connect to the AP, the software \texttt{wpa\_supplicant} is used.  
@@ -272,7 +272,7 @@ However, it includes more background processes and is therefore more heavyweight
 Moreover, it cannot be configured as precisely in coordination with \texttt{hostapd} as \texttt{wpa\_supplicant}.  
 
 To generate network traffic, \texttt{iperf3} is used, as it fulfills the required specifications, as previously described.  
-As shown in \cite{iperf}, this tool allows the generation of network traffic and precise configuration regarding TCP/UDP, packet size, and throughput.  
+As shown in \cite{iperf}, this tool allows the generation of network traffic and precise configuration regarding TCP/UDP, packet size and throughput.  
 Furthermore, no separate monitoring needs to be developed, as the tool already includes it.  
 For example, latency and packet loss can be directly observed using \texttt{iperf3}.  
 
@@ -289,7 +289,7 @@ Nevertheless, Rust was chosen for the RT application in this work.
 This decision is based on the fact that DLR also states in \cite{dlr212971} that Rust is more suitable for RT applications due to its memory and thread safety.  
 However, the language is still too young to be fully established for hard real-time systems.  
 Rust does not use a garbage collector, as explained in \cite[p. 2]{10.5555/3563572.3563603}.  
-Nevertheless, it prevents issues such as use-after-free, null pointer dereferencing, and data races.  
+Nevertheless, it prevents issues such as use-after-free, null pointer dereferencing and data races.  
 This is achieved through Rust's ownership system.  
 Ownership in Rust means that each value has exactly one owner, which becomes invalid once the owner goes out of scope.  
 An owner can be a variable, function, or data structure that holds the exclusive right to access or modify a value.  
@@ -315,102 +315,134 @@ It can be seamlessly integrated into Rust code using \texttt{libbpf-rs}.
 BPF, or Berkeley Packet Filter, is a technology for efficient in-kernel data processing and monitoring, originally designed for packet filtering.  
 As described by Gregg in \cite[Chap. 2.10]{Gregg_2020}, it offers nearly the same functionality as the widely used profiling tool \texttt{perf}.  
 However, it integrates better with Rust and is more flexible due to its scriptability and access to a broader range of event sources than \texttt{perf}.  
-BPF supports more event sources such as tracepoints, kprobes, uprobes, and performance counters, enabling more detailed and application-specific monitoring.  
+BPF supports more event sources such as tracepoints, kprobes, uprobes and performance counters, enabling more detailed and application-specific monitoring.  
 
-In summary, the programming languages Python, Rust, and BPF, as well as the tools \texttt{hostapd}, \texttt{iperf3}, and \texttt{wpa\_supplicant}, must be provided by the operating system for the test system.  
+In summary, the programming languages Python, Rust and BPF, as well as the tools \texttt{hostapd}, \texttt{iperf3} and \texttt{wpa\_supplicant}, must be provided by the operating system for the test system.  
 The following section describes how this can be realized using the Yocto Project.
+
 \subsection{Implementation}
-\cite{The_Linux_Foundation_2011}
-\begin{itemize}
-    \item local.conf \begin{itemize}
-        \item set machine to raspberrypi 5
-        \item set variable $RUST\_LIBC$
-        \item set preferred linux version to 6.12
-        \item activated license synaptics-killswitch
-    \end{itemize}
-    \item distro (version 5.2.1 on the walnascar branch) \begin{itemize}
-        \item for mt7925e is a kernelversion of at least 5.7 necessary
-        \item walnascar was the newest one to the time of june 2025
-        \item CONFIG\_MT7925E=m
-    \end{itemize}
-    \item image \begin{itemize}
-        \item hostapd
-        \item dnsmasq
-        \item python3, python3-pip
-        \item net-tools, iproute2, wpa-supplicant, iw und networkmanager (Als Netzwerktools um interfaces, etc steuern zu können)
-        \item werden mittels $IMAGE\_INSTALL$ hinzugefügt
-        \end{itemize}
-    \item Other Layers \begin{itemize}
-        \item Poky
-        \item meta-openembedded (oe, python, networking)
-        \item meta-raspberrypi
-        \item meta-rust in layer.conf the branch walnascar had to be added and the $RUST\_LIBC$ has to replaced with $\$\{@d.getVar('RUST\_LIBC').lower()\}$, and the variable had to be set in the local.conf
-    \end{itemize}
-    \item Own layer \begin{itemize}
-        \item bb and bbappend files like normal
-        \item higher priority
-        \item set layer compatability to walnascar
-    \end{itemize}
-    \item RT-Patch \begin{itemize}
-        \item from meta-raspberrypi layer only Linux 6.12.1 is given
-        \item the normal patch is 6.12.28, this is not working
-        \item from older patches 6.12.8 is working, but QA had to be added
-        \item also the kernel config needed to be updated, especially the preempt rt and rcu boost, to read copy update and synchronization in the kernel for rt behaviour
-    \end{itemize}
-    \item device-tree overlay \begin{itemize}
-        \item download pcie-32bit-dma-pi5.dtbo from https://github.com/raspberrypi/firmware/tree/master/boot/overlays
-        \item write own recipe which installs the file at /boot/overlays/
-        \item License file has to be created, because it's an own recipe, so the md5 checksum has to be added
-        \item since Distro 5.1 for S ${WORKDIR}/sources$ has to be set, in this path the files are saved
-        \item with do install first the folder is created and then the file is saved in the temporary root file system D with the rights 644
-        \item With Files:\${PN} the file is set from the temporary file system to the final one 
-        \item in the local.conf with $RPI\_USE\_OVERLAYS$ and $RPI\_EXTRA\_CONFIG$ the overlay is added to the config.txt
-        \item in meta-raspberrypi/conf/machine/include/rpi-base.inc it has to be added in the $RPI\_KERNEL\_DEVICETREE\_OVERLAYS$ 
-    \end{itemize}
-    \item Custom Files \begin{itemize}
-        \item hostapd \begin{itemize}
-            \item bbappend in recipes-connectivity/hostapd
-            \item all configs are located in /etc/hostapd
-            \item same procedure like for the device tree overlay
-            \item files are not located in workdir, but in workdir/sources-unpack
-        \end{itemize}
-        \item Rust Server + BPF \begin{itemize}
-            \item Create bitbake blueprint with cargo bitbake git clone https://github.com/meta-rust/cargo-bitbake.git (before that the Cargo.toml has to be updated with the URI of the repo)
-            \item with cargo vendor create the vendor folder 
-            \item create .cargo/config.toml
-            \item Add License
-            \item Add checksums for the vendor files
-            \item set always to newest commit SRCREV = "\${AUTOREV}"
-            \item Adjust workdir with S = "\${WORKDIR}/git/code/server"
-            \item It depends on DEPENDS (Build-time dependency) += "clang-native kernel-devsrc pkgconfig-native zlib elfutils bpftool-native"
-            \item (Run Time Dependency) RDEPENDS\_\${PN} += "libbpf"
-            \item in a do\_compile\:prepand() $export KERNEL\_HEADERS="\${STAGING\_KERNEL\_DIR}",  VMLINUX_PATH="\${TOPDIR}/tmp/work/raspberrypi5-poky-linux/linux-raspberrypi/6.12.1+git/linux-raspberrypi5-standard-build/", build vm linux with    \$BPFT btf dump file "\${VMLINUX\_PATH}/vmlinux" format c > \${S}/src/bpf/vmlinux.h, preopare Clan and Bindgen, so that clang ist the compiler and bindgen hast the opportunity to find vmlinux.h export CC=clang export BINDGEN_EXTRA_CLANG_ARGS="--target=bpf -I\${S}/src/bpf", rust target bauen mit cargo build --release --target=\${TARGET_SYS} --target-dir=\${B}$
-            \item add configs (add pahole to recipe)
-            \item config can be seen in /yocto-rpi5/build/tmp/work/raspberrypi5-poky-linux/linux-raspberrypi/6.12.1+git/linux-raspberrypi5-standard-build/.conf 
-            \item with bitbake -c menuconfig virtual/kernel the kernel config can be seen and also the depedencies of the single configs and which are forefilled and which not
-            \item in source/.kernel-meta/cfg/merge\_config\_build.log can be seen if the configuration was noticed ant if it was really taken
-            \item libbpf, clang, cargo, rust, libbpf-dev and elfutils had to be added to the image
-            \item CONFIG\_COMPILE\_TEST=y CONFIG\_DEBUG\_INFO=y, CONFIG\_DEBUG\_INFO\_BTF=y, CONFIG\_FRAME\_POINTER=y, CONFIG\_DEBUG\_INFO\_DWARF4=y, CONFIG\_UPROBES=y, CONFIG\_URETPROBES
-            \item set wifi password in yocto via environment variable
-            \item set wifi password in the final os with a script that triggers when a shell is started 
-            \item because of networkmanager set pwd file and connection 
-            \item dhcpcd because of dhcp-Client
-            \item openssh-sftp-server for the use of scp
-            \item wpa configs
-            \item start script which triggers when a shell is opened -> sets environment variable for the password, creates wpa-config and sets region to germany
-            \item set static MAC to dhcpcd in Client
-            \item added tc and iptables to image
-            \item added further kernel configs
-        \end{itemize}
-    \end{itemize}  
-\end{itemize}
+The background and functionality of the Yocto Project have already been described in Section \ref{subsec:yocto}.  
+Therefore, this section does not elaborate on them further and proceeds directly with the specific implementation within the context of this thesis.  
 
-\begin{minted}[linenos, frame=lines, fontsize=\small]{python}
-def hallo():
-    print("Hallo Welt")
-\end{minted}
+Figure \ref{fig:yocto_own} illustrates the structure of the Yocto Project as used in this work.  
+The figure displays the various layers of the Yocto Project that were utilized.  
+Layers that required no modifications are marked in green.  
+Layers that were integrated but still required certain adjustments are highlighted in yellow.  
+The red-colored \texttt{meta-masterthesis} layer was entirely developed as part of this thesis and contains all necessary customizations to the base image in order to meet the project-specific requirements.  
 
+The Yocto Project used in this thesis incorporates the layers \texttt{poky}, \\
+\texttt{meta-openembedded}, \texttt{meta-raspberrypi} and \texttt{meta-rust}.  
+The \texttt{poky} and \\
+\texttt{meta-openembedded} layers serve as the foundational layers, as is common in most Yocto-based projects, as discussed in Chapter~\ref{subsec:yocto}.  
 
+From the \texttt{meta-openembedded} layer, the sublayers \texttt{meta-oe}, \texttt{meta-python} and \\
+\texttt{meta-networking} are utilized.  
+The \texttt{meta-python} layer provides support for the Python programming language, which is required by some of the tools used in the testing environment.  
+The \texttt{meta-networking} layer supplies essential networking tools that are also necessary for the test setup.  
+
+The \texttt{meta-raspberrypi} layer is essential for hardware-specific support for the Raspberry Pi platform.  
+This layer enables the generation of a customized operating system image that is compatible with the Raspberry Pi 5, by providing the required kernel configurations, bootloader integration and board-specific device trees.  
+
+The \texttt{meta-rust} layer is included to integrate the Rust programming language into the Yocto build system.  
+This integration is necessary to develop the \ac{rt} application in Rust, as required by the objectives of this thesis.
+
+\begin{figure}[ht]
+    \centering
+     \includegraphics[width=\textwidth]{figures/YoctoDiagramm.drawio.pdf}
+    \caption[Presentation of the Yocto Project structure of this work]{Representation of the Yocto Project structure of this work: Layers that did not need to be edited are shown in green, layers that needed minor editing are shown in yellow and custom layers are shown in red.}
+    \label{fig:yocto_own}
+\end{figure}
+
+All layers are built using Yocto version 5.2.1.  
+This corresponds to the \texttt{walnascar} branch.  
+As of in the mid of June, this was, besides the \texttt{master} branch, the most recent branch of the Yocto Project, as shown in~\cite{yocto-releases}.  
+The latest branch was selected to take advantage of the most up-to-date kernel version included therein.  
+
+The kernel version is crucial for the support of the \texttt{mt7925e} driver, which is only available starting from kernel version 6.8 and is better supported in even newer kernel releases, as described in~\cite{mt76}.  
+The \texttt{walnascar} branch was available for all layers except for the \texttt{meta-rust} layer.  
+In this case, it was necessary to manually add the \texttt{walnascar} branch to the \texttt{layer.conf} file.  
+
+Due to compatibility issues, the variable \texttt{RUST\_LIBC} in this layer had to be replaced with \texttt{\$\{@d.getVar('RUST\_LIBC').lower()\}}.  
+This variable also needed to be defined in the \texttt{local.conf} file using \texttt{RUST\_LIBC = "gnu"}.  
+The GNU C Library was chosen because it is the default C library used in full-featured distributions for the Raspberry Pi.
+
+\texttt{local.conf} must also define the target machine to be the Raspberry Pi 5.  
+This ensures proper activation of the \texttt{meta-raspberrypi} layer.  
+Furthermore, the preferred Linux kernel version must be explicitly set to 6.12, since the default version provided by the \texttt{meta-raspberrypi} layer is 6.1.  
+
+When building an image for the Raspberry Pi 5, Synaptics drivers are also required.  
+Because their license must be explicitly accepted, the \texttt{LICENSE\_FLAGS\_ACCEPTED} variable must also be set in the \texttt{local.conf}.
+
+The custom \texttt{meta-masterthesis} layer is assigned a higher priority than the other layers in \texttt{bblayers.conf}.  
+This is necessary to ensure that the \texttt{.bbappend} files within this layer are processed before the corresponding \texttt{.bb} files of other layers.  
+The \texttt{meta-masterthesis} layer can be divided into four recipe categories, illustrated in purple in Figure~\ref{fig:yocto_own}.  
+The individual \texttt{.bb} and \texttt{.bbappend} files are depicted in light green in the same figure.
+
+The Wi-Fi cards used in this work utilize 32-bit DMA addressing.  
+The Raspberry Pi 5 does not support this addressing mode by default, as it uses 64-bit DMA addressing.  
+Therefore, a device tree overlay must be used to enable 32-bit DMA support.  
+A custom recipe was created to install the overlay \texttt{pcie-32bit-dma-pi5.dtbo}.  
+This overlay can be obtained from the official Raspberry Pi firmware repository~\cite{overlay}.  
+The recipe installs the locally available overlay into the \texttt{/boot/overlays} directory on the target system.  
+
+By setting the variables \texttt{RPI\_USE\_OVERLAYS} and \texttt{RPI\_EXTRA\_CONFIG} in \texttt{local.conf}, the overlay can be included in the \texttt{config.txt} file.  
+To fully integrate the overlay into the operating system, the \texttt{meta-raspberrypi} layer must be modified.  
+Specifically, the overlay must be added to the \texttt{RPI\_KERNEL\_DEVICETREE\_OVERLAYS} section of the file \texttt{meta-raspberrypi/conf/machine/include/rpi-base.inc}.  
+After this adjustment, the overlay was successfully deployed and referenced in the \texttt{config.txt} of the generated image.
+
+To make the operating system real-time capable, the Linux kernel must be extended using the RT patch.  
+This is handled within the \texttt{recipes-kernel} section of the \texttt{meta-masterthesis} layer.  
+The Linux recipe provided by the \texttt{meta-raspberrypi} layer, which is based on version 6.12.1, is extended via a \texttt{.bbappend} file.  
+However, the RT patch is officially only available for kernel version 6.12.28.  
+Since this version is not compatible with 6.12.1, an older RT patch developed for version 6.12.8 was tested and found to work reliably.  
+This patch was applied by integrating it into the Linux recipe using the \texttt{.bbappend} mechanism.
+
+It is also essential to modify the kernel configuration to select the appropriate preemption model.  
+All necessary kernel configuration options can be integrated by placing a \texttt{.cfg} file into the source directory of the Linux recipe.  
+This ensures that the final kernel included in the image is real-time capable.
+
+The \texttt{recipes-core} category includes extensions to the \texttt{init-ifupdown} and \texttt{base-files} recipes via \texttt{.bbappend} files.  
+The \texttt{init-ifupdown} extension introduces a custom \\
+\texttt{interfaces} file to assign static IP addresses to specific network interfaces.  
+The \texttt{base-files} extension defines environment variables and configs that are automatically set upon opening a shell session.  
+This is accomplished by writing shell commands into \\
+\texttt{/etc/profile.d/myenv.sh}.  
+
+The main component of \texttt{recipes-core} is the custom image recipe.  
+This extends\\
+\texttt{core-image} to include all necessary technologies for the test system.  
+It includes self-developed \texttt{.bb} files as well as required tools and programming languages.
+
+Once all technologies are installed on the target system, the final step is to integrate the application code and network configurations.  
+This is done in the \texttt{recipes-connectivity} section.  
+In the \texttt{network} category, marked in orange in Figure~\ref{fig:yocto_own}, two \texttt{.bbappend} files customize the configurations of \texttt{dnsmasq} and \texttt{dhcpcd}.  
+
+Other \texttt{.bb} and \texttt{.bbappend} files in this section install applications from a custom Git repositorie onto the target system.  
+The \texttt{hostapd.bbappend} file installs multiple \ac{AP} configurations into \texttt{/etc/hostapd/}.  
+Additionally, it modifies the original recipe to compile \texttt{hostapd} using a custom configuration that supports the Wi-Fi 6E standard.  
+By default, \texttt{hostapd} does not support access points operating in the 6~GHz band.  
+
+The \texttt{setup.bb} file installs Python-based test suites from a GitHub repository.  
+As these applications are written in Python, no prior compilation is required.
+
+The \texttt{rust-client} and \texttt{rust-server} recipes were generated using the \texttt{cargo-bitbake} tool.  
+This tool generates Yocto-compatible recipes for Rust projects, as explained in~\cite{cargo-bitbake}.  
+It requires a Git repository reference in the \texttt{Cargo.toml} file and all dependencies to be vendored locally.  
+The \texttt{cargo vendor} command, as described in~\cite{vendor}, is used for this purpose.
+
+The generated recipes were extended to install not only the compiled binaries but also the full source code on the target system.  
+Additionally, the recipe must include checksums for the vendored files.  
+
+To enable eBPF integration in Rust, the file \texttt{vmlinux.h} is required.  
+This file contains auto-generated headers that are used by the BPF program.  
+To generate it, the kernel configuration option \texttt{DEBUG\_INFO\_BTF=y} must be enabled.  
+The file can then be created using the command:  
+\texttt{\$BPFT btf dump file "\$\{VMLINUX\_PATH\}/vmlinux" format c > \$\{S\}/src/bpf/vmlinux.h}.  
+
+With these extensions, the Rust applications—including binaries, source code and a local compilation environment—are fully installed on the target system.
+
+In summary, this chapter described the steps required to build an operating system using the Yocto Project that fulfills all requirements for the intended test environment.  
+The following chapter focuses on the implementation details of the test system itself.
 
 \section{Test system}
 
