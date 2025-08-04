@@ -31,7 +31,7 @@ Both devices run the same \ac{OS}.
 There are two communication links between the server and the client.
 One link which transfers \ac{rt-data} and another one for transferring \ac{non-rt-data}.
 These two links are illustrated in Figure \ref{fig:pi_wifi_general} in blue and red.
-These connections are handled by separate programs but operate within the same network. 
+These connections are handled by separate processes but operate within the same network. 
 The server provides an access point to which the client connects, thereby establishing a peer-to-peer connection.
 
 In summary, the goal of the test environment is to transmit both \ac{rt-data} and \ac{non-rt-data} data over the same wireless network interface. 
@@ -74,6 +74,11 @@ Thus, these languages are also suitable for \ac{rt} application development, pro
 
 The chosen programming languages and specific implementation-level requirements for achieving \ac{rt} capability and how these are addressed are discussed in detail in Chapter \ref{subsec:impl}.
 
+Furthermore, the test system must be capable of transmitting both \ac{rt} and non-\ac{rt} data concurrently over the same network, with the \ac{rt} traffic maintaining a maximum round-trip delay of 3 ms. 
+This timing constraint stems from the fact that this work seeks to characterize Wi‑Fi’s \ac{rt} capabilities and the factors that influence them and to assess whether Wi‑Fi can be employed in an industrial \ac{rt} environment. 
+As discussed in Chapter \ref{sec:real_time}, such environments commonly impose a 3 ms deadline.
+So, beside the evaluation of the \ac{rt} capabilities of Wi-Fi and the minimization of the \ac{RTT}, timing constraint of 3 ms is the goal of this work, like stated in Chapter \ref{subsec:objective}.
+
 To summarize the requirements of the test environment are illustrated in Figure \ref{fig:requirements}.
 There the requirements are split between \ac{OS} and test system.
 Furthermore, a distinction is made between \ac{rt} and non-\ac{rt} requirements.
@@ -106,11 +111,7 @@ This reduces background activity and minimizes potential sources of interference
 
 In addition to the \ac{OS}, the test system also has non‑real‑time requirements.
 These are highlighted in yellow under “Test System” in Figure \ref{fig:requirements}. 
-The test system must be capable of transmitting both \ac{rt} and non-\ac{rt} data concurrently over the same network, with the \ac{rt} traffic maintaining a maximum round-trip delay of 3 ms. 
-This timing constraint stems from the fact that this work seeks to characterize Wi‑Fi’s \ac{rt} capabilities and the factors that influence them and to assess whether Wi‑Fi can be employed in an industrial \ac{rt} environment. 
-As discussed in Chapter \ref{sec:real_time}, such environments commonly impose a 3 ms deadline.
-
-Furthermore, the application under test must be instrumented so that its \ac{rt} performance can be measured accurately, enabling meaningful conclusions to be drawn. 
+The application under test must be instrumented so that its \ac{rt} performance can be measured accurately, enabling meaningful conclusions to be drawn. 
 This requires comprehensive monitoring and debugging facilities to precisely identify and isolate any sources of \ac{rt} violations.
 
 For the non‑real‑time traffic, as much data as possible should be transmitted without degrading the \ac{rt} application’s performance. 
@@ -190,8 +191,8 @@ However, this method is considerably more time-consuming compared to using a pre
 
 Due to the requirements defined in Chapter \ref{subsec:requirements}, the \ac{OS} must be capable of providing a foundation for both software and hardware. 
 For the Wi-Fi card drivers, it is essential, as previously mentioned, that the kernel is as recent as possible. 
-The kernel version can't be adapted in the existing \acl{OS} for the Raspberry Pi 5.
-A build system has this possibility.
+The kernel version can only be adapted with a reasonable effort, in the existing \acl{OS} for the Raspberry Pi 5.
+A build system has a possibility, to do this more easily.
 Moreover, certain kernel configurations must be set to support integration of these drivers. 
 These configurations can be managed much more flexibly and conveniently using a build system. 
 For this reason, the \ac{OS} used in this work is built using a build system.
@@ -369,9 +370,6 @@ The GNU C Library was chosen because it is the default C library used in full-fe
 \texttt{local.conf} must also define the target machine to be the Raspberry Pi 5.  
 This ensures proper activation of the \texttt{meta-raspberrypi} layer.  
 Furthermore, the preferred Linux kernel version must be explicitly set to 6.12, since the default version provided by the \texttt{meta-raspberrypi} layer is 6.1.  
-
-When building an image for the Raspberry Pi 5, Synaptics drivers are also required.  
-Because their license must be explicitly accepted, the \texttt{LICENSE\_FLAGS\_ACCEPTED} variable must also be set in the \texttt{local.conf}.
 
 The custom \texttt{meta-masterthesis} layer is assigned a higher priority than the other layers in \texttt{bblayers.conf}.  
 This is necessary to ensure that the \texttt{.bbappend} files within this layer are processed before the corresponding \texttt{.bb} files of other layers.  
