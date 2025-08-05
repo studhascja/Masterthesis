@@ -85,7 +85,6 @@ struct iphdr iph;
 bpf_probe_read(&iph, sizeof(iph), ip_header_address);
 if (iph.protocol != IPPROTO_UDP)
     return 0;
-bpf_printk("skb");
 u32 src_ip = __builtin_bswap32(iph.saddr);
 u8 d = src_ip & 0xff;
 
@@ -99,17 +98,9 @@ bpf_probe_read(&udph, sizeof(udph), udp_header);
 
 if(d == 43){
 	char *payload = udp_header + sizeof(struct udphdr);
-/*	
-        char buffer[96] = {};
-	bpf_probe_read(&buffer, sizeof(buffer), payload);
-	for(int i = 0; i < sizeof(buffer); i++){
-		bpf_printk("Payload Byte %d is %02x", i, (unsigned char)buffer[i]);	
-	}
-*/	
+
         struct Message msg = {};
         bpf_probe_read(&msg, sizeof(msg), payload);     
-       // bpf_printk("Size of eBPF Message struct: %d", sizeof(struct Message));
-       // bpf_printk("TCP Payload: Type: %u Seq: %llu", msg.msg_type, msg.seq);
 	if (msg.msg_type < 0 || msg.msg_type > 5) return 0;
 
         struct Event *event;
