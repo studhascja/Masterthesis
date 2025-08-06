@@ -256,75 +256,9 @@ fn read_user_zero() -> Instant {
     *time
 }
 
-fn setup() -> anyhow::Result<(SetupContext, RingBuffer)> {
+fn setup() -> anyhow::Result<SetupContext> {
     set_rt_priority(99);
-            let event_queue = Arc::new(Mutex::new(VecDeque::new()));
-    let queue_event_queue = Arc::new(Mutex::new(VecDeque::new()));
 
-    CURRENT_EVENT.set(event_queue.clone()).unwrap();
-    CURRENT_QUEUE_EVENT.set(queue_event_queue.clone()).unwrap();
-
-    let event_ref = CURRENT_EVENT.get().expect("CURRENT_EVENT not initialized");
-    let queue_event_ref = CURRENT_QUEUE_EVENT
-        .get()
-	.expect("CURRENT_EVENT not initialized");
-
-    let open_skel = MonitoreSkelBuilder::default().open();
-    println!("Skelett ge  ffnet.");
-
-    let mut skel = open_skel?.load()?;
-    println!("Skelett geladen.");
-
-    skel.attach()?;
-
-    println!("eBPF-Programm l  uft  ^` ");
-    let running = Arc::new(AtomicBool::new(true));
-    let r = running.clone();
-    let maps = skel.maps();
-    // Callback-Funktion, wird bei jedem Ringbuffer-Event aufgerufen
-    let mut ringbuf_builder = RingBufferBuilder::new();
-    ringbuf_builder.add(maps.events(), move |data: &[u8]| {
-        if data.len() != std::mem::size_of::<Event>() {
-            eprintln!(
-                "Unexpected data size: {} {}",
-                data.len(),
-                std::mem::size_of::<Event>()
-            );
-            return 0;
-        }
-
-        let event = bytemuck::from_bytes::<Event>(data);
-        if event.event_type == 0 {
-            set_kernel_zero(event.timestamp);
-        }
-	/*
-            println!(
-                    "Latenz: {:?} (User: {:?} - Kernel: {:?})",
-                    diff_ns,
-                    elapsed,
-                    Duration::from_nanos(kernel_diff),
-            );
-            if let Some(val) = TEST.get(){
-                    let usersp = val.duration_since(*USER_ZERO.get().unwrap());
-                    let test_diff = usersp.as_nanos() as i128 - kernel_diff as i128;
-
-                    println!(
-                            "TEST: Latenz: {:?} (User: {:?} - Kernel: {:?})",
-                            test_diff,
-                            usersp,
-                            Duration::from_nanos(kernel_diff),
-            );
-	} */
-	else if event.event_type == 3 {
-            let mut queue = queue_event_ref.lock().unwrap();
-            queue.push_back(*event);
-        } else {
-            let mut queue = event_ref.lock().unwrap();
-            queue.push_back(*event);
-        }
-	0 // R  ckgabewert: 0 bedeutet "OK"
-    })?;
-    let ringbuf = ringbuf_builder.build()?;
 
     let args: Vec<String> = env::args().collect();
     let standard = Arc::new(args[1].clone());
@@ -339,7 +273,7 @@ fn setup() -> anyhow::Result<(SetupContext, RingBuffer)> {
 
     let running = Arc::new(AtomicBool::new(true));
 
-    Ok((SetupContext {
+    Ok(SetupContext {
         socket,
         src_client,
         standard,
@@ -349,7 +283,7 @@ fn setup() -> anyhow::Result<(SetupContext, RingBuffer)> {
         running,
         interval: Duration::from_nanos(TIMEOUT_NS),
         counter: 0,
-    }, ringbuf))
+    })
 }
 
 fn wait_for_start_message(context: &SetupContext) -> SetupContext {
@@ -771,32 +705,9 @@ fn save_results(
                     })
 }
 fn main() -> anyhow::Result<()> {
-
-
-    // Separate Thread f  r Polling des Ringbuffers starten
-    let _handle = thread::spawn(move || {
-        while r.load(Ordering::Relaxed) {
-            ringbuf.poll(Duration::from_millis(100)).unwrap();
-        }
-	println!("weg");
-    });
-
     let mut context = setup()?;
-    let needed_time: u128;
-    context = wait_for_start_message(&context);
-    needed_time = ntp_phase(&context)?;
-    ptp_phase(&context, needed_time)?;
-    latency_test_phase(&context)?;
-    let calculation_result = calculation_phase(&context)?;
-    save_results(&context, calculation_result.0, calculation_result.1)?;
 
-    Ok(())
-}
-
-/*
-fn main() -> anyhow::Result<()> {
-    set_rt_priority(99);
-    let event_queue = Arc::new(Mutex::new(VecDeque::new()));
+              let event_queue = Arc::new(Mutex::new(VecDeque::new()));
     let queue_event_queue = Arc::new(Mutex::new(VecDeque::new()));
 
     CURRENT_EVENT.set(event_queue.clone()).unwrap();
@@ -805,19 +716,18 @@ fn main() -> anyhow::Result<()> {
     let event_ref = CURRENT_EVENT.get().expect("CURRENT_EVENT not initialized");
     let queue_event_ref = CURRENT_QUEUE_EVENT
         .get()
-        .expect("CURRENT_EVENT not initialized");
+	.expect("CURRENT_EVENT not initialized");
 
     let open_skel = MonitoreSkelBuilder::default().open();
-    println!("Skelett geöffnet.");
+    println!("Skelett ge  ffnet.");
 
     let mut skel = open_skel?.load()?;
     println!("Skelett geladen.");
 
     skel.attach()?;
 
-    println!("eBPF-Programm läuft …");
-    let running = Arc::new(AtomicBool::new(true));
-    let r = running.clone();
+    println!("eBPF-Programm l  uft  ^` ");
+    let r = context.running.clone();
     let maps = skel.maps();
     // Callback-Funktion, wird bei jedem Ringbuffer-Event aufgerufen
     let mut ringbuf_builder = RingBufferBuilder::new();
@@ -835,7 +745,7 @@ fn main() -> anyhow::Result<()> {
         if event.event_type == 0 {
             set_kernel_zero(event.timestamp);
         }
-        /*
+	/*
             println!(
                     "Latenz: {:?} (User: {:?} - Kernel: {:?})",
                     diff_ns,
@@ -852,392 +762,35 @@ fn main() -> anyhow::Result<()> {
                             usersp,
                             Duration::from_nanos(kernel_diff),
             );
-        } */
-        else if event.event_type == 3 {
+	} */
+	else if event.event_type == 3 {
             let mut queue = queue_event_ref.lock().unwrap();
             queue.push_back(*event);
         } else {
             let mut queue = event_ref.lock().unwrap();
             queue.push_back(*event);
         }
-        0 // Rückgabewert: 0 bedeutet "OK"
+	0 // R  ckgabewert: 0 bedeutet "OK"
     })?;
     let ringbuf = ringbuf_builder.build()?;
-
-    // Separate Thread für Polling des Ringbuffers starten
+    
+    // Separate Thread f  r Polling des Ringbuffers starten
     let _handle = thread::spawn(move || {
         while r.load(Ordering::Relaxed) {
             ringbuf.poll(Duration::from_millis(100)).unwrap();
         }
+	println!("weg");
     });
 
-    println!("Size of Message: {}", std::mem::size_of::<Message>());
 
-    let args: Vec<String> = env::args().collect();
-    let standard = Arc::new(args[1].clone());
-    let frequency = Arc::new(args[2].clone());
-    let bandwith = Arc::new(args[3].clone());
-    let qos = Arc::new(args[4].clone());
-    let socket = UdpSocket::bind("192.168.1.1:8080")?;
-    println!("Server läuft auf 192.168.1.1:8080");
-    //let disconnect_counter = Arc::new(Mutex::new(0));
-    let mut buf = [0u8; std::mem::size_of::<Message>()];
-    let mut counter = 0;
-    let mut src_client;
-    while counter < 1 {
-        loop {
-            match socket.recv_from(&mut buf) {
-                Ok((amt, src)) => {
-                    let msg: Message = *bytemuck::from_bytes(&buf[..amt]);
-                    println!("Nachricht von {} empfangen: {:?}", src, msg);
+    let needed_time: u128;
+    context = wait_for_start_message(&context);
+    needed_time = ntp_phase(&context)?;
+    ptp_phase(&context, needed_time)?;
+    latency_test_phase(&context)?;
+    let calculation_result = calculation_phase(&context)?;
+    save_results(&context, calculation_result.0, calculation_result.1)?;
 
-                    if msg.msg_type == MessageType::Start as u8 {
-                        update_user_zero();
-                        src_client = src;
-                        break;
-                    }
-                }
-                Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => {
-                    std::thread::sleep(Duration::from_millis(10));
-                }
-                Err(e) => {
-                    eprintln!("Error while receiving: {}", e);
-                }
-            }
-        }
-
-        let interval = Duration::from_nanos(TIMEOUT_NS);
-        let mut next_tick = Instant::now() + interval;
-        let mut needed_time = u128::MAX;
-        let mut ptp_diff = u128::MAX;
-        let mut i = 0;
-        let mut ntp_regulation = 500000;
-
-        while needed_time > ntp_regulation {
-            let start_time = Instant::now();
-            let elapsed_start_time = start_time.duration_since(read_user_zero());
-            let encoded_msg = encode_message(MessageType::NTP, i, 0, 0, 0, 0.0, 0.0, 0)?;
-
-            socket.send_to(&encoded_msg, src_client)?;
-            increment_message_count();
-            loop {
-                match socket.recv_from(&mut buf) {
-                    Ok((amt, _src)) => {
-                        let msg: Message = *bytemuck::from_bytes::<Message>(&buf[..amt]);
-                        let number = msg.seq;
-                        let event_snapshot = wait_for_event(number, MessageType::NTP, 1);
-
-                        let end_time = event_snapshot.timestamp - get_kernel_zero();
-
-                        needed_time = end_time as u128 - elapsed_start_time.as_nanos();
-                        /*println!(
-                                "Needed Time {} Elapsed {} Start_Elapsed {}",
-                                needed_time,
-                                elapsed_time.as_nanos(),
-                                elapsed_start_time.as_nanos()
-                        );*/
-                        break;
-                    }
-                    Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => {
-                        std::thread::sleep(Duration::from_nanos(10));
-                    }
-                    Err(e) => {
-                        eprintln!("Error while receiving: {}", e);
-                    }
-                }
-            }
-            wait_until(next_tick);
-            next_tick += interval;
-            i += 1;
-            ntp_regulation += 1;
-        }
-
-        println!("--------------------Start PTP Mechanism---------------------");
-        let mut j = 0;
-        //let mut ptp_regulation = 1000;
-        let mut next_tick = Instant::now() + interval;
-        while ptp_diff > 10000000 {
-            let start_time = Instant::now();
-            let encoded_msg = encode_message(MessageType::PTP, j, 0, 0, 0, 0.0, 0.0, 0)?;
-            socket.send_to(&encoded_msg, src_client)?;
-            increment_message_count();
-            let wait_time =
-                Instant::now() + Duration::from_nanos((needed_time as f64 / 2.2).round() as u64);
-            wait_until(wait_time);
-            update_user_zero();
-
-            loop {
-                match socket.recv_from(&mut buf) {
-                    Ok((_amt, _src)) => {
-                        let end_time = Instant::now();
-                        let ptp_duration = end_time - start_time;
-                        ptp_diff = ptp_duration.as_nanos().abs_diff(needed_time);
-                        //   println!("PTP-Diff = {} {}", ptp_diff, j);
-                        //let msg: Message = *bytemuck::from_bytes::<Message>(&buf[..amt]);
-                        break;
-                    }
-                    Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => {
-                        std::thread::sleep(Duration::from_nanos(10));
-                    }
-                    Err(e) => {
-                        eprintln!("Error while receiving: {}", e);
-                    }
-                }
-            }
-
-            j += 1;
-            //if j % 10 == 0 {
-            //	ptp_regulation += 1;
-            //}
-            wait_until(next_tick);
-            next_tick += interval;
-        }
-
-        println!("---------------------Start Latency Test---------------------");
-        let mut next_tick = Instant::now() + interval;
-        let mut timestamps: Vec<PTPTimestampSet> = vec![PTPTimestampSet::default(); 20];
-
-        for i in 0..21 {
-            let index = i as usize;
-            let start_time = Instant::now();
-            let elapsed_time = start_time.duration_since(read_user_zero());
-            let encoded_msg = encode_message(
-                MessageType::NtpResult,
-                i,
-                elapsed_time.as_nanos(),
-                0,
-                0,
-                0.0,
-                0.0,
-                0,
-            )?;
-            socket.send_to(&encoded_msg, src_client)?;
-            increment_message_count();
-            let event_snapshot_sending = wait_for_event(i, MessageType::NtpResult, 2);
-            let server_kernel_sent = event_snapshot_sending.timestamp - get_kernel_zero();
-
-            loop {
-                match socket.recv_from(&mut buf) {
-                    Ok((amt, _src)) => {
-                        let end_time = Instant::now();
-                        let msg: Message = *bytemuck::from_bytes::<Message>(&buf[..amt]);
-                        let number = msg.seq;
-                        let event_snapshot = wait_for_event(number, MessageType::NtpResult, 1);
-                        let server_arrival = end_time.duration_since(read_user_zero());
-                        let server_arrival_kernel = event_snapshot.timestamp - get_kernel_zero();
-
-                        match (msg.first_u128, msg.second_u128, msg.timestamp) {
-                            (server_sent, client_arrival, client_sent) => {
-                                if i < 20 {
-                                                            timestamps[index].server_arrival = server_arrival.as_nanos();
-                                                            timestamps[index].server_arrival_kernel =
-                                                                server_arrival_kernel as u128;
-                                                            timestamps[index].server_sent = server_sent;
-                                                            timestamps[index].server_kernel_sent = server_kernel_sent as u128;
-                                                            timestamps[index].client_arrival = client_arrival;
-                                                        }
-                                if i > 0 {
-                                                            timestamps[index - 1].client_sent = Some(client_sent);
-                                                        }
-                                break;
-                            }
-                        }
-                    }
-                    Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => {
-                        std::thread::sleep(Duration::from_nanos(10));
-                    }
-                    Err(e) => {
-                        eprintln!("Error while receiving: {}", e);
-                    }
-                }
-            }
-            wait_until(next_tick);
-            next_tick += interval;
-        }
-
-        for (i, ts) in timestamps.iter().enumerate() {
-            if let Some(client_sent) = ts.client_sent {
-                let first_offset = ts.client_arrival as i128 - ts.server_kernel_sent as i128;
-                let second_offset = ts.server_arrival_kernel as i128 - client_sent as i128;
-                let whole = ts.server_arrival as i128 - ts.server_sent as i128;
-                let diff_test_offset = second_offset - first_offset;
-
-                println!(
-                    "#{i}: Diff_Offset: {}, Whole: {}, First: {}, Second: {}",
-                    diff_test_offset, whole, first_offset, second_offset
-                );
-            } else {
-                println!("#{i}: Incomplete timestamp set");
-            }
-        }
-
-        println!("Start Calculation");
-
-        let mut points = Vec::with_capacity(NUM_POINTS);
-        let mut latency: Vec<CalcTimestampSet> = vec![CalcTimestampSet::default(); NUM_POINTS];
-
-        let mut last_y = 0.0;
-        let calc_time = SystemTime::now();
-        let mut next_tick = Instant::now() + interval;
-        let mut i = 0;
-
-        while calc_time.elapsed()?.as_secs() < 12 {
-            let index = i as usize;
-            //let calc_start_time = Instant::now();
-            let theta = 2.0 * PI * (i as f64) / (NUM_POINTS as f64);
-            let x = RADIUS * theta.cos();
-            let calc_send_time = Instant::now();
-            let calc_send_elapsed = calc_send_time.duration_since(read_user_zero());
-
-            let encoded_msg = encode_message(MessageType::Calc, i, 0, 0, 0, theta, RADIUS, 0)?;
-            socket.send_to(&encoded_msg, src_client)?;
-            increment_message_count();
-
-            let event_snapshot_sending = wait_for_event(i, MessageType::Calc, 2);
-            let server_sent_kernel = event_snapshot_sending.timestamp - get_kernel_zero();
-
-            let event_snapshot_queue = wait_for_queue_event(server_sent_kernel);
-            let server_queue = event_snapshot_queue.unwrap().timestamp - get_kernel_zero();
-
-            let calc_send_duration;
-            loop {
-                match socket.recv_from(&mut buf) {
-                    Ok((amt, _src)) => {
-                        let end_time = Instant::now();
-                        let calc_end_time = end_time.duration_since(read_user_zero());
-                        let msg: Message = *bytemuck::from_bytes::<Message>(&buf[..amt]);
-
-                        let number = msg.seq;
-                        let event_snapshot = wait_for_event(number, MessageType::Calc, 1);
-                        let server_arrival_kernel = event_snapshot.timestamp - get_kernel_zero();
-
-                        calc_send_duration =
-                            calc_end_time.as_nanos() - calc_send_elapsed.as_nanos();
-
-                        match (
-                                                    msg.first_f64,
-                                                    msg.timestamp,
-                                                    msg.first_u128,
-                                                    msg.second_u128,
-                                                ) {
-                            (y, client_queue, client_arrival_kernel, client_sent) => {
-                                latency[index].server_arrival = calc_end_time.as_nanos();
-                                latency[index].server_arrival_kernel = server_arrival_kernel as u128;
-                                latency[index].server_queue = server_queue as u128;
-                                latency[index].server_sent = calc_send_elapsed.as_nanos();
-                                latency[index].server_sent_kernel = server_sent_kernel as u128;
-                                latency[index].client_arrival_kernel = client_arrival_kernel;
-                                if i > 0 {
-                                                            latency[index - 1].client_sent_kernel = Some(client_sent);
-                                                            latency[index - 1].client_queue = Some(client_queue);
-                                                        }
-                                last_y = if calc_send_duration <= TIMEOUT_NS as u128 {
-                                                            y
-                                                        } else {
-                                                            last_y - 2.0
-                                                        };
-                                break;
-                            }
-                        }
-                    }
-                    Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => {
-                        std::thread::sleep(Duration::from_nanos(10));
-                    }
-                    Err(e) => {
-                        eprintln!("Error while receiving: {}", e);
-                    }
-                }
-            }
-
-            points.push((x, last_y));
-            wait_until(next_tick);
-            next_tick += interval;
-            i += 1;
-        }
-
-        let encoded_msg = encode_message(MessageType::Calc, u64::MAX, 0, 0, 0, 0.0, 0.0, 0)?;
-        socket.send_to(&encoded_msg, src_client)?;
-        increment_message_count();
-
-        loop {
-            match socket.recv_from(&mut buf) {
-                Ok((amt, _src)) => {
-                    let msg: Message = *bytemuck::from_bytes::<Message>(&buf[..amt]);
-                    match (msg.second_u128, msg.timestamp) {
-                        (client_sent, client_queue) => {
-                            latency[NUM_POINTS - 1].client_sent_kernel = Some(client_sent);
-                            latency[NUM_POINTS - 1].client_queue = Some(client_queue);
-                            break;
-                        }
-                    }
-                }
-                Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => {
-                    std::thread::sleep(Duration::from_nanos(10));
-                }
-                Err(e) => {
-                    eprintln!("Error while receiving: {}", e);
-                }
-            }
-        }
-
-        let result_path = format!(
-            "../results/standard_{}/frequency_{}/bandwith_{}/qos_{}/udp/",
-            standard, frequency, bandwith, qos
-        );
-        if let Err(e) = create_dir_all(&result_path) {
-            eprintln!("Error while creating directories: {}", e);
-            return Ok(());
-        }
-
-        let mut latencies = BufWriter::new(
-            OpenOptions::new()
-                .write(true)
-                .create(true)
-                .truncate(true)
-                .open(format!("{}/latencys_{}", result_path, counter))
-                .unwrap(),
-        );
-
-        for (i, ts) in latency.iter().enumerate() {
-            if let (Some(client_sent_kernel), Some(client_queue)) =
-                (ts.client_sent_kernel, ts.client_queue)
-            {
-                let work_t1 = ts.server_queue as i128 - ts.server_sent as i128;
-                let queue_t1 = ts.server_sent_kernel as i128 - ts.server_queue as i128;
-                let send_t1 = ts.client_arrival_kernel as i128 - ts.server_sent_kernel as i128;
-                let work_t2 = client_queue as i128 - ts.client_arrival_kernel as i128;
-                let queue_t2 = client_sent_kernel as i128 - client_queue as i128;
-                let send_t2 = ts.server_arrival_kernel as i128 - client_sent_kernel as i128;
-                let whole = ts.server_arrival as i128 - ts.server_sent as i128;
-                writeln!(
-                    latencies,
-                    "{},{},{},{},{},{},{}",
-                    work_t1, queue_t1, send_t1, work_t2, queue_t2, send_t2, whole
-                )
-                .unwrap();
-            } else {
-                println!("#{}: Incomplete timestamp set", i);
-            }
-        }
-
-        let mut circle_points = BufWriter::new(
-            OpenOptions::new()
-                .write(true)
-                .create(true)
-                .truncate(true)
-                .open(format!("{}/circle_points_{}", result_path, counter))
-                .unwrap(),
-        );
-
-        for (x, y) in &points {
-            writeln!(circle_points, "{},{}", x, y).unwrap();
-        }
-
-        circle_points.flush().unwrap();
-        latencies.flush().unwrap();
-        println!("Points and Latencies written.");
-        counter += 1;
-    }
     Ok(())
 }
-*/
+
