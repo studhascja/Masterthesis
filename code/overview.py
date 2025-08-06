@@ -1,11 +1,14 @@
 import os
-import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
+import plotly.graph_objs as go
+import dash
+from dash import dcc, html
 
+# --- Deine bestehenden Funktionen bleiben unverändert ---
 def calculate_latency_statistics(latencies):
     if not latencies:
         return None
-
     server_do = [t[0] for t in latencies]
     server_queue = [t[1] for t in latencies]
     server_send = [t[2] for t in latencies]
@@ -14,39 +17,20 @@ def calculate_latency_statistics(latencies):
     client_send = [t[5] for t in latencies]
     cycle_times = [t[6] for t in latencies]
 
-    avg_server_do = sum(server_do) / len(server_do) / 1_000_000
-    max_server_do = max(server_do) / 1_000_000
+    def avg_max(values):
+        return (sum(values) / len(values) / 1_000_000, max(values) / 1_000_000)
 
-    avg_server_queue = sum(server_queue) / len(server_queue) / 1_000_000
-    max_server_queue = max(server_queue) / 1_000_000
-
-    avg_server_send = sum(server_send) / len(server_send) / 1_000_000
-    max_server_send = max(server_send) / 1_000_000
-
-    avg_client_do = sum(client_do) / len(client_do) / 1_000_000
-    max_client_do = max(client_do) / 1_000_000
-
-    avg_client_queue = sum(client_queue) / len(client_queue) / 1_000_000
-    max_client_queue = max(client_queue) / 1_000_000
-
-    avg_client_send = sum(client_send) / len(client_send) / 1_000_000
-    max_client_send = max(client_send) / 1_000_000
-
-    avg_latency = sum(cycle_times) / len(cycle_times) / 1_000_000
-    max_latency = max(cycle_times) / 1_000_000
-
-    over_3ms_count = sum(1 for c in cycle_times if c / 1_000_000 > 3)
-
-    return {
-        'server_do': (avg_server_do, max_server_do),
-        'server_queue': (avg_server_queue, max_server_queue),
-        'server_send': (avg_server_send, max_server_send),
-        'client_do': (avg_client_do, max_client_do),
-        'client_queue': (avg_client_queue, max_client_queue),
-        'client_send': (avg_client_send, max_client_send),
-        'cycle_time': (avg_latency, max_latency),
-        'RT-violation count': over_3ms_count
+    stats = {
+        'server_do': avg_max(server_do),
+        'server_queue': avg_max(server_queue),
+        'server_send': avg_max(server_send),
+        'client_do': avg_max(client_do),
+        'client_queue': avg_max(client_queue),
+        'client_send': avg_max(client_send),
+        'cycle_time': avg_max(cycle_times),
+        'RT-violation count': sum(1 for c in cycle_times if c / 1_000_000 > 3)
     }
+    return stats
 
 def read_latencys_file(filepath):
     latencies = []
@@ -60,82 +44,101 @@ def read_latencys_file(filepath):
 def collect_all_results(root_folder):
     results = []
     for dirpath, _, filenames in os.walk(root_folder):
-        if "latencys_1" in filenames:
-            full_path = os.path.join(dirpath, "latencys_1")
+        if "latencys_0" in filenames:
+            full_path = os.path.join(dirpath, "latencys_0")
             latencies = read_latencys_file(full_path)
             stats = calculate_latency_statistics(latencies)
             if not stats:
                 continue
-
-            # Label zusammensetzen
             parts = dirpath.split(os.sep)
             try:
-                standard = parts[-4].replace("standard_", "")
-                frequency = parts[-3].replace("frequency_", "")
-                bandwidth = parts[-2].replace("bandwith_", "")
-                qos = parts[-1].replace("qos_", "")
-                label = f"{standard}, {frequency}, {bandwidth}, {qos}"
-                
+                standard = parts[-5].replace("standard_", "")
+                frequency = parts[-4].replace("frequency_", "")
+                bandwidth = parts[-3].replace("bandwith_", "")
+                qos = parts[-2].replace("qos_", "")
+                protocoll = parts[-1]
+                label = f"{standard}, {frequency}, {bandwidth}, {qos}, {protocoll}"
             except IndexError:
                 label = dirpath
-
             results.append((label, stats))
     return results
 
-def plot_dashboard(results):
+def filter_results(results, protocol):
+    return [(label, stat) for label, stat in results if protocol in label.lower()]
+
+# --- Dashboard-Funktion ---
+def build_dashboard(protocol_results, title):
     phases = ['server_do', 'server_queue', 'server_send',
               'client_do', 'client_queue', 'client_send',
               'cycle_time', 'RT-violation count']
 
-    labels = [label for label, _ in results]
+    labels = [label for label, _ in protocol_results]
     avg_data = {phase: [] for phase in phases}
     max_data = {phase: [] for phase in phases}
 
-    for _, stat in results:
+    for _, stat in protocol_results:
         for phase in phases:
             if phase == 'RT-violation count':
                 avg_data[phase].append(stat[phase])
             else:
-                avg_data[phase].append(stat[phase][0])
-                max_data[phase].append(stat[phase][1])
+                avg, max_val = stat[phase]
+                avg_data[phase].append(avg)
+                max_data[phase].append(max_val)
 
-    fig, axes = plt.subplots(2, 4, figsize=(24, 12))
-    axes = axes.flatten()
-
-    x = np.arange(len(labels))
-    width = 0.45
-
-    for i, phase in enumerate(phases):
-        ax = axes[i]
+    graphs = []
+    for phase in phases:
         if phase == 'RT-violation count':
-        # Nur ein einzelner Balken
-            ax.bar(x, avg_data[phase], width, color='gray', label='RT Violations')
+            trace = go.Bar(
+                x=labels,
+                y=avg_data[phase],
+                name='RT Violations',
+                marker_color='gray'
+            )
+            layout = go.Layout(title=phase, xaxis_tickangle=-45)
+            fig = go.Figure(data=[trace], layout=layout)
         else:
             avg_vals = avg_data[phase]
-            max_vals = max_data[phase]
-            diff_vals = [max_v - avg_v for avg_v, max_v in zip(avg_vals, max_vals)]
+            diff_vals = [max_v - avg_v for avg_v, max_v in zip(avg_vals, max_data[phase])]
+            trace1 = go.Bar(x=labels, y=avg_vals, name='Avg', marker_color='skyblue')
+            trace2 = go.Bar(x=labels, y=diff_vals, name='Max - Avg', marker_color='orange')
+            layout = go.Layout(barmode='stack', title=phase, xaxis_tickangle=-45)
+            fig = go.Figure(data=[trace1, trace2], layout=layout)
 
-            ax.bar(x, avg_vals, width, label='Avg', color='skyblue')
-            ax.bar(x, diff_vals, width, bottom=avg_vals, label='Max - Avg', color='orange')
+        graphs.append(dcc.Graph(figure=fig))
 
-        ax.set_title(phase)
-        ax.set_ylabel("ms" if phase != 'RT-violation count' else "Anzahl")
-        ax.set_xticks(x)
-        ax.set_xticklabels(labels, rotation=45, ha='right', fontsize=8)
-        ax.grid(axis='y', linestyle='--', alpha=0.5)
+    return html.Div([
+        html.H2(title),
+        *graphs
+    ])
 
-        if i == 0:
-            ax.legend()
-    plt.tight_layout()
-    plt.show()
+# --- Dash App ---
+def run_dash_app(udp_results, tcp_results):
+    app = dash.Dash(__name__)
+    app.title = "UDP/TCP Dashboard"
 
+    app.layout = html.Div([
+        html.H1("UDP / TCP Dashboard", style={"textAlign": "center"}),
+        dcc.Tabs([
+            dcc.Tab(label='UDP', children=[build_dashboard(udp_results, "UDP")]),
+            dcc.Tab(label='TCP', children=[build_dashboard(tcp_results, "TCP")]),
+        ])
+    ])
+
+    app.run(debug=True)
+
+# --- Main ---
 def main():
-    root_folder = "./results"  # Pfad zu deinem Hauptordner
+    root_folder = "./results"
     results = collect_all_results(root_folder)
+
     if not results:
         print("Keine Daten gefunden.")
-    else:
-        plot_dashboard(results)
+        return
+
+    udp_results = filter_results(results, 'udp')
+    tcp_results = filter_results(results, 'tcp')
+
+    run_dash_app(udp_results, tcp_results)
 
 if __name__ == "__main__":
     main()
