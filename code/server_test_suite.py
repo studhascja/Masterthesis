@@ -137,7 +137,7 @@ def main():
 
     iperf_thread.join()
 
-    print("\n ^=^s^k Gesamtergebnis der Testl  ufe:")
+    print("\n 📋 Gesamtergebnis der Testl  ufe:")
     for i, result in all_results:
         print(f"\n ^=   Testdurchlauf {i}:")
         total_tests = result.testsRun
@@ -145,12 +145,12 @@ def main():
         errored = len(result.errors)
         successful = total_tests - failed - errored
 
-        print(f"   ^|^e Erfolgreich: {successful}")
-        print(f"   l Fehler: {len(result.failures)}")
+        print(f"   ✅ Erfolgreich: {successful}")
+        print(f"   ❌ Fehler: {len(result.failures)}")
         for test, traceback in result.failures:
             print(f"    - Fehler in {test.id()}:")
             print(traceback)
-        print(f"   ^=^r  Fehlerhafte Ausf  hrung: {len(result.errors)}")
+        print(f"   💥  Fehlerhafte Ausf  hrung: {len(result.errors)}")
         for test, traceback in result.errors:
             print(f"    - Fehler in {test.id()}:")
             print(traceback)
