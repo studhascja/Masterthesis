@@ -26,11 +26,12 @@ static CURRENT_QUEUE_EVENT: OnceLock<Arc<Mutex<VecDeque<Event>>>> = OnceLock::ne
 static USER_ZERO: Lazy<Mutex<Instant>> = Lazy::new(|| Mutex::new(Instant::now()));
 static KERNEL_ZERO: Lazy<Mutex<u64>> = Lazy::new(|| Mutex::new(0));
 static MESSAGE_COUNT: Lazy<Mutex<u64>> = Lazy::new(|| Mutex::new(0));
+static TIMEOUT_COUNT: Lazy<Mutex<u64>> = Lazy::new(|| Mutex::new(0));
 
 const TIMEOUT_NS: u64 = 3000000;
 const NUM_POINTS: usize = 4000;
 const RADIUS: f64 = 10.0;
-const TIMEOUT_DURATION: Duration = Duration::from_secs(2);
+const TIMEOUT_DURATION: Duration = Duration::from_millis(300);
 
 struct SetupContext {
     socket: UdpSocket,
@@ -42,8 +43,20 @@ struct SetupContext {
     running: Arc<AtomicBool>,
     interval: Duration,
     counter: u64,
-    needed_time: u128,
     calculation_result: (Vec<(f64, f64)>, Vec<CalcTimestampSet>),
+    needed_time: u128,
+    ptp_result: bool,
+    latency_result: bool,
+}
+#[derive(Default)]
+struct SetupContextOverrides {
+    pub src_client: Option<std::net::SocketAddr>,
+    pub running: Option<std::sync::Arc<std::sync::atomic::AtomicBool>>,
+    pub counter: Option<u64>,
+    pub calculation_result: Option<(Vec<(f64, f64)>, Vec<CalcTimestampSet>)>,
+    pub needed_time: Option<u128>,
+    pub ptp_result: Option<bool>,
+    pub latency_result: Option<bool>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -55,6 +68,7 @@ enum Data {
 }
 
 enum State {
+    Error,
     WaitForStart,
     Ntp,
     Ptp,
@@ -203,10 +217,40 @@ fn wait_until(next_tick: Instant) {
     }
 }
 
+fn update_context(base: &SetupContext, overrides: SetupContextOverrides) -> SetupContext {
+    SetupContext {
+        socket: base.socket.try_clone().expect("Failed to clone socket"),
+        src_client: overrides.src_client.unwrap_or(base.src_client),
+        standard: base.standard.clone(),
+        frequency: base.frequency.clone(),
+        bandwith: base.bandwith.clone(),
+        qos: base.qos.clone(),
+        running: overrides.running.unwrap_or_else(|| base.running.clone()),
+        interval: base.interval,
+        counter: overrides.counter.unwrap_or_else(|| base.counter.clone()),
+        calculation_result: overrides
+            .calculation_result
+            .unwrap_or_else(|| base.calculation_result.clone()),
+        needed_time: overrides.needed_time.unwrap_or(base.needed_time),
+        ptp_result: overrides.ptp_result.unwrap_or(base.ptp_result),
+        latency_result: overrides.latency_result.unwrap_or(base.latency_result),
+    }
+}
+
 pub fn increment_message_count() -> u64 {
     let mut count = MESSAGE_COUNT.lock().unwrap();
     *count += 1;
     *count
+}
+
+pub fn increment_timeout_count() -> bool {
+    let mut count = TIMEOUT_COUNT.lock().unwrap();
+    *count += 1;
+    if *count > 10 {
+        return true;
+    } else {
+        return false;
+    }
 }
 
 fn wait_for_queue_event(timestamp: u64) -> Option<Event> {
@@ -307,8 +351,10 @@ fn setup() -> anyhow::Result<SetupContext> {
         running,
         interval: Duration::from_nanos(TIMEOUT_NS),
         counter: 0,
-        needed_time: u128::MAX,
         calculation_result: (Vec::new(), Vec::new()),
+        needed_time: u128::MAX,
+        ptp_result: false,
+        latency_result: false,
     })
 }
 
@@ -323,19 +369,13 @@ fn wait_for_start_message(context: &SetupContext) -> SetupContext {
 
                 if msg.msg_type == MessageType::Start as u8 {
                     update_user_zero();
-                    return SetupContext {
-                        socket: context.socket.try_clone().expect("Failed to clone socket"),
-                        src_client: src,
-                        standard: context.standard.clone(),
-                        frequency: context.frequency.clone(),
-                        bandwith: context.bandwith.clone(),
-                        qos: context.qos.clone(),
-                        running: context.running.clone(),
-                        interval: context.interval.clone(),
-                        counter: context.counter.clone(),
-                        needed_time: context.needed_time.clone(),
-                        calculation_result: context.calculation_result.clone(),
-                    };
+                    return update_context(
+                        context,
+                        SetupContextOverrides {
+                            src_client: Some(src),
+                            ..Default::default()
+                        },
+                    );
                 }
             }
             Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => {
@@ -370,6 +410,18 @@ fn ntp_phase(context: &SetupContext) -> Result<SetupContext> {
         loop {
             if start_time.elapsed() > TIMEOUT_DURATION {
                 println!("Timeout in NTP Phase");
+                next_tick = Instant::now() + interval;
+                if increment_timeout_count() {
+                    println!("Too many timeouts, stopping NTP Phase.");
+                    return Ok(update_context(
+                        context,
+                        SetupContextOverrides {
+                            running: Some(Arc::new(AtomicBool::new(false))),
+                            needed_time: Some(needed_time),
+                            ..Default::default()
+                        },
+                    ));
+                }
                 break;
             }
             match socket.recv_from(&mut buf) {
@@ -406,22 +458,16 @@ fn ntp_phase(context: &SetupContext) -> Result<SetupContext> {
             println!("Regulation {} Need {}", ntp_regulation, needed_time);
         }
     }
-    Ok(SetupContext {
-        socket: context.socket.try_clone().expect("Failed to clone socket"),
-        src_client: context.src_client.clone(),
-        standard: context.standard.clone(),
-        frequency: context.frequency.clone(),
-        bandwith: context.bandwith.clone(),
-        qos: context.qos.clone(),
-        running: context.running.clone(),
-        interval: context.interval.clone(),
-        counter: context.counter.clone(),
-        needed_time: needed_time,
-        calculation_result: context.calculation_result.clone(),
-    })
+    return Ok(update_context(
+        context,
+        SetupContextOverrides {
+            needed_time: Some(needed_time),
+            ..Default::default()
+        },
+    ));
 }
 
-fn ptp_phase(context: &SetupContext) -> Result<bool> {
+fn ptp_phase(context: &SetupContext) -> Result<SetupContext> {
     let max_ptp_tolerance = 5000; // in nanoseconds
 
     let mut buf = [0u8; std::mem::size_of::<Message>()];
@@ -445,6 +491,17 @@ fn ptp_phase(context: &SetupContext) -> Result<bool> {
         loop {
             if start_time.elapsed() > TIMEOUT_DURATION {
                 println!("Timeout in PTP Phase");
+                next_tick = Instant::now() + interval;
+                if increment_timeout_count() {
+                    println!("Too many timeouts, stopping PTP Phase.");
+                    return Ok(update_context(
+                        context,
+                        SetupContextOverrides {
+                            running: Some(Arc::new(AtomicBool::new(false))),
+                            ..Default::default()
+                        },
+                    ));
+                }
                 break;
             }
             match socket.recv_from(&mut buf) {
@@ -471,15 +528,30 @@ fn ptp_phase(context: &SetupContext) -> Result<bool> {
         next_tick += interval;
 
         if ptp_regulation > max_ptp_tolerance {
-            println!("PTP Phase exceeded a tolerance of {} , stopping.", max_ptp_tolerance);
-            return Ok(false);
+            println!(
+                "PTP Phase exceeded a tolerance of {} , stopping.",
+                max_ptp_tolerance
+            );
+            return Ok(update_context(
+                context,
+                SetupContextOverrides {
+                    ptp_result: Some(false),
+                    ..Default::default()
+                },
+            ));
         }
     }
     println!("PTP-Diff = {} {}", ptp_diff, j);
-    Ok(true)
+    return Ok(update_context(
+        context,
+        SetupContextOverrides {
+            ptp_result: Some(true),
+            ..Default::default()
+        },
+    ));
 }
 
-fn latency_test_phase(context: &SetupContext) -> Result<bool> {
+fn latency_test_phase(context: &SetupContext) -> Result<SetupContext> {
     let test_mesg_count: u64 = 1000;
     let max_tolerance = 10000; // in nanoseconds
     let mut i = 0;
@@ -514,6 +586,17 @@ fn latency_test_phase(context: &SetupContext) -> Result<bool> {
             if start_time.elapsed() > TIMEOUT_DURATION {
                 println!("Timeout in Latency Test Phase");
                 i = i - 1;
+                next_tick = Instant::now() + interval;
+                if increment_timeout_count() {
+                    println!("Too many timeouts, stopping Test Phase.");
+                    return Ok(update_context(
+                        context,
+                        SetupContextOverrides {
+                            running: Some(Arc::new(AtomicBool::new(false))),
+                            ..Default::default()
+                        },
+                    ));
+                }
                 break;
             }
             match socket.recv_from(&mut buf) {
@@ -552,7 +635,7 @@ fn latency_test_phase(context: &SetupContext) -> Result<bool> {
         }
         wait_until(next_tick);
         next_tick += interval;
-        i = i+1;
+        i = i + 1;
     }
     let mut diff_all: Vec<i128> = vec![0; test_mesg_count as usize];
 
@@ -570,16 +653,34 @@ fn latency_test_phase(context: &SetupContext) -> Result<bool> {
             ); */
         } else {
             println!("#{i}: Incomplete timestamp set");
-            return Ok(false);
+            return Ok(update_context(
+                context,
+                SetupContextOverrides {
+                    latency_result: Some(false),
+                    ..Default::default()
+                },
+            ));
         }
     }
     let med = median(&diff_all);
     if med.abs() > max_tolerance as i128 {
         println!("Median is too high: {}", med);
-        return Ok(false);
+        return Ok(update_context(
+            context,
+            SetupContextOverrides {
+                latency_result: Some(false),
+                ..Default::default()
+            },
+        ));
     }
     println!("Median of Latency Test: {}", med);
-    return Ok(true);
+    return Ok(update_context(
+        context,
+        SetupContextOverrides {
+            latency_result: Some(true),
+            ..Default::default()
+        },
+    ));
 }
 
 fn calculation_phase(context: &SetupContext) -> Result<SetupContext> {
@@ -619,6 +720,17 @@ fn calculation_phase(context: &SetupContext) -> Result<SetupContext> {
             if calc_send_time.elapsed() > TIMEOUT_DURATION {
                 println!("Timeout in Latency Calc Phase");
                 i = i - 1;
+                next_tick = Instant::now() + interval;
+                if increment_timeout_count() {
+                    println!("Too many timeouts, stopping Calculation Phase.");
+                    return Ok(update_context(
+                        context,
+                        SetupContextOverrides {
+                            running: Some(Arc::new(AtomicBool::new(false))),
+                            ..Default::default()
+                        },
+                    ));
+                }
                 break;
             }
             match socket.recv_from(&mut buf) {
@@ -681,6 +793,16 @@ fn calculation_phase(context: &SetupContext) -> Result<SetupContext> {
     loop {
         if start_time.elapsed() > TIMEOUT_DURATION {
             println!("Timeout in Latency Test Phase");
+            if increment_timeout_count() {
+                println!("Too many timeouts, stopping Calculation Phase.");
+                return Ok(update_context(
+                    context,
+                    SetupContextOverrides {
+                        running: Some(Arc::new(AtomicBool::new(false))),
+                        ..Default::default()
+                    },
+                ));
+            }
             break;
         }
         match socket.recv_from(&mut buf) {
@@ -702,19 +824,13 @@ fn calculation_phase(context: &SetupContext) -> Result<SetupContext> {
             }
         }
     }
-    Ok(SetupContext {
-        socket: context.socket.try_clone().expect("Failed to clone socket"),
-        src_client: context.src_client.clone(),
-        standard: context.standard.clone(),
-        frequency: context.frequency.clone(),
-        bandwith: context.bandwith.clone(),
-        qos: context.qos.clone(),
-        running: context.running.clone(),
-        interval: context.interval.clone(),
-        counter: context.counter.clone(),
-        needed_time: context.needed_time.clone(),
-        calculation_result: (points, latency),
-    })
+    return Ok(update_context(
+        context,
+        SetupContextOverrides {
+            calculation_result: Some((points, latency)),
+            ..Default::default()
+        },
+    ));
 }
 
 fn save_results(context: &SetupContext) -> Result<SetupContext> {
@@ -724,19 +840,13 @@ fn save_results(context: &SetupContext) -> Result<SetupContext> {
     );
     if let Err(e) = create_dir_all(&result_path) {
         eprintln!("Error while creating directories: {}", e);
-        return Ok(SetupContext {
-            socket: context.socket.try_clone().expect("Failed to clone socket"),
-            src_client: context.src_client.clone(),
-            standard: context.standard.clone(),
-            frequency: context.frequency.clone(),
-            bandwith: context.bandwith.clone(),
-            qos: context.qos.clone(),
-            running: context.running.clone(),
-            interval: context.interval.clone(),
-            counter: context.counter.clone() + 1,
-            needed_time: context.needed_time.clone(),
-            calculation_result: context.calculation_result.clone(),
-        });
+        return Ok(update_context(
+            context,
+            SetupContextOverrides {
+                counter: Some(context.counter.clone() + 1),
+                ..Default::default()
+            },
+        ));
     }
 
     let mut latencies = BufWriter::new(
@@ -794,19 +904,27 @@ fn save_results(context: &SetupContext) -> Result<SetupContext> {
     circle_points.flush().unwrap();
     latencies.flush().unwrap();
     println!("Points and Latencies written.");
-    Ok(SetupContext {
-        socket: context.socket.try_clone().expect("Failed to clone socket"),
-        src_client: context.src_client.clone(),
-        standard: context.standard.clone(),
-        frequency: context.frequency.clone(),
-        bandwith: context.bandwith.clone(),
-        qos: context.qos.clone(),
-        running: context.running.clone(),
-        interval: context.interval.clone(),
-        counter: context.counter.clone() + 1,
-        needed_time: context.needed_time.clone(),
-        calculation_result: context.calculation_result.clone(),
-    })
+    return Ok(update_context(
+        context,
+        SetupContextOverrides {
+            counter: Some(context.counter.clone() + 1),
+            ..Default::default()
+        },
+    ));
+}
+
+fn handle_error(context: &SetupContext) -> Result<()> {
+    let socket = &context.socket;
+    let encoded_msg = encode_message(MessageType::Calc, u64::MAX, 0, 0, 0, 0.0, 0.0, 0)?;
+    for _ in 0..100 {
+        if let Err(e) = socket.send_to(&encoded_msg, &context.src_client) {
+            eprintln!("Error sending error message: {}", e);
+            thread::sleep(Duration::from_millis(100));
+        }
+    }
+    
+    increment_message_count();
+    Ok(())
 }
 fn main() -> anyhow::Result<()> {
     let context = setup()?;
@@ -901,11 +1019,18 @@ fn run_state_machine(mut context: SetupContext) -> Result<()> {
 
             State::Ntp => {
                 context = ntp_phase(&context)?;
-                State::Ptp
+                if !context.running.load(Ordering::Relaxed) {
+                    State::Error
+                } else {
+                    State::Ptp
+                }
             }
 
             State::Ptp => {
-                if ptp_phase(&context)? {
+                context = ptp_phase(&context)?;
+                if !context.running.load(Ordering::Relaxed) {
+                    State::Error
+                } else if context.ptp_result {
                     State::LatencyTest
                 } else {
                     State::Ntp
@@ -913,7 +1038,10 @@ fn run_state_machine(mut context: SetupContext) -> Result<()> {
             }
 
             State::LatencyTest => {
-                if latency_test_phase(&context)? {
+                context = latency_test_phase(&context)?;
+                if !context.running.load(Ordering::Relaxed) {
+                    State::Error
+                } else if context.latency_result {
                     State::Calculation
                 } else {
                     State::Ptp
@@ -922,7 +1050,11 @@ fn run_state_machine(mut context: SetupContext) -> Result<()> {
 
             State::Calculation => {
                 context = calculation_phase(&context)?;
-                State::SaveResults
+                if !context.running.load(Ordering::Relaxed) {
+                    State::Error
+                } else {
+                    State::SaveResults
+                }
             }
 
             State::SaveResults => {
@@ -930,7 +1062,14 @@ fn run_state_machine(mut context: SetupContext) -> Result<()> {
                 State::Done
             }
 
-            State::Done => break,
+            State::Done => {
+                break;
+            }
+
+            State::Error => {
+                handle_error(&context)?;
+                break;
+            }
         }
     }
 
