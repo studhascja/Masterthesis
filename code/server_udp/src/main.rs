@@ -249,6 +249,17 @@ fn wait_for_event(number: u64, msg_t: MessageType, event_t: u8) -> Event {
     }
 }
 
+fn median(values: &Vec<i128>) -> i128 {
+    let mut sorted_values = values.clone();
+    sorted_values.sort();
+    let len = sorted_values.len();
+    if len % 2 == 1 {
+        sorted_values[len / 2]
+    } else {
+        (sorted_values[len / 2 - 1] + sorted_values[len / 2]) / 2
+    }
+}
+
 fn set_kernel_zero(value: u64) {
     let mut kernel = KERNEL_ZERO.lock().unwrap();
     *kernel = value;
@@ -380,10 +391,10 @@ fn ntp_phase(context: &SetupContext) -> Result<SetupContext> {
         wait_until(next_tick);
         next_tick += interval;
         i += 1;
-        if needed_time > ntp_regulation {
+        if needed_time > ntp_regulation && i > 200 {
             let difference = needed_time - ntp_regulation;
             ntp_regulation = ntp_regulation + (difference / 2);
-            println!("Regulation {}", ntp_regulation);
+            println!("Regulation {} Need {}", ntp_regulation, needed_time);
         }
     }
     Ok(SetupContext {
@@ -401,22 +412,22 @@ fn ntp_phase(context: &SetupContext) -> Result<SetupContext> {
     })
 }
 
-fn ptp_phase(context: &SetupContext) -> Result<()> {
+fn ptp_phase(context: &SetupContext) -> Result<bool> {
     let mut buf = [0u8; std::mem::size_of::<Message>()];
     let socket = &context.socket;
     let interval = context.interval.clone();
     let mut ptp_diff = u128::MAX;
     println!("--------------------Start PTP Mechanism---------------------");
     let mut j = 0;
-    //let mut ptp_regulation = 1000;
+    let mut ptp_regulation = 1000;
     let mut next_tick = Instant::now() + interval;
-    while ptp_diff > 10000000 {
+    while ptp_diff > ptp_regulation {
         let start_time = Instant::now();
         let encoded_msg = encode_message(MessageType::PTP, j, 0, 0, 0, 0.0, 0.0, 0)?;
         socket.send_to(&encoded_msg, &context.src_client)?;
         increment_message_count();
-        let wait_time =
-            Instant::now() + Duration::from_nanos((context.needed_time as f64 / 2.2).round() as u64);
+        let wait_time = Instant::now()
+            + Duration::from_nanos((context.needed_time as f64 / 2.0).round() as u64);
         wait_until(wait_time);
         update_user_zero();
 
@@ -426,8 +437,7 @@ fn ptp_phase(context: &SetupContext) -> Result<()> {
                     let end_time = Instant::now();
                     let ptp_duration = end_time - start_time;
                     ptp_diff = ptp_duration.as_nanos().abs_diff(context.needed_time);
-                    //   println!("PTP-Diff = {} {}", ptp_diff, j);
-                    //let msg: Message = *bytemuck::from_bytes::<Message>(&buf[..amt]);
+                    println!("PTP-Diff = {} {}", ptp_diff, j);
                     break;
                 }
                 Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => {
@@ -440,16 +450,20 @@ fn ptp_phase(context: &SetupContext) -> Result<()> {
         }
 
         j += 1;
-        //if j % 10 == 0 {
-        //	ptp_regulation += 1;
-        //}
+        ptp_regulation += 1;
+
         wait_until(next_tick);
         next_tick += interval;
+
+        if j > 10000 {
+            println!("PTP Phase exceeded 10000 iterations, stopping.");
+            return Ok(false);
+        }
     }
-    Ok(())
+    Ok(true)
 }
 
-fn latency_test_phase(context: &SetupContext) -> Result<()> {
+fn latency_test_phase(context: &SetupContext) -> Result<bool> {
     let mut buf = [0u8; std::mem::size_of::<Message>()];
     let socket = &context.socket;
     let interval = context.interval.clone();
@@ -457,7 +471,7 @@ fn latency_test_phase(context: &SetupContext) -> Result<()> {
     let mut next_tick = Instant::now() + interval;
     let mut timestamps: Vec<PTPTimestampSet> = vec![PTPTimestampSet::default(); 20];
 
-    for i in 0..21 {
+    for i in 0..501 {
         let index = i as usize;
         let start_time = Instant::now();
         let elapsed_time = start_time.duration_since(read_user_zero());
@@ -488,7 +502,7 @@ fn latency_test_phase(context: &SetupContext) -> Result<()> {
 
                     match (msg.first_u128, msg.second_u128, msg.timestamp) {
                         (server_sent, client_arrival, client_sent) => {
-                            if i < 20 {
+                            if i < 500 {
                                 timestamps[index].server_arrival = server_arrival.as_nanos();
                                 timestamps[index].server_arrival_kernel =
                                     server_arrival_kernel as u128;
@@ -514,6 +528,7 @@ fn latency_test_phase(context: &SetupContext) -> Result<()> {
         wait_until(next_tick);
         next_tick += interval;
     }
+    let mut whole_all: Vec<i128> = vec![0; 500];
 
     for (i, ts) in timestamps.iter().enumerate() {
         if let Some(client_sent) = ts.client_sent {
@@ -521,16 +536,22 @@ fn latency_test_phase(context: &SetupContext) -> Result<()> {
             let second_offset = ts.server_arrival_kernel as i128 - client_sent as i128;
             let whole = ts.server_arrival as i128 - ts.server_sent as i128;
             let diff_test_offset = second_offset - first_offset;
-
+            whole_all[i] = whole;
             println!(
                 "#{i}: Diff_Offset: {}, Whole: {}, First: {}, Second: {}",
                 diff_test_offset, whole, first_offset, second_offset
             );
         } else {
             println!("#{i}: Incomplete timestamp set");
+            return Ok(false);
         }
     }
-    Ok(())
+    let med = median(&whole_all);
+    if med > 10000 {
+        println!("Median is too high: {}", med);
+        return Ok(false);
+    }
+    return Ok(true);
 }
 
 fn calculation_phase(context: &SetupContext) -> Result<SetupContext> {
@@ -645,23 +666,21 @@ fn calculation_phase(context: &SetupContext) -> Result<SetupContext> {
         }
     }
     Ok(SetupContext {
-                        socket: context.socket.try_clone().expect("Failed to clone socket"),
-                        src_client: context.src_client.clone(),
-                        standard: context.standard.clone(),
-                        frequency: context.frequency.clone(),
-                        bandwith: context.bandwith.clone(),
-                        qos: context.qos.clone(),
-                        running: context.running.clone(),
-                        interval: context.interval.clone(),
-                        counter: context.counter.clone(),
-                        needed_time: context.needed_time.clone(),
-                        calculation_result: (points, latency),
-                    })
+        socket: context.socket.try_clone().expect("Failed to clone socket"),
+        src_client: context.src_client.clone(),
+        standard: context.standard.clone(),
+        frequency: context.frequency.clone(),
+        bandwith: context.bandwith.clone(),
+        qos: context.qos.clone(),
+        running: context.running.clone(),
+        interval: context.interval.clone(),
+        counter: context.counter.clone(),
+        needed_time: context.needed_time.clone(),
+        calculation_result: (points, latency),
+    })
 }
 
-fn save_results(
-    context: &SetupContext
-) -> Result<SetupContext> {
+fn save_results(context: &SetupContext) -> Result<SetupContext> {
     let result_path = format!(
         "../results/standard_{}/frequency_{}/bandwith_{}/qos_{}/udp/",
         &context.standard, &context.frequency, &context.bandwith, &context.qos
@@ -849,13 +868,19 @@ fn run_state_machine(mut context: SetupContext) -> Result<()> {
             }
 
             State::Ptp => {
-                ptp_phase(&context)?;
-                State::LatencyTest
+                if ptp_phase(&context)? {
+                    State::LatencyTest
+                } else {
+                    State::Ntp
+                }
             }
 
             State::LatencyTest => {
-                latency_test_phase(&context)?;
-                State::Calculation
+                if latency_test_phase(&context)? {
+                    State::Calculation
+                } else {
+                    State::Ptp
+                }
             }
 
             State::Calculation => {
