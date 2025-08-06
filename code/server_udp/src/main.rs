@@ -1,7 +1,7 @@
 use anyhow::Result;
 use bytemuck::{Pod, Zeroable};
 use libbpf_rs::skel::{OpenSkel, Skel, SkelBuilder};
-use libbpf_rs::{RingBuffer, RingBufferBuilder};
+use libbpf_rs::RingBufferBuilder;
 use libc::{pthread_self, pthread_setschedparam, sched_param, SCHED_RR};
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
@@ -41,6 +41,8 @@ struct SetupContext {
     running: Arc<AtomicBool>,
     interval: Duration,
     counter: u64,
+    needed_time: u128,
+    calculation_result: (Vec<(f64, f64)>, Vec<CalcTimestampSet>),
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -49,6 +51,16 @@ enum Data {
     IntegerU128(u128),
     IntegerU64(u64),
     Float(f64),
+}
+
+enum State {
+    WaitForStart,
+    Ntp,
+    Ptp,
+    LatencyTest,
+    Calculation,
+    SaveResults,
+    Done,
 }
 
 #[repr(u8)]
@@ -217,11 +229,11 @@ fn wait_for_queue_event(timestamp: u64) -> Option<Event> {
 
 fn wait_for_event(number: u64, msg_t: MessageType, event_t: u8) -> Event {
     let queue_arc = CURRENT_EVENT.get().expect("CURRENT_EVENT not initialized");
-     loop {
+    loop {
         {
             let mut queue = queue_arc.lock().unwrap();
             while let Some(evt) = queue.pop_front() {
-	       // println!("{:?}", evt.data.msg_type);
+                // println!("{:?}", evt.data.msg_type);
                 match MessageType::try_from(evt.data.msg_type) {
                     Ok(msg_type) => {
                         if msg_type == msg_t && evt.data.seq == number && evt.event_type == event_t
@@ -259,7 +271,6 @@ fn read_user_zero() -> Instant {
 fn setup() -> anyhow::Result<SetupContext> {
     set_rt_priority(99);
 
-
     let args: Vec<String> = env::args().collect();
     let standard = Arc::new(args[1].clone());
     let frequency = Arc::new(args[2].clone());
@@ -283,6 +294,8 @@ fn setup() -> anyhow::Result<SetupContext> {
         running,
         interval: Duration::from_nanos(TIMEOUT_NS),
         counter: 0,
+        needed_time: u128::MAX,
+        calculation_result: (Vec::new(), Vec::new()),
     })
 }
 
@@ -307,6 +320,8 @@ fn wait_for_start_message(context: &SetupContext) -> SetupContext {
                         running: context.running.clone(),
                         interval: context.interval.clone(),
                         counter: context.counter.clone(),
+                        needed_time: context.needed_time.clone(),
+                        calculation_result: context.calculation_result.clone(),
                     };
                 }
             }
@@ -320,16 +335,16 @@ fn wait_for_start_message(context: &SetupContext) -> SetupContext {
     }
 }
 
-fn ntp_phase(context: &SetupContext) -> Result<u128> {
+fn ntp_phase(context: &SetupContext) -> Result<SetupContext> {
     let mut buf = [0u8; std::mem::size_of::<Message>()];
     let socket = &context.socket;
     let interval = context.interval.clone();
     println!("--------------------Start NTP Mechanism---------------------");
     let mut next_tick = Instant::now() + interval;
-    let mut needed_time = u128::MAX;
     let mut i = 0;
     let mut ntp_regulation = 500000;
- 
+    let mut needed_time = u128::MAX;
+
     while needed_time > ntp_regulation {
         let start_time = Instant::now();
         let elapsed_start_time = start_time.duration_since(read_user_zero());
@@ -340,7 +355,7 @@ fn ntp_phase(context: &SetupContext) -> Result<u128> {
             match socket.recv_from(&mut buf) {
                 Ok((amt, _src)) => {
                     let msg: Message = *bytemuck::from_bytes::<Message>(&buf[..amt]);
-		    let number = msg.seq;
+                    let number = msg.seq;
                     let event_snapshot = wait_for_event(number, MessageType::NTP, 1);
 
                     let end_time = event_snapshot.timestamp - get_kernel_zero();
@@ -365,16 +380,28 @@ fn ntp_phase(context: &SetupContext) -> Result<u128> {
         wait_until(next_tick);
         next_tick += interval;
         i += 1;
-	if needed_time > ntp_regulation {
-		let difference = needed_time - ntp_regulation;
-		ntp_regulation = ntp_regulation + (difference / 2);
-		println!("Regulation {}", ntp_regulation);
-	}
+        if needed_time > ntp_regulation {
+            let difference = needed_time - ntp_regulation;
+            ntp_regulation = ntp_regulation + (difference / 2);
+            println!("Regulation {}", ntp_regulation);
+        }
     }
-    Ok(needed_time)
+    Ok(SetupContext {
+        socket: context.socket.try_clone().expect("Failed to clone socket"),
+        src_client: context.src_client.clone(),
+        standard: context.standard.clone(),
+        frequency: context.frequency.clone(),
+        bandwith: context.bandwith.clone(),
+        qos: context.qos.clone(),
+        running: context.running.clone(),
+        interval: context.interval.clone(),
+        counter: context.counter.clone(),
+        needed_time: needed_time,
+        calculation_result: context.calculation_result.clone(),
+    })
 }
 
-fn ptp_phase(context: &SetupContext, needed_time: u128) -> Result<()> {
+fn ptp_phase(context: &SetupContext) -> Result<()> {
     let mut buf = [0u8; std::mem::size_of::<Message>()];
     let socket = &context.socket;
     let interval = context.interval.clone();
@@ -389,7 +416,7 @@ fn ptp_phase(context: &SetupContext, needed_time: u128) -> Result<()> {
         socket.send_to(&encoded_msg, &context.src_client)?;
         increment_message_count();
         let wait_time =
-            Instant::now() + Duration::from_nanos((needed_time as f64 / 2.2).round() as u64);
+            Instant::now() + Duration::from_nanos((context.needed_time as f64 / 2.2).round() as u64);
         wait_until(wait_time);
         update_user_zero();
 
@@ -398,7 +425,7 @@ fn ptp_phase(context: &SetupContext, needed_time: u128) -> Result<()> {
                 Ok((_amt, _src)) => {
                     let end_time = Instant::now();
                     let ptp_duration = end_time - start_time;
-                    ptp_diff = ptp_duration.as_nanos().abs_diff(needed_time);
+                    ptp_diff = ptp_duration.as_nanos().abs_diff(context.needed_time);
                     //   println!("PTP-Diff = {} {}", ptp_diff, j);
                     //let msg: Message = *bytemuck::from_bytes::<Message>(&buf[..amt]);
                     break;
@@ -506,9 +533,7 @@ fn latency_test_phase(context: &SetupContext) -> Result<()> {
     Ok(())
 }
 
-fn calculation_phase(
-    context: &SetupContext,
-) -> Result<(Vec<(f64, f64)>, Vec<CalcTimestampSet>)> {
+fn calculation_phase(context: &SetupContext) -> Result<SetupContext> {
     let mut buf = [0u8; std::mem::size_of::<Message>()];
     let socket = &context.socket;
     let interval = context.interval.clone();
@@ -619,21 +644,7 @@ fn calculation_phase(
             }
         }
     }
-    Ok((points, latency))
-}
-
-fn save_results(
-    context: &SetupContext,
-    points: Vec<(f64, f64)>,
-    latency: Vec<CalcTimestampSet>,
-) -> Result<SetupContext> {
-    let result_path = format!(
-        "../results/standard_{}/frequency_{}/bandwith_{}/qos_{}/udp/",
-        &context.standard, &context.frequency, &context.bandwith, &context.qos
-    );
-    if let Err(e) = create_dir_all(&result_path) {
-        eprintln!("Error while creating directories: {}", e);
-        return Ok(SetupContext {
+    Ok(SetupContext {
                         socket: context.socket.try_clone().expect("Failed to clone socket"),
                         src_client: context.src_client.clone(),
                         standard: context.standard.clone(),
@@ -642,7 +653,34 @@ fn save_results(
                         qos: context.qos.clone(),
                         running: context.running.clone(),
                         interval: context.interval.clone(),
-                        counter: context.counter.clone() + 1,});
+                        counter: context.counter.clone(),
+                        needed_time: context.needed_time.clone(),
+                        calculation_result: (points, latency),
+                    })
+}
+
+fn save_results(
+    context: &SetupContext
+) -> Result<SetupContext> {
+    let result_path = format!(
+        "../results/standard_{}/frequency_{}/bandwith_{}/qos_{}/udp/",
+        &context.standard, &context.frequency, &context.bandwith, &context.qos
+    );
+    if let Err(e) = create_dir_all(&result_path) {
+        eprintln!("Error while creating directories: {}", e);
+        return Ok(SetupContext {
+            socket: context.socket.try_clone().expect("Failed to clone socket"),
+            src_client: context.src_client.clone(),
+            standard: context.standard.clone(),
+            frequency: context.frequency.clone(),
+            bandwith: context.bandwith.clone(),
+            qos: context.qos.clone(),
+            running: context.running.clone(),
+            interval: context.interval.clone(),
+            counter: context.counter.clone() + 1,
+            needed_time: context.needed_time.clone(),
+            calculation_result: context.calculation_result.clone(),
+        });
     }
 
     let mut latencies = BufWriter::new(
@@ -650,11 +688,15 @@ fn save_results(
             .write(true)
             .create(true)
             .truncate(true)
-            .open(format!("{}/latencys_{}", result_path, context.counter.clone()))
+            .open(format!(
+                "{}/latencys_{}",
+                result_path,
+                context.counter.clone()
+            ))
             .unwrap(),
     );
 
-    for (i, ts) in latency.iter().enumerate() {
+    for (i, ts) in context.calculation_result.1.iter().enumerate() {
         if let (Some(client_sent_kernel), Some(client_queue)) =
             (ts.client_sent_kernel, ts.client_queue)
         {
@@ -681,11 +723,15 @@ fn save_results(
             .write(true)
             .create(true)
             .truncate(true)
-            .open(format!("{}/circle_points_{}", result_path, context.counter.clone()))
+            .open(format!(
+                "{}/circle_points_{}",
+                result_path,
+                context.counter.clone()
+            ))
             .unwrap(),
     );
 
-    for (x, y) in &points {
+    for (x, y) in &context.calculation_result.0 {
         writeln!(circle_points, "{},{}", x, y).unwrap();
     }
 
@@ -693,21 +739,23 @@ fn save_results(
     latencies.flush().unwrap();
     println!("Points and Latencies written.");
     Ok(SetupContext {
-                        socket: context.socket.try_clone().expect("Failed to clone socket"),
-                        src_client: context.src_client.clone(),
-                        standard: context.standard.clone(),
-                        frequency: context.frequency.clone(),
-                        bandwith: context.bandwith.clone(),
-                        qos: context.qos.clone(),
-                        running: context.running.clone(),
-                        interval: context.interval.clone(),
-                        counter: context.counter.clone() + 1,
-                    })
+        socket: context.socket.try_clone().expect("Failed to clone socket"),
+        src_client: context.src_client.clone(),
+        standard: context.standard.clone(),
+        frequency: context.frequency.clone(),
+        bandwith: context.bandwith.clone(),
+        qos: context.qos.clone(),
+        running: context.running.clone(),
+        interval: context.interval.clone(),
+        counter: context.counter.clone() + 1,
+        needed_time: context.needed_time.clone(),
+        calculation_result: context.calculation_result.clone(),
+    })
 }
 fn main() -> anyhow::Result<()> {
-    let mut context = setup()?;
+    let context = setup()?;
 
-              let event_queue = Arc::new(Mutex::new(VecDeque::new()));
+    let event_queue = Arc::new(Mutex::new(VecDeque::new()));
     let queue_event_queue = Arc::new(Mutex::new(VecDeque::new()));
 
     CURRENT_EVENT.set(event_queue.clone()).unwrap();
@@ -716,7 +764,7 @@ fn main() -> anyhow::Result<()> {
     let event_ref = CURRENT_EVENT.get().expect("CURRENT_EVENT not initialized");
     let queue_event_ref = CURRENT_QUEUE_EVENT
         .get()
-	.expect("CURRENT_EVENT not initialized");
+        .expect("CURRENT_EVENT not initialized");
 
     let open_skel = MonitoreSkelBuilder::default().open();
     println!("Skelett ge  ffnet.");
@@ -745,52 +793,84 @@ fn main() -> anyhow::Result<()> {
         if event.event_type == 0 {
             set_kernel_zero(event.timestamp);
         }
-	/*
-            println!(
-                    "Latenz: {:?} (User: {:?} - Kernel: {:?})",
-                    diff_ns,
-                    elapsed,
-                    Duration::from_nanos(kernel_diff),
-            );
-            if let Some(val) = TEST.get(){
-                    let usersp = val.duration_since(*USER_ZERO.get().unwrap());
-                    let test_diff = usersp.as_nanos() as i128 - kernel_diff as i128;
+        /*
+                println!(
+                        "Latenz: {:?} (User: {:?} - Kernel: {:?})",
+                        diff_ns,
+                        elapsed,
+                        Duration::from_nanos(kernel_diff),
+                );
+                if let Some(val) = TEST.get(){
+                        let usersp = val.duration_since(*USER_ZERO.get().unwrap());
+                        let test_diff = usersp.as_nanos() as i128 - kernel_diff as i128;
 
-                    println!(
-                            "TEST: Latenz: {:?} (User: {:?} - Kernel: {:?})",
-                            test_diff,
-                            usersp,
-                            Duration::from_nanos(kernel_diff),
-            );
-	} */
-	else if event.event_type == 3 {
+                        println!(
+                                "TEST: Latenz: {:?} (User: {:?} - Kernel: {:?})",
+                                test_diff,
+                                usersp,
+                                Duration::from_nanos(kernel_diff),
+                );
+        } */
+        else if event.event_type == 3 {
             let mut queue = queue_event_ref.lock().unwrap();
             queue.push_back(*event);
         } else {
             let mut queue = event_ref.lock().unwrap();
             queue.push_back(*event);
         }
-	0 // R  ckgabewert: 0 bedeutet "OK"
+        0 // R  ckgabewert: 0 bedeutet "OK"
     })?;
     let ringbuf = ringbuf_builder.build()?;
-    
+
     // Separate Thread f  r Polling des Ringbuffers starten
     let _handle = thread::spawn(move || {
         while r.load(Ordering::Relaxed) {
             ringbuf.poll(Duration::from_millis(100)).unwrap();
         }
-	println!("weg");
     });
 
-
-    let needed_time: u128;
-    context = wait_for_start_message(&context);
-    needed_time = ntp_phase(&context)?;
-    ptp_phase(&context, needed_time)?;
-    latency_test_phase(&context)?;
-    let calculation_result = calculation_phase(&context)?;
-    save_results(&context, calculation_result.0, calculation_result.1)?;
-
+    run_state_machine(context)?;
     Ok(())
 }
 
+fn run_state_machine(mut context: SetupContext) -> Result<()> {
+    let mut state = State::WaitForStart;
+
+    loop {
+        state = match state {
+            State::WaitForStart => {
+                context = wait_for_start_message(&context);
+                State::Ntp
+            }
+
+            State::Ntp => {
+                context = ntp_phase(&context)?;
+                State::Ptp
+            }
+
+            State::Ptp => {
+                ptp_phase(&context)?;
+                State::LatencyTest
+            }
+
+            State::LatencyTest => {
+                latency_test_phase(&context)?;
+                State::Calculation
+            }
+
+            State::Calculation => {
+                context = calculation_phase(&context)?;
+                State::SaveResults
+            }
+
+            State::SaveResults => {
+                save_results(&context)?;
+                State::Done
+            }
+
+            State::Done => break,
+        }
+    }
+
+    Ok(())
+}
