@@ -30,6 +30,7 @@ static MESSAGE_COUNT: Lazy<Mutex<u64>> = Lazy::new(|| Mutex::new(0));
 const TIMEOUT_NS: u64 = 3000000;
 const NUM_POINTS: usize = 4000;
 const RADIUS: f64 = 10.0;
+const TIMEOUT_DURATION: Duration = Duration::from_secs(2);
 
 struct SetupContext {
     socket: UdpSocket,
@@ -289,6 +290,7 @@ fn setup() -> anyhow::Result<SetupContext> {
     let qos = Arc::new(args[4].clone());
 
     let socket = UdpSocket::bind("192.168.1.1:8080")?;
+    socket.set_nonblocking(true)?;
     println!("Server läuft auf 192.168.1.1:8080");
     println!("Size of Message: {}", std::mem::size_of::<Message>());
     let src_client: SocketAddr = "192.168.1.10:12345".parse().unwrap();
@@ -348,7 +350,7 @@ fn wait_for_start_message(context: &SetupContext) -> SetupContext {
 
 fn ntp_phase(context: &SetupContext) -> Result<SetupContext> {
     let stabilization_iterations = 200;
-    
+
     let mut buf = [0u8; std::mem::size_of::<Message>()];
     let socket = &context.socket;
     let interval = context.interval.clone();
@@ -364,7 +366,12 @@ fn ntp_phase(context: &SetupContext) -> Result<SetupContext> {
         let encoded_msg = encode_message(MessageType::NTP, i, 0, 0, 0, 0.0, 0.0, 0)?;
         socket.send_to(&encoded_msg, &context.src_client)?;
         increment_message_count();
+
         loop {
+            if start_time.elapsed() > TIMEOUT_DURATION {
+                println!("Timeout in NTP Phase");
+                break;
+            }
             match socket.recv_from(&mut buf) {
                 Ok((amt, _src)) => {
                     let msg: Message = *bytemuck::from_bytes::<Message>(&buf[..amt]);
@@ -393,7 +400,7 @@ fn ntp_phase(context: &SetupContext) -> Result<SetupContext> {
         wait_until(next_tick);
         next_tick += interval;
         i += 1;
-        if needed_time > ntp_regulation && i > stabilization_iterations{
+        if needed_time > ntp_regulation && i > stabilization_iterations {
             let difference = needed_time - ntp_regulation;
             ntp_regulation = ntp_regulation + (difference / 2);
             println!("Regulation {} Need {}", ntp_regulation, needed_time);
@@ -436,6 +443,10 @@ fn ptp_phase(context: &SetupContext) -> Result<bool> {
         update_user_zero();
 
         loop {
+            if start_time.elapsed() > TIMEOUT_DURATION {
+                println!("Timeout in PTP Phase");
+                break;
+            }
             match socket.recv_from(&mut buf) {
                 Ok((_amt, _src)) => {
                     let end_time = Instant::now();
@@ -460,7 +471,7 @@ fn ptp_phase(context: &SetupContext) -> Result<bool> {
         next_tick += interval;
 
         if ptp_regulation > max_ptp_tolerance {
-            println!("PTP Phase exceeded 9000 iterations, stopping.");
+            println!("PTP Phase exceeded a tolerance of {} , stopping.", max_ptp_tolerance);
             return Ok(false);
         }
     }
@@ -471,15 +482,16 @@ fn ptp_phase(context: &SetupContext) -> Result<bool> {
 fn latency_test_phase(context: &SetupContext) -> Result<bool> {
     let test_mesg_count: u64 = 1000;
     let max_tolerance = 10000; // in nanoseconds
-
+    let mut i = 0;
     let mut buf = [0u8; std::mem::size_of::<Message>()];
     let socket = &context.socket;
     let interval = context.interval.clone();
     println!("---------------------Start Latency Test---------------------");
     let mut next_tick = Instant::now() + interval;
-    let mut timestamps: Vec<PTPTimestampSet> = vec![PTPTimestampSet::default(); test_mesg_count as usize];
+    let mut timestamps: Vec<PTPTimestampSet> =
+        vec![PTPTimestampSet::default(); test_mesg_count as usize];
 
-    for i in 0..test_mesg_count + 1 {
+    while i < test_mesg_count + 1 {
         let index = i as usize;
         let start_time = Instant::now();
         let elapsed_time = start_time.duration_since(read_user_zero());
@@ -499,6 +511,11 @@ fn latency_test_phase(context: &SetupContext) -> Result<bool> {
         let server_kernel_sent = event_snapshot_sending.timestamp - get_kernel_zero();
 
         loop {
+            if start_time.elapsed() > TIMEOUT_DURATION {
+                println!("Timeout in Latency Test Phase");
+                i = i - 1;
+                break;
+            }
             match socket.recv_from(&mut buf) {
                 Ok((amt, _src)) => {
                     let end_time = Instant::now();
@@ -535,6 +552,7 @@ fn latency_test_phase(context: &SetupContext) -> Result<bool> {
         }
         wait_until(next_tick);
         next_tick += interval;
+        i = i+1;
     }
     let mut diff_all: Vec<i128> = vec![0; test_mesg_count as usize];
 
@@ -542,10 +560,10 @@ fn latency_test_phase(context: &SetupContext) -> Result<bool> {
         if let Some(client_sent) = ts.client_sent {
             let first_offset = ts.client_arrival as i128 - ts.server_kernel_sent as i128;
             let second_offset = ts.server_arrival_kernel as i128 - client_sent as i128;
-         //   let whole = ts.server_arrival as i128 - ts.server_sent as i128;
+            //   let whole = ts.server_arrival as i128 - ts.server_sent as i128;
             let diff_test_offset = second_offset - first_offset;
             diff_all[i] = diff_test_offset;
-           /*
+            /*
             println!(
                 "#{i}: Diff_Offset: {}, Whole: {}, First: {}, Second: {}",
                 diff_test_offset, whole, first_offset, second_offset
@@ -598,6 +616,11 @@ fn calculation_phase(context: &SetupContext) -> Result<SetupContext> {
 
         let calc_send_duration;
         loop {
+            if calc_send_time.elapsed() > TIMEOUT_DURATION {
+                println!("Timeout in Latency Calc Phase");
+                i = i - 1;
+                break;
+            }
             match socket.recv_from(&mut buf) {
                 Ok((amt, _src)) => {
                     let end_time = Instant::now();
@@ -654,8 +677,12 @@ fn calculation_phase(context: &SetupContext) -> Result<SetupContext> {
     let encoded_msg = encode_message(MessageType::Calc, u64::MAX, 0, 0, 0, 0.0, 0.0, 0)?;
     socket.send_to(&encoded_msg, &context.src_client)?;
     increment_message_count();
-
+    let start_time = Instant::now();
     loop {
+        if start_time.elapsed() > TIMEOUT_DURATION {
+            println!("Timeout in Latency Test Phase");
+            break;
+        }
         match socket.recv_from(&mut buf) {
             Ok((amt, _src)) => {
                 let msg: Message = *bytemuck::from_bytes::<Message>(&buf[..amt]);
