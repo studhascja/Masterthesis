@@ -204,8 +204,7 @@ fn wait_for_queue_event(timestamp: u64) -> Option<Event> {
     for i in 1..queue_lock.len() {
         let idx = queue_lock.len() - i;
         let event = &queue_lock[idx];
-
-        if queue_lock.len() >= count.saturating_sub(1)
+        if queue_lock.len() >= count.saturating_sub(3)
             && (event.timestamp - get_kernel_zero()) < timestamp
         {
             return Some(event.clone());
@@ -302,14 +301,12 @@ fn main() -> Result<()> {
                     println!("⚠️ Received unexpected Start message from server.");
                 }
                 Ok(MessageType::NTP) => {
-		    println!("NTP");
-                    update_user_zero();
+	            update_user_zero();
                     let encoded = encode_message(MessageType::NTP, msg.seq, 0, 0, 0, 0.0, 0.0, 0)?;
                     socket.send(&encoded)?;
                     increment_message_count();
                 }
                 Ok(MessageType::NtpResult) => {
-			println!("NTP-Result");
 			let seq = msg.seq;
                         let event = wait_for_event(seq, MessageType::NtpResult, 1);
                         let client_recv = event.timestamp - get_kernel_zero();
@@ -331,18 +328,15 @@ fn main() -> Result<()> {
                         client_sent_time = (send_event.timestamp - get_kernel_zero()) as u128;
                     }
                         Ok(MessageType::PTP) => {
-			    println!("PTP");
                             update_user_zero();
                             let encoded = encode_message(MessageType::PTP, msg.seq, 0, 0, 0, 0.0, 0.0, 0)?;
                             socket.send(&encoded)?;
                             increment_message_count();
                         }
                         Ok(MessageType::PtpResult) => {
-                           	println!("PTP-Result");
 				_difference += msg.i_val;
                         }
                         Ok(MessageType::Calc) => {
-			    println!("Calc");
                             let (theta, radius) = (msg.first_f64, msg.second_f64);
                             let y = radius * theta.sin();
                             let seq = msg.seq;
@@ -391,6 +385,7 @@ fn main() -> Result<()> {
 
                             let send_event = wait_for_event(seq, MessageType::Calc, 2);
                             client_sent_time = (send_event.timestamp - get_kernel_zero()) as u128;
+			    let duration_queue = start.elapsed();
 
                             let queue_event = wait_for_queue_event(client_sent_time as u64);
                             if let Some(evt) = queue_event {
@@ -400,7 +395,11 @@ fn main() -> Result<()> {
                             let duration = start.elapsed();
                             if duration.as_millis() > 2 {
                                 println!("⚠️ Calc function took {:.4?} ms", duration);
+				println!(" ^z   ^o Calc function without queue took {:.4?} ms", duration_queue);
                             }
+			    if seq == u64::MAX {
+				break;
+			    }
                         }
                         Err(_) => {
                             eprintln!("⚠️ Unknown message type: {}", msg.msg_type);

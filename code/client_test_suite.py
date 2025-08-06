@@ -158,7 +158,7 @@ class WifiTest(unittest.TestCase):
         self.assertTrue(iperf_prio)
 
 def run_rust(process_container):
-        rust_result = ['./client/target/debug/client']
+        rust_result = ['./client_udp/target/debug/client_udp']
         process = subprocess.Popen(rust_result)
         process_container.append(process)
         process.wait()
@@ -168,7 +168,7 @@ def main():
         raise EnvironmentError("❌ Umgebungsvariable WIFI_PASSWORD ist nicht gesetzt!")
     
     rust_build = ['cargo', 'build']
-    rust_build_result = subprocess.run(rust_build, cwd='/code/client')
+    rust_build_result = subprocess.run(rust_build, cwd='/code/client_udp')
 
     subprocess.run(["iw", "reg", "set", "DE"])
     all_results = []
