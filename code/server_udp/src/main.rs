@@ -347,6 +347,8 @@ fn wait_for_start_message(context: &SetupContext) -> SetupContext {
 }
 
 fn ntp_phase(context: &SetupContext) -> Result<SetupContext> {
+    let stabilization_iterations = 200;
+    
     let mut buf = [0u8; std::mem::size_of::<Message>()];
     let socket = &context.socket;
     let interval = context.interval.clone();
@@ -391,7 +393,7 @@ fn ntp_phase(context: &SetupContext) -> Result<SetupContext> {
         wait_until(next_tick);
         next_tick += interval;
         i += 1;
-        if needed_time > ntp_regulation && i > 200 {
+        if needed_time > ntp_regulation && i > stabilization_iterations{
             let difference = needed_time - ntp_regulation;
             ntp_regulation = ntp_regulation + (difference / 2);
             println!("Regulation {} Need {}", ntp_regulation, needed_time);
@@ -413,6 +415,8 @@ fn ntp_phase(context: &SetupContext) -> Result<SetupContext> {
 }
 
 fn ptp_phase(context: &SetupContext) -> Result<bool> {
+    let max_ptp_tolerance = 5000; // in nanoseconds
+
     let mut buf = [0u8; std::mem::size_of::<Message>()];
     let socket = &context.socket;
     let interval = context.interval.clone();
@@ -437,7 +441,7 @@ fn ptp_phase(context: &SetupContext) -> Result<bool> {
                     let end_time = Instant::now();
                     let ptp_duration = end_time - start_time;
                     ptp_diff = ptp_duration.as_nanos().abs_diff(context.needed_time);
-                    println!("PTP-Diff = {} {}", ptp_diff, j);
+                    //println!("PTP-Diff = {} {}", ptp_diff, j);
                     break;
                 }
                 Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => {
@@ -455,23 +459,27 @@ fn ptp_phase(context: &SetupContext) -> Result<bool> {
         wait_until(next_tick);
         next_tick += interval;
 
-        if j > 10000 {
-            println!("PTP Phase exceeded 10000 iterations, stopping.");
+        if ptp_regulation > max_ptp_tolerance {
+            println!("PTP Phase exceeded 9000 iterations, stopping.");
             return Ok(false);
         }
     }
+    println!("PTP-Diff = {} {}", ptp_diff, j);
     Ok(true)
 }
 
 fn latency_test_phase(context: &SetupContext) -> Result<bool> {
+    let test_mesg_count: u64 = 1000;
+    let max_tolerance = 10000; // in nanoseconds
+
     let mut buf = [0u8; std::mem::size_of::<Message>()];
     let socket = &context.socket;
     let interval = context.interval.clone();
     println!("---------------------Start Latency Test---------------------");
     let mut next_tick = Instant::now() + interval;
-    let mut timestamps: Vec<PTPTimestampSet> = vec![PTPTimestampSet::default(); 20];
+    let mut timestamps: Vec<PTPTimestampSet> = vec![PTPTimestampSet::default(); test_mesg_count as usize];
 
-    for i in 0..501 {
+    for i in 0..test_mesg_count + 1 {
         let index = i as usize;
         let start_time = Instant::now();
         let elapsed_time = start_time.duration_since(read_user_zero());
@@ -502,7 +510,7 @@ fn latency_test_phase(context: &SetupContext) -> Result<bool> {
 
                     match (msg.first_u128, msg.second_u128, msg.timestamp) {
                         (server_sent, client_arrival, client_sent) => {
-                            if i < 500 {
+                            if i < test_mesg_count {
                                 timestamps[index].server_arrival = server_arrival.as_nanos();
                                 timestamps[index].server_arrival_kernel =
                                     server_arrival_kernel as u128;
@@ -528,29 +536,31 @@ fn latency_test_phase(context: &SetupContext) -> Result<bool> {
         wait_until(next_tick);
         next_tick += interval;
     }
-    let mut whole_all: Vec<i128> = vec![0; 500];
+    let mut diff_all: Vec<i128> = vec![0; test_mesg_count as usize];
 
     for (i, ts) in timestamps.iter().enumerate() {
         if let Some(client_sent) = ts.client_sent {
             let first_offset = ts.client_arrival as i128 - ts.server_kernel_sent as i128;
             let second_offset = ts.server_arrival_kernel as i128 - client_sent as i128;
-            let whole = ts.server_arrival as i128 - ts.server_sent as i128;
+         //   let whole = ts.server_arrival as i128 - ts.server_sent as i128;
             let diff_test_offset = second_offset - first_offset;
-            whole_all[i] = whole;
+            diff_all[i] = diff_test_offset;
+           /*
             println!(
                 "#{i}: Diff_Offset: {}, Whole: {}, First: {}, Second: {}",
                 diff_test_offset, whole, first_offset, second_offset
-            );
+            ); */
         } else {
             println!("#{i}: Incomplete timestamp set");
             return Ok(false);
         }
     }
-    let med = median(&whole_all);
-    if med > 10000 {
+    let med = median(&diff_all);
+    if med.abs() > max_tolerance as i128 {
         println!("Median is too high: {}", med);
         return Ok(false);
     }
+    println!("Median of Latency Test: {}", med);
     return Ok(true);
 }
 
