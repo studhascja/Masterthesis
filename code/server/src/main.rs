@@ -942,8 +942,7 @@ fn main() -> Result<(), libbpf_rs::Error> {
                 let bandwith = Arc::clone(&bandwith);
                 let qos = Arc::clone(&qos);
                  let running_thread = Arc::clone(&running);
-
-                thread::spawn(move || {
+		let handle = thread::spawn(move || {
                     let context = SetupContext {
                         stream,
                         standard,
@@ -958,11 +957,14 @@ fn main() -> Result<(), libbpf_rs::Error> {
                         ptp_result: false,
                         latency_result: false,
                     };
-                    let _ = run_state_machine(context);
+                    _ = run_state_machine(context);
                 });
-            }
+            handle.join();
+	    }
             Err(e) => eprintln!("Verbindungsfehler: {}", e),
         }
+	println!("test");
+	break;
     }
     Ok(())
 }
