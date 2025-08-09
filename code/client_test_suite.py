@@ -37,11 +37,13 @@ def start_wpa_supplicant(wifi6):
 def connect_to_wifi(wifi6):
     """Versucht, mit einem bestimmten WLAN zu verbinden."""
     attempt_counter = 0
-    thread = threading.Thread(target=start_wpa_supplicant, args=(wifi6,))
-    thread.start()
     while True:
-        
+        if attempt_counter % 5 == 0:
+             disconnect_wifi()
+             thread = threading.Thread(target=start_wpa_supplicant, args=(wifi6,))
+             thread.start()
         time.sleep(10)
+        attempt_counter = attempt_counter + 1
         result = subprocess.run(
             ["iw", "dev", IFACE, "link"],
             capture_output=True, text=True
@@ -104,13 +106,13 @@ def get_prio():
     try:
         output_client = subprocess.check_output("ps -eLo comm,pri | grep client", shell=True, text=True)
         output_iperf = subprocess.check_output("ps -eLo comm,pri | grep iperf", shell=True, text=True)    
-        result_client = False;
-        result_iperf = False;
+        result_client = False
+        result_iperf = False
 
         if "139" in output_client:
-            result_client = True;
+            result_client = True
         if "139" not in output_iperf:
-            result_iperf = True;
+            result_iperf = True
 
         return result_client, result_iperf
     
@@ -157,8 +159,14 @@ class WifiTest(unittest.TestCase):
         self.assertTrue(client_prio)
         self.assertTrue(iperf_prio)
 
-def run_rust(process_container):
+def run_rust_udp(process_container):
         rust_result = ['./client_udp/target/debug/client_udp']
+        process = subprocess.Popen(rust_result)
+        process_container.append(process)
+        process.wait()
+
+def run_rust_tcp(process_container):
+        rust_result = ['./client/target/debug/client']
         process = subprocess.Popen(rust_result)
         process_container.append(process)
         process.wait()
@@ -168,7 +176,8 @@ def main():
         raise EnvironmentError("❌ Umgebungsvariable WIFI_PASSWORD ist nicht gesetzt!")
     
     rust_build = ['cargo', 'build']
-    rust_build_result = subprocess.run(rust_build, cwd='/code/client_udp')
+    rust_udp_build_result = subprocess.run(rust_build, cwd='/code/client_udp')
+    rust_tcp_build_result = subprocess.run(rust_build, cwd='/code/client')
 
     subprocess.run(["iw", "reg", "set", "DE"])
     all_results = []
@@ -177,7 +186,7 @@ def main():
 
     for i, line in enumerate(lines):
         parts = line.strip().split()
-        if len(parts) < 5:
+        if len(parts) < 6:
             continue
 
         wifi_version = int(parts[0])
@@ -193,10 +202,12 @@ def main():
 
        
         rust_process_container = []
-
-        rust_thread = threading.Thread(target=run_rust, args=(rust_process_container,))
-        rust_thread.start()
+        if parts[4] == "udp":
+            rust_thread = threading.Thread(target=run_rust_udp, args=(rust_process_container,))
+        else:
+            rust_thread = threading.Thread(target=run_rust_tcp, args=(rust_process_container,))
 	
+        rust_thread.start()
         if not os.path.exists(pipe_path):
             os.mkfifo(pipe_path)  # Erstellt die named pipe
 

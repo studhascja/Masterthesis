@@ -31,21 +31,26 @@ def run_config_script(param, process_container):
     process = subprocess.Popen(hostapd_cmd)
     process_container.append(process)
 
-def run_rust(process_container, val1, val2, val3, val4):
+def run_rust_udp(process_container, val1, val2, val3, val4):
     rust_result = ['./server_udp/target/debug/server_udp', str(val1), str(val2), str(val3), str(val4)]
     process = subprocess.Popen(rust_result)
     process_container.append(process)
     process.wait()
 
+def run_rust_tcp(process_container, val1, val2, val3, val4):
+    rust_result = ['./server/target/debug/server', str(val1), str(val2), str(val3), str(val4)]
+    process = subprocess.Popen(rust_result)
+    process_container.append(process)
+    process.wait()
 
 def process_line(line, index):
     global all_results
     parts = line.strip().split()
-    if len(parts) != 5:
+    if len(parts) != 6:
         print(f" ^|berspringe ung  ltige Zeile: {line}")
         return
 
-    val1, val2, val3, val4, param = parts
+    val1, val2, val3, val4, val5, param = parts
 
     config_process_container = []
 
@@ -57,8 +62,12 @@ def process_line(line, index):
 
     rust_process_container = []
 
-    rust_thread = threading.Thread(target=run_rust, args=(rust_process_container, val1, val2, val3, val4))
-    rust_thread.start()
+    if val5 == "udp":
+        rust_thread = threading.Thread(target=run_rust_udp, args=(rust_process_container, val1, val2, val3, val4))
+        rust_thread.start()
+    else:
+        rust_thread = threading.Thread(target=run_rust_tcp, args=(rust_process_container, val1, val2, val3, val4))
+        rust_thread.start()
 
     suite = unittest.TestSuite()
     test_prio = WifiTest('test_prio')
@@ -89,13 +98,13 @@ def get_prio():
     try:
         output_server = subprocess.check_output("ps -eLo comm,pri | grep server", shell=True, text=True)
         output_iperf = subprocess.check_output("ps -eLo comm,pri | grep iperf", shell=True, text=True)
-        result_server = False;
-        result_iperf = False;
+        result_server = False
+        result_iperf = False
 
         if "139" in output_server:
-            result_server = True;
+            result_server = True
         if "139" not in output_iperf:
-            result_iperf = True;
+            result_iperf = True
 
         return result_server, result_iperf
 
@@ -114,7 +123,8 @@ class WifiTest(unittest.TestCase):
 def main():
     global all_results
     rust_build = ['cargo', 'build']
-    rust_build_result = subprocess.run(rust_build, cwd='/code/server_udp')
+    rust_udp_build_result = subprocess.run(rust_build, cwd='/code/server_udp')
+    rust_tcp_build_result = subprocess.run(rust_build, cwd='/code/server')
     iperf_process_container = []
 
     iperf_thread = threading.Thread(target=run_iperf_server, args=(iperf_process_container,))
