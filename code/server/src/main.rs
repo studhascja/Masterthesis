@@ -200,8 +200,9 @@ impl TryFrom<u8> for MessageType {
 }
 
 #[no_mangle]
-pub extern "C" fn measure_instant() -> Instant {
-    Instant::now()
+pub extern "C" fn measure_instant() {
+    let mut time = USER_ZERO.lock().unwrap();
+    *time = Instant::now();
 }
 
 fn median(values: &Vec<i128>) -> i128 {
@@ -227,13 +228,6 @@ fn set_rt_priority(prio: i32) {
             println!("RT priority set to {}", prio);
         }
     }
-}
-
-fn get_time_stamp() -> u128 {
-    SystemTime::now()
-        .duration_since(SystemTime::UNIX_EPOCH)
-        .expect("Time went backwards")
-        .as_nanos()
 }
 
 fn wait_until(next_tick: Instant) {
@@ -310,8 +304,7 @@ fn get_kernel_zero() -> u64 {
 }
 
 fn update_user_zero() {
-    let mut time = USER_ZERO.lock().unwrap();
-    *time = measure_instant();
+    measure_instant();
 }
 
 fn read_user_zero() -> Instant {
@@ -444,8 +437,6 @@ fn ptp_phase(context: &SetupContext) -> Result<SetupContext> {
                     let end_time = Instant::now();
                     let ptp_duration = end_time - start_time;
                     ptp_diff = ptp_duration.as_nanos().abs_diff(needed_time);
-                    println!("PTP-Diff = {} {}", ptp_diff, j);
-                    let msg: Message = *bytemuck::from_bytes::<Message>(&buffer);
                 }
                 _ => eprintln!("Error while receiving"),
             }
@@ -733,9 +724,6 @@ fn calculation_phase(context: &SetupContext) -> Result<SetupContext> {
                         latency[NUM_POINTS - 1].client_sent_kernel = Some(client_sent);
                         latency[NUM_POINTS - 1].client_queue = Some(client_queue);
                     }
-                    _ => {
-                        eprintln!("Wrong Calc Format");
-                    }
                 }
             }
             _ => eprintln!("Error while receiving"),
@@ -941,16 +929,20 @@ fn main() -> Result<(), libbpf_rs::Error> {
     let qos = Arc::new(args[4].clone());
     let listener = TcpListener::bind("192.168.1.1:8080")?;
     println!("Server läuft auf 192.168.1.1:8080");
-    let disconnect_counter = Arc::new(Mutex::new(0));
+    let running = Arc::new(AtomicBool::new(true));
 
     for stream in listener.incoming() {
+        if !running.load(Ordering::SeqCst) {
+            break; 
+        }
         match stream {
             Ok(stream) => {
                 let standard = Arc::clone(&standard);
                 let frequency = Arc::clone(&frequency);
                 let bandwith = Arc::clone(&bandwith);
                 let qos = Arc::clone(&qos);
-                let disconnect_counter = Arc::clone(&disconnect_counter);
+                 let running_thread = Arc::clone(&running);
+
                 thread::spawn(move || {
                     let context = SetupContext {
                         stream,
@@ -958,7 +950,7 @@ fn main() -> Result<(), libbpf_rs::Error> {
                         frequency,
                         bandwith,
                         qos,
-                        running: Arc::new(AtomicBool::new(true)),
+                        running: running_thread,
                         interval: Duration::from_nanos(TIMEOUT_NS),
                         counter: 0,
                         calculation_result: (Vec::new(), Vec::new()),
@@ -1031,16 +1023,17 @@ fn run_state_machine(mut context: SetupContext) -> Result<()> {
             }
 
             State::Done => {
+                context.running.store(false, Ordering::Relaxed);
                 break;
             }
 
             State::Error => {
                 handle_error(&context)?;
+                println!("Error occurred, resetting state machine.");
                 break;
             }
         }
     }
-
+    println!("State machine finished.");
     Ok(())
 }
-
