@@ -2,6 +2,7 @@ use anyhow::Result;
 use bytemuck::{Pod, Zeroable};
 use libbpf_rs::skel::{OpenSkel, Skel, SkelBuilder};
 use libbpf_rs::RingBufferBuilder;
+use libc::{pthread_self, pthread_setschedparam, sched_param, SCHED_RR};
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
 use std::collections::VecDeque;
@@ -16,9 +17,6 @@ use std::sync::OnceLock;
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::{Duration, Instant, SystemTime};
-use std::process::Command;
-use thread_priority::{ThreadPriority, ThreadSchedulePolicy, set_thread_priority_and_policy, set_current_thread_priority};
-use libc::{sched_param, pthread_setschedparam, pthread_self, SCHED_RR};
 
 include!("bpf/monitore.skel.rs");
 
@@ -29,7 +27,6 @@ static USER_ZERO: Lazy<Mutex<Instant>> = Lazy::new(|| Mutex::new(Instant::now())
 static KERNEL_ZERO: Lazy<Mutex<u64>> = Lazy::new(|| Mutex::new(0));
 static MESSAGE_COUNT: Lazy<Mutex<u64>> = Lazy::new(|| Mutex::new(0));
 
-static TEST: OnceLock<Instant> = OnceLock::new();
 const TIMEOUT_NS: u64 = 3000000;
 const NUM_POINTS: usize = 4000;
 const RADIUS: f64 = 10.0;
@@ -40,6 +37,42 @@ enum Data {
     IntegerU128(u128),
     IntegerU64(u64),
     Float(f64),
+}
+
+struct SetupContext {
+    stream: TcpStream,
+    standard: Arc<String>,
+    frequency: Arc<String>,
+    bandwith: Arc<String>,
+    qos: Arc<String>,
+    running: Arc<AtomicBool>,
+    interval: Duration,
+    counter: u64,
+    calculation_result: (Vec<(f64, f64)>, Vec<CalcTimestampSet>),
+    needed_time: u128,
+    ptp_result: bool,
+    latency_result: bool,
+}
+
+#[derive(Default)]
+struct SetupContextOverrides {
+    pub running: Option<std::sync::Arc<std::sync::atomic::AtomicBool>>,
+    pub counter: Option<u64>,
+    pub calculation_result: Option<(Vec<(f64, f64)>, Vec<CalcTimestampSet>)>,
+    pub needed_time: Option<u128>,
+    pub ptp_result: Option<bool>,
+    pub latency_result: Option<bool>,
+}
+
+enum State {
+    Error,
+    WaitForStart,
+    Ntp,
+    Ptp,
+    LatencyTest,
+    Calculation,
+    SaveResults,
+    Done,
 }
 
 #[repr(u8)]
@@ -65,6 +98,24 @@ struct Message {
     seq: u64,
     msg_type: u8,
     _padding: [u8; 7],
+}
+fn update_context(base: &SetupContext, overrides: SetupContextOverrides) -> SetupContext {
+    SetupContext {
+        stream: base.stream.try_clone().expect("Failed to clone stream"),
+        standard: base.standard.clone(),
+        frequency: base.frequency.clone(),
+        bandwith: base.bandwith.clone(),
+        qos: base.qos.clone(),
+        running: overrides.running.unwrap_or_else(|| base.running.clone()),
+        interval: base.interval,
+        counter: overrides.counter.unwrap_or_else(|| base.counter.clone()),
+        calculation_result: overrides
+            .calculation_result
+            .unwrap_or_else(|| base.calculation_result.clone()),
+        needed_time: overrides.needed_time.unwrap_or(base.needed_time),
+        ptp_result: overrides.ptp_result.unwrap_or(base.ptp_result),
+        latency_result: overrides.latency_result.unwrap_or(base.latency_result),
+    }
 }
 
 fn encode_message(
@@ -166,7 +217,9 @@ fn median(values: &Vec<i128>) -> i128 {
 
 fn set_rt_priority(prio: i32) {
     unsafe {
-        let mut param = sched_param { sched_priority: prio };
+        let mut param = sched_param {
+            sched_priority: prio,
+        };
         let ret = pthread_setschedparam(pthread_self(), SCHED_RR, &mut param);
         if ret != 0 {
             eprintln!("Failed to set RT priority: {}", ret);
@@ -203,45 +256,48 @@ pub fn increment_message_count() -> u64 {
 }
 
 fn wait_for_queue_event(timestamp: u64) -> Option<Event> {
-let queue_arc = CURRENT_QUEUE_EVENT.get().expect("CURRENT_QUEUE_EVENT not initialized");
-let count = *MESSAGE_COUNT.lock().unwrap() as usize;  
+    let queue_arc = CURRENT_QUEUE_EVENT
+        .get()
+        .expect("CURRENT_QUEUE_EVENT not initialized");
+    let count = *MESSAGE_COUNT.lock().unwrap() as usize;
 
-let queue = queue_arc.lock().unwrap();
-//println!("Queue count: {} Msg count: {}", queue.len(), count);
-for i in 1..queue.len() {
-	//let actual_timestamp = queue[queue.len() -i].timestamp;
-	//println!("{:?} {:?}", actual_timestamp, timestamp);
-        if queue.len() >= count && (queue[queue.len() - i].timestamp - get_kernel_zero()) < timestamp {
-                return Some(queue[queue.len() - i].clone());        
-        }  
+    let queue = queue_arc.lock().unwrap();
+    //println!("Queue count: {} Msg count: {}", queue.len(), count);
+    for i in 1..queue.len() {
+        //let actual_timestamp = queue[queue.len() -i].timestamp;
+        //println!("{:?} {:?}", actual_timestamp, timestamp);
+        //        println!("Queue: {} Count: {}", queue.len(), count);
+        if queue.len() >= count
+            && (queue[queue.len() - i].timestamp - get_kernel_zero()) < timestamp
+        {
+            return Some(queue[queue.len() - i].clone());
+        }
         thread::sleep(Duration::from_nanos(50));
     }
-println!("Falsch");
-return None;
+    println!("Falsch");
+    return None;
 }
 
 fn wait_for_event(number: u64, msg_t: MessageType, event_t: u8) -> Event {
-    	let queue_arc = CURRENT_EVENT.get().expect("CURRENT_EVENT not initialized");
-	loop {
+    let queue_arc = CURRENT_EVENT.get().expect("CURRENT_EVENT not initialized");
+    loop {
         {
             let mut queue = queue_arc.lock().unwrap();
             while let Some(evt) = queue.pop_front() {
-                 if let Ok(msg_type) = MessageType::try_from(evt.data.msg_type) {
-//		    println!("MSG-Type: {:?}", msg_type);
-//		    let seq = evt.data.seq;
-//		    let even = evt.event_type;
-//		    println!("Number: {}, Actual: {}", number, seq);
-//		    println!("Event: {}, Actual: {}", event_t, even);
-                    if msg_type == msg_t && evt.data.seq == number && evt.event_type == event_t {
-			return evt;
-                    }
+                let msg_type = MessageType::try_from(evt.data.msg_type).unwrap();
+                //		    println!("MSG-Type: {:?}", msg_type);
+                //		    let seq = evt.data.seq;
+                //		    let even = evt.event_type;
+                //		    println!("Number: {}, Actual: {}", number, seq);
+                //		    println!("Event: {}, Actual: {}", event_t, even);
+                if msg_type == msg_t && evt.data.seq == number && evt.event_type == event_t {
+                    return evt;
                 }
             }
         }
         thread::sleep(Duration::from_nanos(50));
     }
 }
-
 
 fn set_kernel_zero(value: u64) {
     let mut kernel = KERNEL_ZERO.lock().unwrap();
@@ -263,266 +319,194 @@ fn read_user_zero() -> Instant {
     *time
 }
 
-fn handle_time(
-    mut stream: TcpStream,
-    disconnect_counter: Arc<Mutex<i32>>,
-    standard: Arc<String>,
-    frequency: Arc<String>,
-    bandwith: Arc<String>,
-    qos: Arc<String>,
-) -> Result<(), Box<dyn std::error::Error>> {
+fn wait_for_start_message(context: &SetupContext) {
     let mut buffer = [0u8; std::mem::size_of::<Message>()];
-    if let Ok(n) = stream.read(&mut buffer) {
-        let msg: Message = *bytemuck::from_bytes::<Message>(&buffer);
-        if msg.msg_type == MessageType::Start as u8 {
-            println!("----------------Time synchronisation started----------------");
-            update_user_zero();
-            let mut min_latency = u128::MAX;
-            let mut min_latency_index = 0;
-            let interval = Duration::from_nanos(TIMEOUT_NS);
-            let mut next_tick = Instant::now() + interval;
-            let mut needed_time = u128::MAX;
-            let mut ptp_diff = u128::MAX;
-            let mut i = 0;
-	    let mut ntp_regulation = 500000;
-
-            while needed_time > 1000000 {
-                let start_time = Instant::now();
-                let elapsed_start_time = start_time.duration_since(read_user_zero());
-		println!("{}", i);
-                let encoded_msg = encode_message(MessageType::NTP, i, 0, 0, 0, 0.0, 0.0, 0)?;
-                //println!("{:?}", encoded_msg);
-                if let Err(e) = stream.write_all(&encoded_msg) {
-                    eprintln!("Error while sending: {}", e);
-                    return Ok(());
-                }
-		increment_message_count();
-                match stream.read(&mut buffer) {
-                    Ok(n) if n > 0 => {
-                        let msg: Message = *bytemuck::from_bytes::<Message>(&buffer);
-                        let number = msg.seq;
-                        let event_snapshot = wait_for_event(number, MessageType::NTP, 1);
-
-                        let end_time = event_snapshot.timestamp - get_kernel_zero();
-                        let nanos = end_time as u128 - elapsed_start_time.as_nanos();
-                        let end_time = Instant::now();
-                        let elapsed_time = end_time.duration_since(read_user_zero());
-                        needed_time = elapsed_time.as_nanos() - elapsed_start_time.as_nanos();
-                        println!(
-                            "Needed Time {} Elapsed {} Start_Elapsed {}",
-                            needed_time,
-                            elapsed_time.as_nanos(),
-                            elapsed_start_time.as_nanos()
-                        );
-                    }
-                    _ => eprintln!("Error while receiving"),
-                }
-                wait_until(next_tick);
-                next_tick += interval;
-                i += 1;
-                //ntp_regulation += 1;
+    if let Ok(mut stream) = context.stream.try_clone() {
+        if let Ok(_n) = stream.read(&mut buffer) {
+            let msg: Message = *bytemuck::from_bytes::<Message>(&buffer);
+            if msg.msg_type == MessageType::Start as u8 {
+                return;
             }
-	
-            // let test = unsafe{measure_instant()};
-            // TEST.get_or_init(|| test);
+        } else {
+            eprintln!("Error while reading start message");
+        }
+    }
+}
 
-            println!("--------------------Start PTP Mechanism---------------------");
-            let mut j = 0;
-	    let mut ptp_regulation = 1000;
-            let mut next_tick = Instant::now() + interval;
-            while ptp_diff > 10000 {
-                let start_time = Instant::now();
-                let encoded_msg = encode_message(MessageType::PTP, j, 0, 0, 0, 0.0, 0.0, 0)?;
-                if let Err(e) = stream.write_all(&encoded_msg) {
-                    eprintln!("Error while sending: {}", e);
-                    return Ok(());
-                }
-		increment_message_count();
-                let wait_time = Instant::now()
-                    + Duration::from_nanos((needed_time as f64 / 2.2).round() as u64);
-                wait_until(wait_time);
-                update_user_zero();
+fn ntp_phase(context: &SetupContext) -> Result<SetupContext> {
+    let mut buffer = [0u8; std::mem::size_of::<Message>()];
+    let stabilization_iterations = 200;
+    println!("----------------Time synchronisation started----------------");
+    update_user_zero();
+    let interval = Duration::from_nanos(TIMEOUT_NS);
+    let mut next_tick = Instant::now() + interval;
+    let mut needed_time = u128::MAX;
+    let mut i = 0;
+    let mut ntp_regulation = 500000;
 
-                match stream.read(&mut buffer) {
-                    Ok(n) if n > 0 => {
-                        let end_time = Instant::now();
-                        let ptp_duration = end_time - start_time;
-                        ptp_diff = ptp_duration.as_nanos().abs_diff(needed_time);
-                        println!("PTP-Diff = {} {}", ptp_diff, j);
-                        let msg: Message = *bytemuck::from_bytes::<Message>(&buffer);
-                    }
-                    _ => eprintln!("Error while receiving"),
-                }
-		j += 1;
-		//if j % 10 == 0 {
-		//	ptp_regulation += 1;
-		//}
-                wait_until(next_tick);
-                next_tick += interval;
-            }	
-	 
-            println!("---------------------Start Latency Test---------------------");
-            let mut next_tick = Instant::now() + interval;
-            let mut timestamps: Vec<PTPTimestampSet> = vec![PTPTimestampSet::default(); 20];
-
-            for i in 0..21 {
-                let index = i as usize;
-                let start_time = Instant::now();
-                let elapsed_time = start_time.duration_since(read_user_zero());
-                let encoded_msg = encode_message(
-                    MessageType::NtpResult,
-                    i,
-                    elapsed_time.as_nanos(),
-                    0,
-                    0,
-                    0.0,
-                    0.0,
-                    0,
-                )?;
-                if let Err(e) = stream.write_all(&encoded_msg) {
-                    eprintln!("Error while sending: {}", e);
-                    return Ok(());
-                }
-		increment_message_count();
-                let event_snapshot_sending = wait_for_event(i, MessageType::NtpResult, 2);
-                let server_kernel_sent = event_snapshot_sending.timestamp - get_kernel_zero();
-
-                match stream.read(&mut buffer) {
-                    Ok(n) if n > 0 => {
-                        let end_time = Instant::now();
-                        let msg: Message = *bytemuck::from_bytes::<Message>(&buffer);
-                        let number = msg.seq;
-                        let event_snapshot = wait_for_event(number, MessageType::NtpResult, 1);
-                        let server_arrival = end_time.duration_since(read_user_zero());
-                        let server_arrival_kernel = event_snapshot.timestamp - get_kernel_zero();
-
-                        if let (server_sent, client_arrival, client_sent) =
-                            (msg.first_u128, msg.second_u128, msg.timestamp)
-                        {
-                            if i < 20 {
-                                timestamps[index].server_arrival = server_arrival.as_nanos();
-                                timestamps[index].server_arrival_kernel =
-                                    server_arrival_kernel as u128;
-                                timestamps[index].server_sent = server_sent;
-                                timestamps[index].server_kernel_sent = server_kernel_sent as u128;
-                                timestamps[index].client_arrival = client_arrival;
-                            }
-
-                            if i > 0 {
-                                timestamps[index - 1].client_sent = Some(client_sent);
-                            }
-                        } else {
-                            eprintln!("Wrong PTP Format");
-                        }
-                    }
-                    _ => eprintln!("Error while receiving"),
-                }
-                wait_until(next_tick);
-                next_tick += interval;
+    if let Ok(mut stream) = context.stream.try_clone() {
+        while needed_time > ntp_regulation {
+            let start_time = Instant::now();
+            let elapsed_start_time = start_time.duration_since(read_user_zero());
+            println!("{}", i);
+            let encoded_msg = encode_message(MessageType::NTP, i, 0, 0, 0, 0.0, 0.0, 0)?;
+            //println!("{:?}", encoded_msg);
+            if let Err(e) = stream.write_all(&encoded_msg) {
+                eprintln!("Error while sending: {}", e);
+                return Ok(update_context(
+                    context,
+                    SetupContextOverrides {
+                        running: Some(Arc::new(AtomicBool::new(false))),
+                        ..Default::default()
+                    },
+                ));
             }
-            for (i, ts) in timestamps.iter().enumerate() {
-                if let Some(client_sent) = ts.client_sent {
-                    let first_offset = ts.client_arrival as i128 - ts.server_kernel_sent as i128;
-                    let second_offset = ts.server_arrival_kernel as i128 - client_sent as i128;
-                    let whole = ts.server_arrival as i128 - ts.server_sent as i128;
-                    let diff_test_offset = second_offset - first_offset;
+            increment_message_count();
+            match stream.read(&mut buffer) {
+                Ok(n) if n > 0 => {
+                    let msg: Message = *bytemuck::from_bytes::<Message>(&buffer);
+                    let number = msg.seq;
+                    let event_snapshot = wait_for_event(number, MessageType::NTP, 1);
 
+                    let end_time = event_snapshot.timestamp - get_kernel_zero();
+
+                    needed_time = end_time as u128 - elapsed_start_time.as_nanos();
+                    /*
                     println!(
-                        "#{i}: Diff_Offset: {}, Whole: {}, First: {}, Second: {}",
-                        diff_test_offset, whole, first_offset, second_offset
-                    );
-                } else {
-                       println!("#{i}: Incomplete timestamp set");
+                        "Needed Time {} Elapsed {} Start_Elapsed {}",
+                        needed_time,
+                        elapsed_time.as_nanos(),
+                        elapsed_start_time.as_nanos()
+                    ); */
                 }
-             }
-
-	    	println!("Start Calculation");
-
-            let mut points = Vec::with_capacity(NUM_POINTS);
-            let mut latency: Vec<CalcTimestampSet> = vec![CalcTimestampSet::default(); NUM_POINTS];
-
-            let mut last_y = 0.0;
-            let calc_time = SystemTime::now();
-            let mut next_tick = Instant::now() + interval;
-            let mut i = 0;
-            while calc_time.elapsed()?.as_secs() < 12 {
-                let index = i as usize;
-                let calc_start_time = Instant::now();
-                let calc_start_elapsed = calc_start_time.duration_since(read_user_zero());
-                let theta = 2.0 * PI * (i as f64) / (NUM_POINTS as f64);
-                let x = RADIUS * theta.cos();
-                let calc_send_time = Instant::now();
-                let calc_send_elapsed = calc_send_time.duration_since(read_user_zero());
-
-                let encoded_msg = encode_message(MessageType::Calc, i, 0, 0, 0, theta, RADIUS, 0)?;
-                if let Err(e) = stream.write_all(&encoded_msg) {
-                    eprintln!("Error while sending: {}", e);
-                    return Ok(());
-                }
-		increment_message_count();
-
-                let event_snapshot_sending = wait_for_event(i, MessageType::Calc, 2);
-                let server_sent_kernel = event_snapshot_sending.timestamp - get_kernel_zero();
-
-	        let event_snapshot_queue = wait_for_queue_event(server_sent_kernel);
-                let server_queue = event_snapshot_queue.unwrap().timestamp - get_kernel_zero();
-
-                let mut first_duration = 0;
-                let mut second_duration = 0;
-                let mut calc_send_duration = 0;
-                match stream.read(&mut buffer) {
-                    Ok(n) if n > 0 => {
-                        let end_time = Instant::now();
-                        let calc_end_time = end_time.duration_since(read_user_zero());
-                        let msg: Message = *bytemuck::from_bytes::<Message>(&buffer);
-
-                        let number = msg.seq;
-                        let event_snapshot = wait_for_event(number, MessageType::Calc, 1);
-                        let server_arrival_kernel = event_snapshot.timestamp - get_kernel_zero();
-
-                        calc_send_duration =
-                            calc_end_time.as_nanos() - calc_send_elapsed.as_nanos();
-
-                        if let (y, client_queue, client_arrival_kernel, client_sent) = (
-                            msg.first_f64,
-                            msg.timestamp,
-                            msg.first_u128,
-                            msg.second_u128,
-                        ) {
-                            latency[index].server_arrival = calc_end_time.as_nanos();
-                            latency[index].server_arrival_kernel = server_arrival_kernel as u128;
-                            latency[index].server_queue = server_queue as u128;
-                            latency[index].server_sent = calc_send_elapsed.as_nanos();
-                            latency[index].server_sent_kernel = server_sent_kernel as u128;
-                            latency[index].client_arrival_kernel = client_arrival_kernel;
-
-                            if i > 0 {
-                                latency[index - 1].client_sent_kernel = Some(client_sent);
-				latency[index - 1].client_queue = Some(client_queue);
-
-                            }
-
-                            last_y = if calc_send_duration <= TIMEOUT_NS as u128 {
-                                y
-                            } else {
-                                last_y - 2.0
-                            };
-                        } else {
-                            eprintln!("Wrong Calc Format");
-                        }
-                    }
-                    _ => eprintln!("Error while receiving"),
-                }
-                points.push((x, last_y));
-                wait_until(next_tick);
-                next_tick += interval;
-                i += 1;
+                _ => eprintln!("Error while receiving"),
             }
+            wait_until(next_tick);
+            next_tick += interval;
+            i += 1;
+            if needed_time > ntp_regulation && i > stabilization_iterations {
+                let difference = needed_time - ntp_regulation;
+                ntp_regulation = ntp_regulation + (difference / 2);
+                println!("Regulation {} Need {}", ntp_regulation, needed_time);
+            }
+        }
+        return Ok(update_context(
+            context,
+            SetupContextOverrides {
+                needed_time: Some(needed_time),
+                ..Default::default()
+            },
+        ));
+    } else {
+        eprintln!("Error while reading NTP message");
+        return Ok(update_context(
+            context,
+            SetupContextOverrides {
+                running: Some(Arc::new(AtomicBool::new(false))),
+                ..Default::default()
+            },
+        ));
+    }
+}
 
+fn ptp_phase(context: &SetupContext) -> Result<SetupContext> {
+    let mut buffer = [0u8; std::mem::size_of::<Message>()];
+    let max_ptp_tolerance = 5000; // in nanoseconds
+    let mut ptp_diff = u128::MAX;
+    let needed_time = context.needed_time.clone();
+    let interval = context.interval.clone();
+    if let Ok(mut stream) = context.stream.try_clone() {
+        println!("--------------------Start PTP Mechanism---------------------");
+        let mut j = 0;
+        let mut ptp_regulation = 1000;
+        let mut next_tick = Instant::now() + interval;
+        while ptp_diff > 10000 {
+            let start_time = Instant::now();
+            let encoded_msg = encode_message(MessageType::PTP, j, 0, 0, 0, 0.0, 0.0, 0)?;
+            if let Err(e) = stream.write_all(&encoded_msg) {
+                eprintln!("Error while sending: {}", e);
+                return Ok(update_context(
+                    context,
+                    SetupContextOverrides {
+                        running: Some(Arc::new(AtomicBool::new(false))),
+                        ..Default::default()
+                    },
+                ));
+            }
+            increment_message_count();
+            let wait_time =
+                Instant::now() + Duration::from_nanos((needed_time as f64 / 2.0).round() as u64);
+            wait_until(wait_time);
+            update_user_zero();
+
+            match stream.read(&mut buffer) {
+                Ok(n) if n > 0 => {
+                    let end_time = Instant::now();
+                    let ptp_duration = end_time - start_time;
+                    ptp_diff = ptp_duration.as_nanos().abs_diff(needed_time);
+                    println!("PTP-Diff = {} {}", ptp_diff, j);
+                    let msg: Message = *bytemuck::from_bytes::<Message>(&buffer);
+                }
+                _ => eprintln!("Error while receiving"),
+            }
+            j += 1;
+            ptp_regulation += 1;
+
+            wait_until(next_tick);
+            next_tick += interval;
+            if ptp_regulation > max_ptp_tolerance {
+                println!(
+                    "PTP Phase exceeded a tolerance of {} , stopping.",
+                    max_ptp_tolerance
+                );
+                return Ok(update_context(
+                    context,
+                    SetupContextOverrides {
+                        ptp_result: Some(false),
+                        ..Default::default()
+                    },
+                ));
+            }
+        }
+        println!("PTP-Diff = {} {}", ptp_diff, j);
+        return Ok(update_context(
+            context,
+            SetupContextOverrides {
+                ptp_result: Some(true),
+                ..Default::default()
+            },
+        ));
+    } else {
+        eprintln!("Error while reading NTP message");
+        return Ok(update_context(
+            context,
+            SetupContextOverrides {
+                running: Some(Arc::new(AtomicBool::new(false))),
+                ..Default::default()
+            },
+        ));
+    }
+}
+
+fn latency_test_phase(context: &SetupContext) -> Result<SetupContext> {
+    println!("---------------------Start Latency Test---------------------");
+    let mut buffer = [0u8; std::mem::size_of::<Message>()];
+    let test_mesg_count: u64 = 1000;
+    let mut i = 0;
+    let max_tolerance = 10000; // in nanoseconds
+    let interval = context.interval.clone();
+    let mut next_tick = Instant::now() + interval;
+    let mut timestamps: Vec<PTPTimestampSet> =
+        vec![PTPTimestampSet::default(); test_mesg_count as usize];
+    if let Ok(mut stream) = context.stream.try_clone() {
+        while i < test_mesg_count + 1 {
+            let index = i as usize;
+            let start_time = Instant::now();
+            let elapsed_time = start_time.duration_since(read_user_zero());
             let encoded_msg = encode_message(
-                MessageType::Calc,
-                NUM_POINTS.try_into().unwrap(),
-                0,
+                MessageType::NtpResult,
+                i,
+                elapsed_time.as_nanos(),
                 0,
                 0,
                 0.0,
@@ -531,92 +515,344 @@ fn handle_time(
             )?;
             if let Err(e) = stream.write_all(&encoded_msg) {
                 eprintln!("Error while sending: {}", e);
-                return Ok(());
+                return Ok(update_context(
+                    context,
+                    SetupContextOverrides {
+                        running: Some(Arc::new(AtomicBool::new(false))),
+                        ..Default::default()
+                    },
+                ));
             }
-	    increment_message_count();
+            increment_message_count();
+            let event_snapshot_sending = wait_for_event(i, MessageType::NtpResult, 2);
+            let server_kernel_sent = event_snapshot_sending.timestamp - get_kernel_zero();
+
             match stream.read(&mut buffer) {
                 Ok(n) if n > 0 => {
+                    let end_time = Instant::now();
                     let msg: Message = *bytemuck::from_bytes::<Message>(&buffer);
-                    if let (client_sent, client_queue) = (msg.second_u128, msg.timestamp) {
-                        latency[NUM_POINTS - 1].client_sent_kernel = Some(client_sent);
-                        latency[NUM_POINTS - 1].client_queue = Some(client_queue);
-                    } else {
-                        eprintln!("Wrong Calc Format");
+                    let number = msg.seq;
+                    let event_snapshot = wait_for_event(number, MessageType::NtpResult, 1);
+                    let server_arrival = end_time.duration_since(read_user_zero());
+                    let server_arrival_kernel = event_snapshot.timestamp - get_kernel_zero();
+
+                    let (server_sent, client_arrival, client_sent) =
+                        (msg.first_u128, msg.second_u128, msg.timestamp);
+                    if i < test_mesg_count {
+                        timestamps[index].server_arrival = server_arrival.as_nanos();
+                        timestamps[index].server_arrival_kernel = server_arrival_kernel as u128;
+                        timestamps[index].server_sent = server_sent;
+                        timestamps[index].server_kernel_sent = server_kernel_sent as u128;
+                        timestamps[index].client_arrival = client_arrival;
+                    }
+
+                    if i > 0 {
+                        timestamps[index - 1].client_sent = Some(client_sent);
+                    }
+                }
+                _ => {
+                    return Ok(update_context(
+                        context,
+                        SetupContextOverrides {
+                            running: Some(Arc::new(AtomicBool::new(false))),
+                            ..Default::default()
+                        },
+                    ));
+                }
+            }
+            wait_until(next_tick);
+            next_tick += interval;
+            i += 1;
+        }
+        let mut diff_all: Vec<i128> = vec![0; test_mesg_count as usize];
+        for (i, ts) in timestamps.iter().enumerate() {
+            if let Some(client_sent) = ts.client_sent {
+                let first_offset = ts.client_arrival as i128 - ts.server_kernel_sent as i128;
+                let second_offset = ts.server_arrival_kernel as i128 - client_sent as i128;
+                //   let whole = ts.server_arrival as i128 - ts.server_sent as i128;
+                let diff_test_offset = second_offset - first_offset;
+                diff_all[i] = diff_test_offset;
+                /*
+                println!(
+                    "#{i}: Diff_Offset: {}, Whole: {}, First: {}, Second: {}",
+                    diff_test_offset, whole, first_offset, second_offset
+                ); */
+            } else {
+                println!("#{i}: Incomplete timestamp set");
+                return Ok(update_context(
+                    context,
+                    SetupContextOverrides {
+                        latency_result: Some(false),
+                        ..Default::default()
+                    },
+                ));
+            }
+        }
+        let med = median(&diff_all);
+        if med.abs() > max_tolerance as i128 {
+            println!("Median is too high: {}", med);
+            return Ok(update_context(
+                context,
+                SetupContextOverrides {
+                    latency_result: Some(false),
+                    ..Default::default()
+                },
+            ));
+        }
+        println!("Median of Latency Test: {}", med);
+        return Ok(update_context(
+            context,
+            SetupContextOverrides {
+                latency_result: Some(true),
+                ..Default::default()
+            },
+        ));
+    } else {
+        eprintln!("Error while reading NTP message");
+        return Ok(update_context(
+            context,
+            SetupContextOverrides {
+                running: Some(Arc::new(AtomicBool::new(false))),
+                ..Default::default()
+            },
+        ));
+    }
+}
+
+fn calculation_phase(context: &SetupContext) -> Result<SetupContext> {
+    println!("Start Calculation");
+    let mut buffer = [0u8; std::mem::size_of::<Message>()];
+    let mut points = Vec::with_capacity(NUM_POINTS);
+    let mut latency: Vec<CalcTimestampSet> = vec![CalcTimestampSet::default(); NUM_POINTS];
+    let interval = context.interval.clone();
+    let mut last_y = 0.0;
+    let calc_time = SystemTime::now();
+    let mut next_tick = Instant::now() + interval;
+    let mut i = 0;
+    if let Ok(mut stream) = context.stream.try_clone() {
+        while calc_time.elapsed()?.as_secs() < 12 {
+            let index = i as usize;
+            //   let calc_start_time = Instant::now();
+            //  let calc_start_elapsed = calc_start_time.duration_since(read_user_zero());
+            let theta = 2.0 * PI * (i as f64) / (NUM_POINTS as f64);
+            let x = RADIUS * theta.cos();
+            let calc_send_time = Instant::now();
+            let calc_send_elapsed = calc_send_time.duration_since(read_user_zero());
+
+            let encoded_msg = encode_message(MessageType::Calc, i, 0, 0, 0, theta, RADIUS, 0)?;
+            if let Err(e) = stream.write_all(&encoded_msg) {
+                eprintln!("Error while sending: {}", e);
+                return Ok(update_context(
+                    context,
+                    SetupContextOverrides {
+                        running: Some(Arc::new(AtomicBool::new(false))),
+                        ..Default::default()
+                    },
+                ));
+            }
+            increment_message_count();
+
+            let event_snapshot_sending = wait_for_event(i, MessageType::Calc, 2);
+            let server_sent_kernel = event_snapshot_sending.timestamp - get_kernel_zero();
+
+            let event_snapshot_queue = wait_for_queue_event(server_sent_kernel);
+            let server_queue = event_snapshot_queue.unwrap().timestamp - get_kernel_zero();
+
+            let calc_send_duration;
+            match stream.read(&mut buffer) {
+                Ok(n) if n > 0 => {
+                    let end_time = Instant::now();
+                    let calc_end_time = end_time.duration_since(read_user_zero());
+                    let msg: Message = *bytemuck::from_bytes::<Message>(&buffer);
+
+                    let number = msg.seq;
+                    let event_snapshot = wait_for_event(number, MessageType::Calc, 1);
+                    let server_arrival_kernel = event_snapshot.timestamp - get_kernel_zero();
+
+                    calc_send_duration = calc_end_time.as_nanos() - calc_send_elapsed.as_nanos();
+
+                    match (
+                        msg.first_f64,
+                        msg.timestamp,
+                        msg.first_u128,
+                        msg.second_u128,
+                    ) {
+                        (y, client_queue, client_arrival_kernel, client_sent) => {
+                            latency[index].server_arrival = calc_end_time.as_nanos();
+                            latency[index].server_arrival_kernel = server_arrival_kernel as u128;
+                            latency[index].server_queue = server_queue as u128;
+                            latency[index].server_sent = calc_send_elapsed.as_nanos();
+                            latency[index].server_sent_kernel = server_sent_kernel as u128;
+                            latency[index].client_arrival_kernel = client_arrival_kernel;
+                            if i > 0 {
+                                latency[index - 1].client_sent_kernel = Some(client_sent);
+                                latency[index - 1].client_queue = Some(client_queue);
+                            }
+                            last_y = if calc_send_duration <= TIMEOUT_NS as u128 {
+                                y
+                            } else {
+                                last_y - 2.0
+                            };
+                        }
                     }
                 }
                 _ => eprintln!("Error while receiving"),
             }
+            points.push((x, last_y));
+            wait_until(next_tick);
+            next_tick += interval;
+            i += 1;
+        }
 
-            let mut counter = disconnect_counter.lock().unwrap();
-            *counter += 1;
-            let result_path = format!(
-                "../results/standard_{}/frequency_{}/bandwith_{}/qos_{}",
-                standard, frequency, bandwith, qos
-            );
-            if let Err(e) = create_dir_all(&result_path) {
-                eprintln!("Error while creating directories: {}", e);
-                return Ok(());
-            }
-
-            let mut latencies = BufWriter::new(
-                OpenOptions::new()
-                    .write(true)
-                    .create(true)
-                    .truncate(true)
-                    .open(format!("{}/latencys_{}", result_path, counter))
-                    .unwrap(),
-            );
-
-            for (i, ts) in latency.iter().enumerate() {
-                if let (Some(client_sent_kernel), Some(client_queue)) =
-                    (ts.client_sent_kernel, ts.client_queue)
-                {
-                    let work_t1 = ts.server_queue as i128 - ts.server_sent as i128;
-                    let queue_t1 = ts.server_sent_kernel as i128 - ts.server_queue as i128;
-                    let send_t1 = ts.client_arrival_kernel as i128 - ts.server_sent_kernel as i128;
-                    let work_t2 = client_queue as i128 - ts.client_arrival_kernel as i128;
-                    let queue_t2 = client_sent_kernel as i128 - client_queue as i128;
-                    let send_t2 = ts.server_arrival_kernel as i128 - client_sent_kernel as i128;
-                    let whole = ts.server_arrival as i128 - ts.server_sent as i128;
-                    writeln!(
-                        latencies,
-                        "{},{},{},{},{},{},{}",
-                        work_t1, queue_t1, send_t1, work_t2, queue_t2, send_t2, whole
-                    )
-                    .unwrap();
-                } else {
-                    println!("#{}: Incomplete timestamp set", i);
+        let encoded_msg = encode_message(
+            MessageType::Calc,
+            NUM_POINTS.try_into().unwrap(),
+            0,
+            0,
+            0,
+            0.0,
+            0.0,
+            0,
+        )?;
+        if let Err(e) = stream.write_all(&encoded_msg) {
+            eprintln!("Error while sending: {}", e);
+            return Ok(update_context(
+                context,
+                SetupContextOverrides {
+                    running: Some(Arc::new(AtomicBool::new(false))),
+                    ..Default::default()
+                },
+            ));
+        }
+        increment_message_count();
+        match stream.read(&mut buffer) {
+            Ok(n) if n > 0 => {
+                let msg: Message = *bytemuck::from_bytes::<Message>(&buffer);
+                match (msg.second_u128, msg.timestamp) {
+                    (client_sent, client_queue) => {
+                        latency[NUM_POINTS - 1].client_sent_kernel = Some(client_sent);
+                        latency[NUM_POINTS - 1].client_queue = Some(client_queue);
+                    }
+                    _ => {
+                        eprintln!("Wrong Calc Format");
+                    }
                 }
             }
-
-            let mut circle_points = BufWriter::new(
-                OpenOptions::new()
-                    .write(true)
-                    .create(true)
-                    .truncate(true)
-                    .open(format!("{}/circle_points_{}", result_path, counter))
-                    .unwrap(),
-            );
-
-            for (x, y) in &points {
-                writeln!(circle_points, "{},{}", x, y).unwrap();
-            }
-
-            circle_points.flush().unwrap();
-            latencies.flush().unwrap();
-            println!("Points and Latencies written.");
-            if *counter >= 1 {
-                println!("3 Clients haben sich disconnected. Der Server wird beendet.");
-                std::process::exit(0);
-            } else {
-                return Ok(());
-            }
-        } else {
-            return Ok(());
+            _ => eprintln!("Error while receiving"),
         }
+        return Ok(update_context(
+            context,
+            SetupContextOverrides {
+                calculation_result: Some((points, latency)),
+                ..Default::default()
+            },
+        ));
     } else {
-        return Ok(());
+        eprintln!("Error while reading NTP message");
+        return Ok(update_context(
+            context,
+            SetupContextOverrides {
+                running: Some(Arc::new(AtomicBool::new(false))),
+                ..Default::default()
+            },
+        ));
     }
+}
+
+fn save_results(context: &SetupContext) -> Result<SetupContext> {
+    let result_path = format!(
+        "../results/standard_{}/frequency_{}/bandwith_{}/qos_{}/tcp/",
+        &context.standard, &context.frequency, &context.bandwith, &context.qos
+    );
+    if let Err(e) = create_dir_all(&result_path) {
+        eprintln!("Error while creating directories: {}", e);
+        return Ok(update_context(
+            context,
+            SetupContextOverrides {
+                counter: Some(context.counter.clone() + 1),
+                ..Default::default()
+            },
+        ));
+    }
+
+    let mut latencies = BufWriter::new(
+        OpenOptions::new()
+            .write(true)
+            .create(true)
+            .truncate(true)
+            .open(format!(
+                "{}/latencys_{}",
+                result_path,
+                context.counter.clone()
+            ))
+            .unwrap(),
+    );
+
+    for (i, ts) in context.calculation_result.1.iter().enumerate() {
+        if let (Some(client_sent_kernel), Some(client_queue)) =
+            (ts.client_sent_kernel, ts.client_queue)
+        {
+            let work_t1 = ts.server_queue as i128 - ts.server_sent as i128;
+            let queue_t1 = ts.server_sent_kernel as i128 - ts.server_queue as i128;
+            let send_t1 = ts.client_arrival_kernel as i128 - ts.server_sent_kernel as i128;
+            let work_t2 = client_queue as i128 - ts.client_arrival_kernel as i128;
+            let queue_t2 = client_sent_kernel as i128 - client_queue as i128;
+            let send_t2 = ts.server_arrival_kernel as i128 - client_sent_kernel as i128;
+            let whole = ts.server_arrival as i128 - ts.server_sent as i128;
+            writeln!(
+                latencies,
+                "{},{},{},{},{},{},{}",
+                work_t1, queue_t1, send_t1, work_t2, queue_t2, send_t2, whole
+            )
+            .unwrap();
+        } else {
+            println!("#{}: Incomplete timestamp set", i);
+        }
+    }
+
+    let mut circle_points = BufWriter::new(
+        OpenOptions::new()
+            .write(true)
+            .create(true)
+            .truncate(true)
+            .open(format!(
+                "{}/circle_points_{}",
+                result_path,
+                context.counter.clone()
+            ))
+            .unwrap(),
+    );
+
+    for (x, y) in &context.calculation_result.0 {
+        writeln!(circle_points, "{},{}", x, y).unwrap();
+    }
+
+    circle_points.flush().unwrap();
+    latencies.flush().unwrap();
+    println!("Points and Latencies written.");
+    return Ok(update_context(
+        context,
+        SetupContextOverrides {
+            counter: Some(context.counter.clone() + 1),
+            ..Default::default()
+        },
+    ));
+}
+
+fn handle_error(context: &SetupContext) -> Result<()> {
+    if let Ok(mut stream) = context.stream.try_clone() {
+        let encoded_msg = encode_message(MessageType::Calc, u64::MAX, 0, 0, 0, 0.0, 0.0, 0)?;
+        for _ in 0..100 {
+            if let Err(e) = stream.write_all(&encoded_msg) {
+                eprintln!("Error while sending: {}", e);
+            }
+        }
+
+        increment_message_count();
+    } else {
+        eprintln!("Error while reading NTP message");
+    }
+    Ok(())
 }
 
 fn main() -> Result<(), libbpf_rs::Error> {
@@ -628,7 +864,9 @@ fn main() -> Result<(), libbpf_rs::Error> {
     CURRENT_QUEUE_EVENT.set(queue_event_queue.clone()).unwrap();
 
     let event_ref = CURRENT_EVENT.get().expect("CURRENT_EVENT not initialized");
-    let queue_event_ref = CURRENT_QUEUE_EVENT.get().expect("CURRENT_EVENT not initialized");
+    let queue_event_ref = CURRENT_QUEUE_EVENT
+        .get()
+        .expect("CURRENT_EVENT not initialized");
 
     let open_skel = MonitoreSkelBuilder::default().open();
     println!("Skelett geöffnet.");
@@ -676,18 +914,16 @@ fn main() -> Result<(), libbpf_rs::Error> {
                             Duration::from_nanos(kernel_diff),
             );
         } */
-        else if event.event_type == 3{
+        else if event.event_type == 3 {
             let mut queue = queue_event_ref.lock().unwrap();
             queue.push_back(*event);
+        } else {
+            let mut queue = event_ref.lock().unwrap();
+            queue.push_back(*event);
         }
-	else {
-	 	let mut queue = event_ref.lock().unwrap();
-         	queue.push_back(*event);
-
-	}
         0 // Rückgabewert: 0 bedeutet "OK"
     })?;
-    let mut ringbuf = ringbuf_builder.build()?;
+    let ringbuf = ringbuf_builder.build()?;
 
     // Separate Thread für Polling des Ringbuffers starten
     let _handle = thread::spawn(move || {
@@ -706,6 +942,7 @@ fn main() -> Result<(), libbpf_rs::Error> {
     let listener = TcpListener::bind("192.168.1.1:8080")?;
     println!("Server läuft auf 192.168.1.1:8080");
     let disconnect_counter = Arc::new(Mutex::new(0));
+
     for stream in listener.incoming() {
         match stream {
             Ok(stream) => {
@@ -715,14 +952,21 @@ fn main() -> Result<(), libbpf_rs::Error> {
                 let qos = Arc::clone(&qos);
                 let disconnect_counter = Arc::clone(&disconnect_counter);
                 thread::spawn(move || {
-                    let _ = handle_time(
+                    let context = SetupContext {
                         stream,
-                        disconnect_counter,
                         standard,
                         frequency,
                         bandwith,
                         qos,
-                    );
+                        running: Arc::new(AtomicBool::new(true)),
+                        interval: Duration::from_nanos(TIMEOUT_NS),
+                        counter: 0,
+                        calculation_result: (Vec::new(), Vec::new()),
+                        needed_time: u128::MAX,
+                        ptp_result: false,
+                        latency_result: false,
+                    };
+                    let _ = run_state_machine(context);
                 });
             }
             Err(e) => eprintln!("Verbindungsfehler: {}", e),
@@ -730,3 +974,73 @@ fn main() -> Result<(), libbpf_rs::Error> {
     }
     Ok(())
 }
+
+fn run_state_machine(mut context: SetupContext) -> Result<()> {
+    let mut state = State::WaitForStart;
+
+    loop {
+        state = match state {
+            State::WaitForStart => {
+                wait_for_start_message(&context);
+                State::Ntp
+            }
+
+            State::Ntp => {
+                context = ntp_phase(&context)?;
+                if !context.running.load(Ordering::Relaxed) {
+                    State::Error
+                } else {
+                    State::Ptp
+                }
+            }
+
+            State::Ptp => {
+                context = ptp_phase(&context)?;
+                if !context.running.load(Ordering::Relaxed) {
+                    State::Error
+                } else if context.ptp_result {
+                    State::LatencyTest
+                } else {
+                    State::Ntp
+                }
+            }
+
+            State::LatencyTest => {
+                context = latency_test_phase(&context)?;
+                if !context.running.load(Ordering::Relaxed) {
+                    State::Error
+                } else if context.latency_result {
+                    State::Calculation
+                } else {
+                    State::Ptp
+                }
+            }
+
+            State::Calculation => {
+                context = calculation_phase(&context)?;
+                if !context.running.load(Ordering::Relaxed) {
+                    State::Error
+                } else {
+                    State::SaveResults
+                }
+            }
+
+            State::SaveResults => {
+                save_results(&context)?;
+                State::Done
+            }
+
+            State::Done => {
+                break;
+            }
+
+            State::Error => {
+                handle_error(&context)?;
+                break;
+            }
+        }
+    }
+
+    Ok(())
+}
+

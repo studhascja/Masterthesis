@@ -140,7 +140,7 @@ int handle_net_dev_xmit(struct trace_event_raw_net_dev_xmit *ctx) {
     	char *head;
     	u16 mac_header;
 
-	member_read(&head, skb, head); 
+	member_read(&head, skb, head);
 	member_read(&mac_header, skb, mac_header);
 
 	char* ip_header_address = head + mac_header + MAC_HEADER_SIZE;
