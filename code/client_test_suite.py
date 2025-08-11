@@ -199,9 +199,15 @@ def main():
                 connect_to_wifi(1)
         else:
                 connect_to_wifi(0)
-
+        if parts[3] == "1":
+            print("Starte QoS...")
+            subprocess.run(['bash', 'setup_qos.sh'])
+        else:
+            print("Lösche QoS Config...")
+            subprocess.run(['bash', 'clean_qos.sh'])
        
         rust_process_container = []
+
         if parts[4] == "udp":
             rust_thread = threading.Thread(target=run_rust_udp, args=(rust_process_container,))
         else:

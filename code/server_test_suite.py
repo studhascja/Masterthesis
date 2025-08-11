@@ -53,7 +53,12 @@ def process_line(line, index):
     val1, val2, val3, val4, val5, param = parts
 
     config_process_container = []
-
+    if val3 == "1":
+        print(f"Start QoS")
+        subprocess.run(['bash', 'setup_qos.sh'])
+    else:
+        print(f"Lösche QoS Config")
+        subprocess.run(['bash', 'clean_qos.sh'])
     # Starte config-script.sh mit dem Parameter aus Spalte 5
     config_thread = threading.Thread(target=run_config_script, args=(param, config_process_container))
     config_thread.start()
