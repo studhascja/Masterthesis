@@ -592,6 +592,12 @@ This is likely because maps and perf buffers are well integrated with \ac{BPF} a
 As a result, the effort to integrate, for example, RelayFS with \ac{BPF} is not justified.  
 Therefore, this work also relies on maps and perf buffers.
 
+\begin{figure}[ht]
+    \centering
+     \includegraphics[width=\textwidth]{figures/Probes.drawio.pdf}
+    \caption[Presentation of the server state machine]{Representation of the server state machine. Green states have no real-time requirements. Red states are subject to real-time constraints.}
+    \label{fig:state_machine}
+\end{figure}
 
 \subsection{Server and Client Implementation} \label{subsec:impl}
 
