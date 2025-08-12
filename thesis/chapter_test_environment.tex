@@ -311,10 +311,13 @@ In summary, Rust is well-suited for real-time applications and offers better dev
 It is also becoming increasingly popular and has almost no performance disadvantages compared to C.  
 Accordingly, the RT application in this work is written in Rust.  
 
-To implement monitoring of the real-time application, BPF is used.  
+To implement monitoring of the real-time application, \ac{BPF} is used.  
 It can be seamlessly integrated into Rust code using \texttt{libbpf-rs}.  
-BPF, or Berkeley Packet Filter, is a technology for efficient in-kernel data processing and monitoring, originally designed for packet filtering.  
-As described by Gregg in \cite[Chap. 2.10]{Gregg_2020}, it offers nearly the same functionality as the widely used profiling tool \texttt{perf}.  
+\ac{BPF}, is a technology for efficient in-kernel data processing and monitoring, originally designed for packet filtering.  
+As described by Gregg in \cite[Chap. 2.10]{Gregg_2020}, it was originally build to observ network packages.
+And it offers nearly the same functionality as the widely used profiling tool \texttt{perf}.  
+Furthermore, it is also employed in practice for network monitoring.
+This is evident in \cite{network_obser} and \cite{9359159}.
 However, it integrates better with Rust and is more flexible due to its scriptability and access to a broader range of event sources than \texttt{perf}.  
 BPF supports more event sources such as tracepoints, kprobes, uprobes and performance counters, enabling more detailed and application-specific monitoring.  
 
@@ -571,6 +574,23 @@ This minimizes copy operations because both the kernel and userspace access the 
 Writing to these buffers is performed sequentially by the kernel, while the userspace continuously reads and only updates the read pointers.  
 As described in \cite[p.~498]{Wisniewski2003relayfsA}, it was originally introduced as a standalone filesystem under \texttt{/mnt/relay}.  
 It is now integrated into the tracing subsystem and is used, among other things, by the kernel tracing tool LTTng, as described in \cite[p.~89]{Pierre}.  
+
+Although RelayFS is older than perf and ring buffers, it still has use cases, as Fournier describes in \cite{Pierre}.  
+Gregg and Calacera describe the functionality and usage of \ac{BPF} in great detail in their books \cite{Gregg_2020} \cite{David_Calavera_2024}.  
+However, neither of them mentions any method other than perf buffer and maps for exchanging data between user and kernel space.  
+This tendency is reflected not only in theory but also in practice.
+
+Nair et al. developed GAPP in \cite{Nair_2020}, a tool to identify serialization bottlenecks in parallel Linux applications.  
+For monitoring, \ac{BPF} is also used, and maps and perf buffers are employed for data exchange between kernel and userspace.  
+Another example is Liu et al., who built a protocol-independent network observability system in \cite{9359159}.  
+Furthermore, both Kannan et al., presenting a network monitoring agent in \cite{network_obser}, and Gowda et al., proposing kernel-level request tracing for microservice visibility in \cite{V_2022}, use \ac{BPF} along with maps and perf buffers.
+
+All these works utilize \ac{BPF} for monitoring and rely on maps and perf buffers for communication between kernel and userspace.  
+These examples confirm, on one hand, that \ac{BPF} is widely used in network observability.  
+On the other hand, it is evident that no alternative methods for kernel-user communication are employed in practice.  
+This is likely because maps and perf buffers are well integrated with \ac{BPF} and offer excellent performance.  
+As a result, the effort to integrate, for example, RelayFS with \ac{BPF} is not justified.  
+Therefore, this work also relies on maps and perf buffers.
 
 
 \subsection{Server and Client Implementation} \label{subsec:impl}
