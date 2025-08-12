@@ -449,16 +449,11 @@ Therefore, the following section first addresses monitoring, followed by the des
 Subsequently, the focus shifts to test automation, and finally to the creation of the access point.  
 
 \subsection{Monitoring} \label{subsec:monitoring}
+
+
 As already mentioned in Chapter \ref{subsec:used_technologies}, \ac{BPF} is used for monitoring, which is integrated into the Rust code via \texttt{libbpf-rs}.  
 The following section explains what \ac{BPF} is, how it works, and how it is used to implement the monitoring of the test system.  
 The integration into Rust is described in more detail in Chapter \ref{subsec:impl}.  
-
-\begin{figure}[ht]
-    \centering
-     \includegraphics[width=\textwidth]{figures/BPF.drawio.pdf}
-    \caption{Presentation of the working principle of Berkley Package Filter}
-    \label{fig:bpf:working_principle}
-\end{figure}
 
 \ac{BPF} was originally developed in 1992 by McCanne and Jacobson, as presented at the USENIX Winter Conference 1993 \cite{260309}.  
 It was significantly extended in 2013 by Alexei Starovoitov, laying the foundation for \ac{eBPF}, as indicated in this patch thread \cite{ebpf}.  
@@ -482,6 +477,12 @@ It also distinguishes where each component resides, either in the kernel or in u
 In Figure~\ref{fig:bpf:working_principle}, components that are directly connected to the \ac{BPF} workflow are depicted in grey.  
 Configurations or interactions are represented in blue circles, while external Linux components are shown in yellow.  
 
+\begin{figure}[ht]
+    \centering
+     \includegraphics[width=\textwidth]{figures/BPF.drawio.pdf}
+    \caption{Presentation of the working principle of Berkley Package Filter}
+    \label{fig:bpf:working_principle}
+\end{figure}
 The \ac{BPF} workflow begins with a \ac{BPF} program.  
 As explained by Gbadamosi et~al.\ in \cite[p.~7]{gbadamosi2024ebpfruntimelinuxkernel}, this program is compiled using \texttt{clang}.  
 For this compilation, the \texttt{bpf} target must be set.  
@@ -507,6 +508,7 @@ With \ac{BTF}, tools such as \texttt{bpftool} can inspect kernel data structures
 \ac{BTF} forms the foundation for \ac{CO-RE}.  
 In order for \ac{BPF} code to run anywhere after compilation, the used \texttt{struct} definitions must be precisely described in the \ac{BTF}.  
 This information must be passed to both the userspace loader and the verifier.  
+Since \ac{CO-RE} is not used in this work, it will not be described further here.
 
 If the program is accepted by the verifier, it is either compiled by the \ac{JIT} compiler or executed by the interpreter.  
 For the \ac{JIT} compiler to take over, it must be both supported and enabled, which is controlled via the \texttt{bpf\_jit\_enabled} operation.  
@@ -514,17 +516,64 @@ As described in \cite{jit}, this option can be enabled by writing the value "1" 
 
 Like described by Gbadamosi et~al.\ in \cite[p.~4]{gbadamosi2024ebpfruntimelinuxkernel} the \ac{JIT} compiler translates the \ac{BPF} bytecode into native machine code for the running architecture at load time.  
 This eliminates the overhead of interpreting instructions during execution and significantly improves performance, especially for programs that are invoked frequently or handle large volumes of events.  
-The generated machine code is cached in kernel memory and directly executed whenever the program is triggered.  
-
+ 
 If the \ac{JIT} compiler is not enabled or supported, the \ac{BPF} program is executed using the in-kernel \ac{BPF} interpreter.  
 The interpreter processes each \ac{BPF} instruction sequentially, decoding and executing them in a virtualized manner.  
 While this approach is slower due to per-instruction overhead, it ensures compatibility across architectures and provides a fallback execution path in environments where \ac{JIT} compilation is unavailable or undesired.  
 
+Van~Geffen describes in \cite{10.1007/978-3-030-53291-8_29} a custom \ac{JIT} compiler that offers greater security than the Linux implementation.  
+According to \cite[p.~566]{10.1007/978-3-030-53291-8_29}, this compiler achieves a performance improvement of 5.24$\times$ over the interpreter.  
+However, it remains 1.82$\times$ slower than the Linux \ac{JIT} compiler.  
+From these results, the performance gain of the Linux \ac{JIT} compiler over the interpreter can be calculated as $5.24 \times 1.82 = 9.53$.  
+Since this difference is close to a factor of ten, and the monitoring overhead on the test system should be minimized, this work employs the Linux \ac{JIT} compiler.  
+
+As described by Gregg in \cite[Chap.~2.3]{Gregg_2020}, once the \ac{BPF} code has been verified and translated into native instructions, it is executed within a virtual machine running in kernel space.  
+Gregg notes in \cite[Chap.~2.3]{Gregg_2020} that, particularly after \ac{JIT} compilation, this virtual machine exists only as a specification.  
+In contrast to the definition of a virtual machine provided by Bugnion in \cite{Bugnion2017}, where a virtual machine represents an abstraction of an entire computer system, the \ac{BPF} virtual machine is purely a specified execution model.  
+According to Bugnion, a true virtual machine must virtualize the processor, memory, and I/O components.  
+In the context of \ac{BPF}, as Fleming explains in \cite{ebpf_intro}, the term “virtual machine” refers solely to a logical \ac{CPU} specification with a fixed instruction set and ten registers, designed to run platform-independently within the kernel.  
+Consequently, as Gregg observes, the \ac{BPF} virtual machine exists only in specification form.  
+This is particularly true when the code has already been compiled into machine instructions.  
+In such cases, these instructions are executed directly by the \ac{CPU}.  
+During the runtime of a \ac{BPF} program, there is no additional abstraction layer between the \ac{CPU} and the executing code.  
+A \ac{JIT} compiler and an interpreter exist, but there is no virtual machine in the traditional sense.  
+
+Besides the 10 registers, the virtual machine also offers 512 bytes on the stack, as Gregg describes in \cite[Chap.~2.3]{Gregg_2020}.  
+
+Additionally, more memory is available in so-called maps.  
+These maps are created using the command \texttt{BPF\_MAP\_CREATE}, as described in \cite[p.~5]{gbadamosi2024ebpfruntimelinuxkernel}.  
+
+As Gregg discusses in \cite[Chap.~2.2]{Gregg_2020}, \ac{BPF} programs can exchange data among each other threw using maps.  
+Furthermore, the maps are synchronized, allowing parallel memory accesses.  
+Maps can be accessed from userspace, providing a way to transfer collected data from the virtual machine back to userspace.  
+Command-line tools such as \texttt{bpftrace} use these maps to display statistics, for example.  
+
+As Gregg explains in \cite[Chap.~2.2]{Gregg_2020}, this has the advantage that no communication between user- and kernelspace is necessary.  
+Since the program runs entirely in kernelspace at runtime, events can be filtered and processed there.  
+Events or network packets can also be discarded in kernelspace if they are harmful or would endanger further processing in userspace due to their value ranges.  
+Thus, the mechanism of maps and the virtual machine specified therein ensure security and efficiency by preventing unnecessary kernel-to-userspace interactions.  
+
+As shown in Figure~\ref{fig:bpf:working_principle}, the event configuration from userspace interacts with the virtual machine in kernelspace.  
+The event configuration particularly refers to the settings of command-line tools.  
+Among other things, it can be configured which events should be tracked, for how long they should be tracked, and how they should be processed.  
+Since command-line tools are not used in this work, the event configuration will not be discussed further here, but it is mentioned for completeness and illustrated in the figure.  
+
+As shown in Figure~\ref{fig:bpf:working_principle}, the virtual machine provides another method for transferring data from the kernel to userspace.  
+
+This is the ring buffer, which Gregg in \cite[Chap.~2.3]{Gregg_2020} also describes as the perf buffer.  
+The buffer is used to continuously transfer data from the kernel to userspace.  
+There are also other variants for sharing data between user and kernel space, including relayfs.  
+
+RelayFS was developed by Tom Zanussi and has been integrated into the Linux kernel since 2003, as evident from the patch thread in \cite{relayfs}.  
+As explained by Zanussi in \cite{Wisniewski2003relayfsA}, it is also a mechanism to efficiently transfer data from kernelspace to userspace.  
+In this approach, a ring-shaped buffer is allocated per \ac{CPU}, which can be read from userspace using \texttt{mmap()}.  
+This minimizes copy operations because both the kernel and userspace access the same memory region directly without intermediate data duplication.  
+Writing to these buffers is performed sequentially by the kernel, while the userspace continuously reads and only updates the read pointers.  
+As described in \cite[p.~498]{Wisniewski2003relayfsA}, it was originally introduced as a standalone filesystem under \texttt{/mnt/relay}.  
+It is now integrated into the tracing subsystem and is used, among other things, by the kernel tracing tool LTTng, as described in \cite[p.~89]{Pierre}.  
+
 
 \subsection{Server and Client Implementation} \label{subsec:impl}
-
-
-
 
 \begin{figure}[ht]
     \centering

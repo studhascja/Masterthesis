@@ -21,6 +21,26 @@
 @String{ SIGGRAPH96	= "SIGGRAPH 96 Computer Graphics Proceedings, Annual Conference Series" }
 @String{ SPIEMI01	= "Proceedings of SPIE's Conference of Medical Imaging 2001" }
 
+@InProceedings{10.1007/978-3-030-53291-8_29,
+author="Van Geffen, Jacob
+and Nelson, Luke
+and Dillig, Isil
+and Wang, Xi
+and Torlak, Emina",
+editor="Lahiri, Shuvendu K.
+and Wang, Chao",
+title="Synthesizing JIT Compilers for In-Kernel DSLs",
+booktitle="Computer Aided Verification",
+year="2020",
+publisher="Springer International Publishing",
+address="Cham",
+pages="564--586",
+abstract="Modern operating systems allow user-space applications to submit code for kernel execution through the use of in-kernel domain specific languages (DSLs). Applications use these DSLs to customize system policies and add new functionality. For performance, the kernel executes them via just-in-time (JIT) compilation. The correctness of these JITs is crucial for the security of the kernel: bugs in in-kernel JITs have led to numerous critical issues and patches.",
+isbn="978-3-030-53291-8"
+}
+
+
+
 @inproceedings {260309,
 author = {Steven McCanne and Van Jacobson},
 title = {The {BSD} Packet Filter: A New Architecture for User-level Packet Capture},
@@ -32,11 +52,57 @@ publisher = {USENIX Association},
 month = jan
 }
 
+@Inbook{Bugnion2017,
+author="Bugnion, Edouard
+and Nieh, Jason
+and Tsafrir, Dan",
+title="Definitions",
+bookTitle="Hardware and Software Support for Virtualization",
+year="2017",
+publisher="Springer International Publishing",
+address="Cham",
+pages="1--14",
+abstract="This chapter introduces the basic concepts of virtualization, virtual machines, and virtual machine monitors. This is necessary for clarity as various articles, textbooks, and commercial product descriptions sometimes use conflicting definitions. We use the following definitions in this book.",
+isbn="978-3-031-01753-7",
+doi="10.1007/978-3-031-01753-7_1",
+url="https://doi.org/10.1007/978-3-031-01753-7_1"
+}
+
+@Inbook{Pierre,
+author="Fournier, Pierre-Marc
+and Desnoyers, Mathieu
+and Dagenais, Michel R.",
+title="Combined Tracing of the Kernel and Applications with LTTng",
+bookTitle="Hardware and Software Support for Virtualization",
+year="2009",
+pages="87--94",
+url="https://www.kernel.org/doc/ols/2009/ols2009-pages-87-94.pdf"
+}
+
 @book{Gregg_2020a, 
 title={Systems performance, 2nd edition}, 
 publisher={Pearson}, 
 author={Gregg, Brendan}, 
 year={2020}
+}
+
+@inproceedings{Wisniewski2003relayfsA,
+  title={relayfs : An Efficient Unified Approach for Transmitting Data from Kernel to User Space},
+  author={Robert W. Wisniewski},
+  year={2003},
+  url={https://api.semanticscholar.org/CorpusID:15659650}
+}
+
+@misc{relayfs,
+	  author={Zanussi, Tom},
+      title={relayfs, a high-speed data relay filesystem}, 
+      url={https://lwn.net/Articles/25791/},
+}
+
+@misc{ebpf_intro,
+	  author={Fleming, Matt},
+      title={A thorough introduction to eBPF}, 
+      url={https://lwn.net/Articles/740157/},
 }
 
 @misc{ebpf,
