@@ -621,7 +621,47 @@ In contrast to C, where, as explained in \cite{printf}, messages are printed to 
 The messages can then be read via the \texttt{/sys/kernel/tracing/trace\_pipe} interface.  
 This function therefore provides a fast way to add simple debugging output.
 
-Wie 
+As illustrated in Figure~\ref{fig:bpf:working_principle}, beside \ac{BPF} helper funtions, also syscalls can be invoked from the \ac{BPF} virtual machine.  
+These syscalls are specific to the \ac{BPF} environment and provide the same functionality as conventional syscalls, but operate differently.  
+
+Syscalls have existed since the early 1980s, as evidenced by the first official Unix Programmer's Manual~\cite{bell}.  
+As described by Tanenbaum in~\cite[p.~50--53]{Tanenbaum_2014}, syscalls constitute the programming interface for userspace programs to request services from the kernelspace.  
+Thus, syscalls act as a mechanism for the userspace to interact with the kernelspace.  
+
+According to Tanenbaum~\cite[p.~54--55]{Tanenbaum_2014}, syscalls can be divided into the four fundamental categories process management, file management, directory and file system management, and miscellaneous.  
+System calls for process management include, among others, the \texttt{fork()} command, which creates a child process.  
+The \texttt{open()} and \texttt{close()} system calls are used for file management to open or close a file.  
+The \texttt{mkdir()} command creates a new directory and falls into the category of directory and file system management.  
+The miscellaneous category contains everything that does not fit into the three categories mentioned above, such as the \texttt{chmod} system call, which modifies a file’s permissions by changing its protection bits.  
+
+As described by Gregg in~\cite[Chap.~2.3.6]{Gregg_2020}, the \ac{BPF} syscall can be invoked via the code shown in listing \ref{lst:bpf_syscall}.
+
+\begin{listing}[H]
+\begin{minted}[fontsize=\small]{c}
+int bpf(int cmd, union bpf_attr *attr, unsigned int size);
+\end{minted}
+\caption{BPF syscall interface}
+\label{lst:bpf_syscall}
+\end{listing}
+
+The \texttt{cmd} parameter specifies the particular \ac{BPF} operation to be performed.  
+It is an integer value provided through an enumeration.  
+As Gregg describes it in \cite[Chap.~2.3.6]{Gregg_2020}, the \texttt{BPF\_PROG\_LOAD} enum value instructs the verifier to check a \ac{BPF} program and subsequently load it into the kernel.  
+Similarly, maps can be accessed or modified from userspace using commands such as \texttt{BPF\_MAP\_CREATE} or \texttt{BPF\_MAP\_LOOKUP\_ELEM}.  
+
+The key difference between conventional syscalls and the \ac{BPF} syscall is that there is only one syscall for the entire \ac{BPF} subsystem.  
+Nevertheless, as explained above, this single syscall can provide multiple functionalities.  
+In contrast, conventional syscalls are monofunctional, with one syscall per functionality.  
+Thus, while traditional syscalls are monofunctional, the \texttt{bpf()} syscall is polyfunctional.  
+Compared to traditional syscalls, \texttt{bpf()} does not directly implement a single syscall in the classical sense, but rather acts as a wrapper for the syscalls of the \ac{BPF} subsystem.  
+However, the fundamental purpose of syscalls, to provide a communication interface between userspace and kernelspace, remains unchanged in the \ac{BPF} implementation.  
+
+As shown in Figure~\ref{fig:bpf:working_principle}, events also interact with \ac{BPF}.  
+As described by Gregg in~\cite[Chap.~1]{Gregg_2020}, the primary functionality of \ac{BPF} is to execute user-defined code in response to events.  
+Therefore, the events shown in Figure~\ref{fig:bpf:working_principle} are among the most crucial components of the overall system.  
+The events are divided into the three categories static tracing, dynamic tracing, and sampling.  
+These event types are illustrated in detail in Figure~\ref{fig:probes}.  
+
 \begin{figure}[ht]
     \centering
      \includegraphics[width=\textwidth]{figures/Probes.drawio.pdf}
