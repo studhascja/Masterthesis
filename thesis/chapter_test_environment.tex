@@ -592,11 +592,41 @@ This is likely because maps and perf buffers are well integrated with \ac{BPF} a
 As a result, the effort to integrate, for example, RelayFS with \ac{BPF} is not justified.  
 Therefore, this work also relies on maps and perf buffers.
 
+The modules not yet mentioned from Figure~\ref{fig:bpf:working_principle} are BPF helpers, events, and BPF syscalls.  
+All of these are shown as yellow boxes, which, as explained earlier, indicates that they represent components, which do not belong fully to \ac{BPF}, but influence the execution of the \ac{BPF} program.  
+
+As described by Gregg in \cite[Chap.~2.3.6]{Gregg_2020}, a \ac{BPF} program cannot execute arbitrary kernel functions.  
+To enable access to information from the operating system context within the program, BPF helper functions are used.  
+These are defined in the BPF API in \texttt{include/uapi/linux/bpf.h}, and new helpers are constantly being added.  
+The BPF API in this context refers to the set of functions and interfaces that the kernel exposes to \ac{BPF} programs to interact with kernel and user space resources in a controlled manner.  
+As illustrated in Figure~\ref{fig:bpf:working_principle}, these helpers can be invoked via the \texttt{bpf\_call} instruction.  
+
+The following paragraphs present selected helper functions to provide an overview of their capabilities.  
+Among these restricted kernel calls is \texttt{bpf\_ktime\_get\_ns()}, which returns the time since kernel start in nanoseconds.  
+This enables access to a monotonic clock, allowing the measurement of time intervals between specific events at kernel level.  
+
+Other important BPF helpers are \texttt{bpf\_get\_current\_pid\_tgid()} and \\
+\texttt{bpf\_get\_current\_comm(buf, buf\_size)}.  
+Each of these functions has a return value, which will be referred to as $R_1$ and $R_2$ in the following.  
+$R_1$ returns both the TGID and the PID of the current process, where TGID (Thread Group ID) refers to the identifier of the process as a whole, and PID (Process ID) refers to the specific thread within that process.  
+The 64-bit value returned by $R_1$ is composed such that the high 32 bits contain the TGID and the low 32 bits contain the PID.  
+$R_2$ returns the current task name, also known as the command name (\texttt{comm}) of the process.  
+With these two functions, process names and precise IDs can be determined both in user space and kernel space.  
+This is important for filtering, and also for diagnostics when it is necessary to determine which process triggered a given event.  
+
+Another essential kernel function accessible via helpers is \texttt{bpf\_trace\_printk}.  
+As described in \cite{print}, this function can write print messages to the kernel trace log.  
+It thus serves as the \texttt{printf} equivalent for \ac{BPF}.  
+In contrast to C, where, as explained in \cite{printf}, messages are printed to the console, \texttt{bpf\_trace\_printk} writes them to \texttt{/sys/kernel/tracing/trace}, because \ac{BPF} applications have no console available.  
+The messages can then be read via the \texttt{/sys/kernel/tracing/trace\_pipe} interface.  
+This function therefore provides a fast way to add simple debugging output.
+
+Wie 
 \begin{figure}[ht]
     \centering
      \includegraphics[width=\textwidth]{figures/Probes.drawio.pdf}
-    \caption[Presentation of the server state machine]{Representation of the server state machine. Green states have no real-time requirements. Red states are subject to real-time constraints.}
-    \label{fig:state_machine}
+    \caption{Presentation of static and dynamic tracepoints}
+    \label{fig:probes}
 \end{figure}
 
 \subsection{Server and Client Implementation} \label{subsec:impl}
