@@ -672,9 +672,66 @@ This illustration indicates, among other aspects, where specific static and dyna
     \label{fig:probes}
 \end{figure}
 
-In Figure~\ref{fig:probes}, only two or three monitoring techniques are distinguished: dynamic tracing, static tracing, and sampling.  
+In Figure~\ref{fig:probes}, only three monitoring techniques are distinguished: dynamic tracing, static tracing, and sampling.  
 In the following the available monitoring techniques are discussed, their differences highlighted and it will be explained what a probe is and how probes can be classified.  
 
+Gregg describes in \cite[Chap.~1.2]{Gregg_2020} that monitoring techniques serve the purpose of observability.  
+He defines the term \emph{observability} as the ability to understand a system by means of monitoring tools.  
+
+The term \emph{observability} was originally introduced in 1960 by Kalman in \cite{Klmn1960ContributionsTT}.  
+He defines observability as the property that the internal state of a system at any given time can be completely determined from its outputs over a finite period of time.  
+
+\begin{equation} \label{eq:obser}
+x_{k+1} = A x_k + B u_k, \quad y_k = C x_k + D u_k,
+\end{equation} 
+
+For a given state-space system model like presented in equation \ref{eq:obser} the variable $x_k$ is the state vector of the system at time step $k$.
+In equation \ref{eq:obser}, $u_k$ is the input vector at time step $k$,  
+$y_k$ is the output vector at time step $k$,  
+$A$ is describing the evolution of the internal state over time,  
+while $B$ the input matrix describes how inputs affect the states,  
+$C$ is the output matrix mapping the state $x_k$ to the measured outputs $y_k$,  
+and $D$ is the feedthrough matrix describing any direct influence of the inputs on the outputs.  
+
+According to Kalman \cite{Klmn1960ContributionsTT}, a system is observable if the \emph{observability matrix} shown in equation \ref{eq:matrix} has full rank, in other words \(\mathrm{rank}(\mathcal{O}) = n\), where \(n\) is the dimension of the state vector \(x_k\).  
+The variables $A$ and $C$ in equation \ref{eq:matrix} have the same meaning, like in equation \ref{eq:obser}.
+The product $C A^i$ describes how the output at time step $k+i$ depends on the initial state $x_k$.
+To $i$ applies $i \in [0, n-1]$.
+The observability matrix in equation \ref{eq:matrix} has one column for each state variable, in other words $n$ columns if $x_k \in \mathbb{R}^n$.
+\begin{equation} \label{eq:matrix}
+\mathcal{O} =
+\begin{bmatrix}
+C \\
+C A \\
+C A^2 \\
+\vdots \\
+C A^{n-1}
+\end{bmatrix}
+\end{equation}  
+
+Full column rank ensures that each state variable can be uniquely determined from the output measurements.
+The outputs must be multiplied by $A^i$ in each block $C A^i$ because the effect of the initial state on future outputs evolves over time according to the system dynamics.
+This condition ensures that the current state $x_k$ can be fully reconstructed from the output measurements $y_k$.  
+
+Nevertheless, Gregg's definition of observability does not deviate substantially from Kalman's original formulation.  
+A system can only be fully understood if its internal state can be determined at all times from its outputs. 
+Also Gregg's definition is more practical orientated, where the original definition is more orientatedto the theory.
+In order for a system to produce outputs from which its internal state can be inferred, certain analysis techniques are required.  
+Gregg categorizes these techniques in \cite[Chap.~1.2]{Gregg_2020} into \emph{tracing}, \emph{snooping}, \emph{sampling}, and \emph{profiling}.  
+
+Tracing, as described by Gregg in \cite[Chap.~1.2]{Gregg_2020}, refers to recording the system state based on events.  
+There are various tools in the Linux context that enable tracing, such as \texttt{strace} \cite{strace} or \texttt{top}.  
+According to Gregg, \texttt{top} internally also works with events and subsequently outputs a summary of the information extracted from these events to the console.  
+From this, it follows that tracers must, on the one hand, be capable of detecting events, and, on the other hand, also be able to read their metadata in order to fully understand their context.  
+Furthermore, since events can occur very frequently, the overhead of a tracer must remain low; otherwise, the system would be significantly impaired.  
+
+As Gregg explains in \cite[Chap.~1.2]{Gregg_2020}, snooping is very similar to tracing.  
+It also describes the observation of events.  
+Snooping was introduced in 1983 by Ravishankar and Goodman in \cite{osti_5139336}.  
+They presented a bus snooping technique that monitors a memory block stored across multiple caches and informs other caches when this memory block has been modified.  
+This approach avoids cache incoherency.  
+Therefore, the difference between snooping and tracing lies less in functionality and more in their objectives.  
+Snooping is generally a passive observation with occasional reactions, whereas tracing often aims to thoroughly analyze and record a specific area of the system.  
 
 
 \subsection{Server and Client Implementation} \label{subsec:impl}
