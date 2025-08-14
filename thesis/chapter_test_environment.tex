@@ -469,6 +469,14 @@ Therefore, various libraries exist to simplify this process.
 The two most prominent are \texttt{bcc} and \texttt{libbpf} for C++ and C, respectively.  
 Using the tools \texttt{bcc} and \texttt{bpftrace}, \ac{BPF} can be utilized from the command line.  
 These tools also internally rely on \texttt{libbpf} and \texttt{bcc}.  
+
+\begin{figure}[H]
+    \centering
+     \includegraphics[width=\textwidth]{figures/BPF.drawio.pdf}
+    \caption{Presentation of the working principle of Berkley Package Filter}
+    \label{fig:bpf:working_principle}
+\end{figure}
+
 In this work, only the \texttt{libbpf-rs} library is used, and thus, the functionality and scope of these tools will not be further discussed.  
 The \texttt{libbpf-rs} library is based on the \texttt{libbpf} library and serves as its Rust binding.  
 Its exact functionality will be described in Section~\ref{subsec:impl}, as it is closely related to the implementation of the server and client.  
@@ -480,12 +488,6 @@ It also distinguishes where each component resides, either in the kernel or in u
 In Figure~\ref{fig:bpf:working_principle}, components that are directly connected to the \ac{BPF} workflow are depicted in grey.  
 Configurations or interactions are represented in blue circles, while external Linux components are shown in yellow.  
 
-\begin{figure}[ht]
-    \centering
-     \includegraphics[width=\textwidth]{figures/BPF.drawio.pdf}
-    \caption{Presentation of the working principle of Berkley Package Filter}
-    \label{fig:bpf:working_principle}
-\end{figure}
 The \ac{BPF} workflow begins with a \ac{BPF} program.  
 As explained by Gbadamosi et~al.\ in \cite[p.~7]{gbadamosi2024ebpfruntimelinuxkernel}, this program is compiled using \texttt{clang}.  
 For this compilation, the \texttt{bpf} target must be set.  
@@ -659,15 +661,21 @@ However, the fundamental purpose of syscalls, to provide a communication interfa
 As shown in Figure~\ref{fig:bpf:working_principle}, events also interact with \ac{BPF}.  
 As described by Gregg in~\cite[Chap.~1]{Gregg_2020}, the primary functionality of \ac{BPF} is to execute user-defined code in response to events.  
 Therefore, the events shown in Figure~\ref{fig:bpf:working_principle} are among the most crucial components of the overall system.  
-The events are divided into the three categories static tracing, dynamic tracing, and sampling.  
-These event types are illustrated in detail in Figure~\ref{fig:probes}.  
+Like described by Gregg in \cite[Chap. 1]{Gregg_2020}, events can be divided into the two categories static and dynamic events.  
+In Figure~\ref{fig:probes}, a software stack is illustrated.  
+This illustration indicates, among other aspects, where specific static and dynamic events are located and which monitoring techniques can be used to observe them.  
 
 \begin{figure}[ht]
     \centering
-     \includegraphics[width=\textwidth]{figures/Probes.drawio.pdf}
-    \caption{Presentation of static and dynamic tracepoints}
+    \includegraphics[width=\textwidth]{figures/Probes.drawio.pdf}
+    \caption{Presentation of a software stack and selection of static and dynamic probes}
     \label{fig:probes}
 \end{figure}
+
+In Figure~\ref{fig:probes}, only two or three monitoring techniques are distinguished: dynamic tracing, static tracing, and sampling.  
+In the following the available monitoring techniques are discussed, their differences highlighted and it will be explained what a probe is and how probes can be classified.  
+
+
 
 \subsection{Server and Client Implementation} \label{subsec:impl}
 
