@@ -720,7 +720,12 @@ In order for a system to produce outputs from which its internal state can be in
 Gregg categorizes these techniques in \cite[Chap.~1.2]{Gregg_2020} into \emph{tracing}, \emph{snooping}, \emph{sampling}, and \emph{profiling}.  
 
 Tracing, as described by Gregg in \cite[Chap.~1.2]{Gregg_2020}, refers to recording the system state based on events.  
-There are various tools in the Linux context that enable tracing, such as \texttt{strace} \cite{strace} or \texttt{top}.  
+The origins of tracing can be traced back to 1951, when Gill in \cite{doi:10.1098/rspa.1951.0087} described a method to rapidly diagnose errors in the code of digital computers.  
+This topic is closely related to debugging, yet Gill already employed several techniques in this paper that are also relevant to tracing.  
+He also emphasized that his error detection method should have as little impact on the system as possible.  
+Furthermore, he employed monitoring and reacting to events, as can be seen in \cite[p.~540, 547]{doi:10.1098/rspa.1951.0087}.  
+He's not using the term ``tracing`` in his paper yet, but he describes a method that nowerdays is considered between debugging and tracing.
+Like Gregg describes in \cite[Chap. 1.2]{Gregg_2020} nowerdays there are various tools in the Linux context that enable tracing, such as \texttt{strace} \cite{strace} or \texttt{top}.  
 According to Gregg, \texttt{top} internally also works with events and subsequently outputs a summary of the information extracted from these events to the console.  
 From this, it follows that tracers must, on the one hand, be capable of detecting events, and, on the other hand, also be able to read their metadata in order to fully understand their context.  
 Furthermore, since events can occur very frequently, the overhead of a tracer must remain low; otherwise, the system would be significantly impaired.  
@@ -733,6 +738,25 @@ This approach avoids cache incoherency.
 Therefore, the difference between snooping and tracing lies less in functionality and more in their objectives.  
 Snooping is generally a passive observation with occasional reactions, whereas tracing often aims to thoroughly analyze and record a specific area of the system.  
 
+The two additional analysis techniques presented by Gregg in \cite[Chap.~1.2]{Gregg_2020} are also closely related to each other.  
+Sampling and profiling are both techniques that use a subset of data to represent the state of the system as accurately as possible.  
+This approach is most commonly applied for monitoring the \ac{CPU}.  
+
+Sampling also records events, but not all of them.
+Instead, it captures data only at specific time intervals. 
+For example, sampling may take a snapshot of the current system state every three milliseconds for a duration of 0.5 milliseconds, including information such as current events or \ac{CPU} utilization.  
+Sampling is therefore well suited for contexts in which a large number of events occur.  
+Because sampling does not capture every single event, its overhead is generally lower than that of tracing.  
+
+The recorded samples are then aggregated into a system profile.  
+This process is referred to as profiling.  
+By combining sampling and profiling, it is possible to represent contexts with a large number of events as accurately as possible through regular snapshots.  
+
+One example of a sampling tool is \texttt{gprof}.  
+As shown in \cite{gprof}, this tool can be used to perform measurements at regular time intervals in order to determine how much time the program spends in various functions.  
+
+In this work, tracing is primarily used, and therefore sampling and profiling will not be discussed further at this point.  
+After having described the commonly used analysis techniques according to Gregg, all of which operate partially or exclusively with events, the following section explains what an event is and which types of events exist in the Linux context.  
 
 \subsection{Server and Client Implementation} \label{subsec:impl}
 
