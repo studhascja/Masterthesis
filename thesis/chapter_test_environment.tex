@@ -757,7 +757,34 @@ As shown in \cite{gprof}, this tool can be used to perform measurements at regul
 
 In this work, tracing is primarily used, and therefore sampling and profiling will not be discussed further at this point.  
 After having described the commonly used analysis techniques according to Gregg, all of which operate partially or exclusively with events, the following section explains what an event is and which types of events exist in the Linux context.  
+Wie bereits zuvor erwähnt, und in Grafik \ref{fig:bpf:working_principle} zu sehen, können die Events in Statische und Dynamische Events unterteilt werden.
+Auch in Abbildung \ref{fig:probes} ist die Grafik in drei Abschnitte Unterteilt, dabei ebenfalls statische und dynamisches Tracing. 
+Sampling, bzw. welche Probes damit gemeint sind werden im späteren Verlauf des Kapitels beschrieben.
+Es wird mit der Beshreibung der dynamischen Probes begonnen, da diese eher in den LInux kernel übernommen wurden.
 
+Wie Gregg in \cite[Chap. 1.2]{Gregg_2020} beschreibt, setzen sich die dynamischen Probes aus den \acp{kprobe} und \acp{uprobe} zusammen.
+Wie in Abbildung \ref{fig:probes} zu sehen, wirkt sich dabei die \ac{kprobe} auf den Kernelspace und die \ac{uprobe} auf den Userpsace aus.
+Wie Mavinakayanahalli in \cite[p. 101]{Mavinakayanahalli_Panchamukhi_Keniston_Keshavamurthy_Hiramatsu_2006} beschreibt, wurden \acp{kprobe} vom IBM Linux Technology Center entwickelt und 2004 in Version 2.6.9 in den Mainline Kernel aufgenommen.
+Aus der Mailingliste \cite{kprobe_early} geht jedoch hervor, dass \acp{kprobe} bereits in 2002 im Kernel 2.5.48 gepatched wurden, jedoch sind diese zu diesem Zeitpunkt noch nicht Mainline.
+
+Eine \ac{kprobe} erlaubt es dabei, eine beliebige Kernel-Instruktion oder Funktion zu instrumentalisieren.
+Dies wird, wie in \cite[p. 101 - 104]{Mavinakayanahalli_Panchamukhi_Keniston_Keshavamurthy_Hiramatsu_2006} beschrieben, erreicht, indem eine Instruktion durch einen Software-Breakpoint ersetzt wird, und die Kontrolle an einen Handler umgeleitet wird.
+Wie in \cite[p. 102]{Mavinakayanahalli_Panchamukhi_Keniston_Keshavamurthy_Hiramatsu_2006} beschrieben, existiert ein kprobe struct.
+Dieses kann für die Nutzung von Structs benutzt werden.
+Die \ac{BPF} Tools wie bpftrace nutzen dieses ebenfalls im Hintergund, um \acp{kprobe} zu registrieren.
+Die relevanten Felder dabei sind addr, pre\_handler, post\_handler und fault\_handler.
+Das Feld addr gibt dabei an, wo die \ac{kprobe} dabei registriert werden soll.
+Die hander variablen gebn dabei jeweils an, was bevor, nach und statt des handler ausgeführt werden soll.
+Eine kprobe geht dabei durch folgende Phasen:
+\begin{itemize}
+    \item Registrierung: 
+    \item Trap:
+    \item Kprobe-Handler:
+    \item Emulation der Original-Instruktion:
+    \item Rückkehr:
+\end{itemize}
+
+Dabei stellt sich jetzt natürlich die Frage, was ist besser geeignet, zum Monitoring?
 \subsection{Server and Client Implementation} \label{subsec:impl}
 
 \begin{figure}[ht]
