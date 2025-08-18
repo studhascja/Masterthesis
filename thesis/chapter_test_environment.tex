@@ -745,46 +745,127 @@ This approach is most commonly applied for monitoring the \ac{CPU}.
 Sampling also records events, but not all of them.
 Instead, it captures data only at specific time intervals. 
 For example, sampling may take a snapshot of the current system state every three milliseconds for a duration of 0.5 milliseconds, including information such as current events or \ac{CPU} utilization.  
-Sampling is therefore well suited for contexts in which a large number of events occur.  
+Sampling is therefore well suited for contexts in which many events occur.  
 Because sampling does not capture every single event, its overhead is generally lower than that of tracing.  
 
 The recorded samples are then aggregated into a system profile.  
 This process is referred to as profiling.  
-By combining sampling and profiling, it is possible to represent contexts with a large number of events as accurately as possible through regular snapshots.  
+By combining sampling and profiling, it is possible to represent contexts with many events as accurately as possible through regular snapshots.  
 
 One example of a sampling tool is \texttt{gprof}.  
 As shown in \cite{gprof}, this tool can be used to perform measurements at regular time intervals in order to determine how much time the program spends in various functions.  
 
 In this work, tracing is primarily used, and therefore sampling and profiling will not be discussed further at this point.  
 After having described the commonly used analysis techniques according to Gregg, all of which operate partially or exclusively with events, the following section explains what an event is and which types of events exist in the Linux context.  
-Wie bereits zuvor erwähnt, und in Grafik \ref{fig:bpf:working_principle} zu sehen, können die Events in Statische und Dynamische Events unterteilt werden.
-Auch in Abbildung \ref{fig:probes} ist die Grafik in drei Abschnitte Unterteilt, dabei ebenfalls statische und dynamisches Tracing. 
-Sampling, bzw. welche Probes damit gemeint sind werden im späteren Verlauf des Kapitels beschrieben.
-Es wird mit der Beshreibung der dynamischen Probes begonnen, da diese eher in den LInux kernel übernommen wurden.
+As previously mentioned, and as shown in Figure \ref{fig:bpf:working_principle}, events can be classified into static and dynamic events.  
+In Figure \ref{fig:probes}, the diagram is also divided into three sections, again distinguishing static and dynamic tracing.  
+Sampling, i.e., which probes are involved, will be described later in this chapter.  
+The description begins with dynamic probes, as these were more readily adopted into the Linux kernel.  
 
-Wie Gregg in \cite[Chap. 1.2]{Gregg_2020} beschreibt, setzen sich die dynamischen Probes aus den \acp{kprobe} und \acp{uprobe} zusammen.
-Wie in Abbildung \ref{fig:probes} zu sehen, wirkt sich dabei die \ac{kprobe} auf den Kernelspace und die \ac{uprobe} auf den Userpsace aus.
-Wie Mavinakayanahalli in \cite[p. 101]{Mavinakayanahalli_Panchamukhi_Keniston_Keshavamurthy_Hiramatsu_2006} beschreibt, wurden \acp{kprobe} vom IBM Linux Technology Center entwickelt und 2004 in Version 2.6.9 in den Mainline Kernel aufgenommen.
-Aus der Mailingliste \cite{kprobe_early} geht jedoch hervor, dass \acp{kprobe} bereits in 2002 im Kernel 2.5.48 gepatched wurden, jedoch sind diese zu diesem Zeitpunkt noch nicht Mainline.
+As Gregg describes in \cite[Chap. 1.2]{Gregg_2020}, dynamic probes consist of \acp{kprobe} and \acp{uprobe}.  
+As shown in Figure \ref{fig:probes}, \ac{kprobe} affects the kernel space, while \ac{uprobe} affects the user space.  
+According to Mavinakayanahalli \cite[p. 101]{Mavinakayanahalli_Panchamukhi_Keniston_Keshavamurthy_Hiramatsu_2006}, \acp{kprobe} were developed by the IBM Linux Technology Center and were integrated into the mainline kernel in version 2.6.9 in 2004.  
+However, the mailing list \cite{kprobe_early} indicates that \acp{kprobe} were patched into kernel 2.5.48 already in 2002, although they were not yet part of the mainline at that time.  
 
-Eine \ac{kprobe} erlaubt es dabei, eine beliebige Kernel-Instruktion oder Funktion zu instrumentalisieren.
-Dies wird, wie in \cite[p. 101 - 104]{Mavinakayanahalli_Panchamukhi_Keniston_Keshavamurthy_Hiramatsu_2006} beschrieben, erreicht, indem eine Instruktion durch einen Software-Breakpoint ersetzt wird, und die Kontrolle an einen Handler umgeleitet wird.
-Wie in \cite[p. 102]{Mavinakayanahalli_Panchamukhi_Keniston_Keshavamurthy_Hiramatsu_2006} beschrieben, existiert ein kprobe struct.
-Dieses kann für die Nutzung von Structs benutzt werden.
-Die \ac{BPF} Tools wie bpftrace nutzen dieses ebenfalls im Hintergund, um \acp{kprobe} zu registrieren.
-Die relevanten Felder dabei sind addr, pre\_handler, post\_handler und fault\_handler.
-Das Feld addr gibt dabei an, wo die \ac{kprobe} dabei registriert werden soll.
-Die hander variablen gebn dabei jeweils an, was bevor, nach und statt des handler ausgeführt werden soll.
-Eine kprobe geht dabei durch folgende Phasen:
+A \ac{kprobe} allows instrumentation of any kernel instruction or function.  
+This is achieved, as described in \cite[p. 101-104]{Mavinakayanahalli_Panchamukhi_Keniston_Keshavamurthy_Hiramatsu_2006}, by replacing an instruction with a software breakpoint and redirecting control to a handler.  
+As described in \cite[p. 102]{Mavinakayanahalli_Panchamukhi_Keniston_Keshavamurthy_Hiramatsu_2006}, a \texttt{kprobe struct} exists.  
+This struct can be used to manage and configure probes.  
+BPF tools, such as bpftrace, also utilize this struct in the background to register \acp{kprobe}.  
+The relevant fields include \texttt{addr}, \texttt{pre\_handler}, \texttt{post\_handler}, and \texttt{fault\_handler}.  
+The \texttt{addr} field specifies the location where the \ac{kprobe} should be registered.  
+The handler fields indicate the actions to be executed before, after, or instead of the probed instruction.  
+
+In addition to \ac{kprobe}, there exists the \ac{kretprobe}.  
+As described in \cite{Mavinakayanahalli_Panchamukhi_Keniston_Keshavamurthy_Hiramatsu_2006}, it is used to monitor return times or return values of functions.  
+A dedicated struct, \texttt{kretprobe}, exists for \acp{kretprobe}, containing, besides the entry address, an additional \texttt{maxactive} field.  
+Since \acp{kretprobe}, as described later, are not attached to a fixed instruction address, multiple instances of the tracked function may exist simultaneously.  
+This can occur, for example, if the function is recursive.  
+The \texttt{maxactive} field specifies the maximum number of concurrent \acp{kretprobe} allowed for a single function.  
+
+The following describes the operation of \acp{kprobe} and \acp{kretprobe}:  
+
 \begin{itemize}
-    \item Registrierung: 
-    \item Trap:
-    \item Kprobe-Handler:
-    \item Emulation der Original-Instruktion:
-    \item Rückkehr:
+    \item A \textbf{Registration} is needed before use ,as stated in the official documentation \cite{kprobe_doc}, for both \ac{kprobe} and \ac{kretprobe}.  
+          This is done using \texttt{register\_kprobe()} or \\
+          \texttt{register\_kretprobe()}.  
+          A \ac{kretprobe} cannot exist without a corresponding \ac{kprobe}.  
+          Therefore, registering a \ac{kretprobe} always involves a \ac{kprobe}.  
+          During \ac{kprobe} registration, the first instruction of the target function is replaced with a breakpoint instruction which is \texttt{int3} on the x86 architecture.  
+          The original instruction is also copied to allow later execution.  
+    \item A \textbf{Trap} occurs when the CPU reaches the address specified during registration, triggering the \ac{kprobe} dispatcher.  
+          The normal function flow is interrupted, and control is transferred to the \ac{kprobe} handler.  
+          As described in \cite{kprobe_doc}, all registers are saved and control is passed to the handler via the \texttt{notifier\_call\_chain}.  
+    \item During the \textbf{\ac{kprobe}-Handler} the \texttt{pre\_handler} is executed first, followed by emulation of the original instruction, and then the \texttt{post\_handler} is executed.  
+          In the \texttt{pre\_handler}, the address of the \ac{kprobe} struct is passed to the handler.  
+          Another function of the \texttt{pre\_handler} is to initialize the \ac{kretprobe}.  
+          As can be seen in \cite{linux_kprobes_616}, this is performed by \texttt{pre\_handler\_kretprobe(struct kprobe *p, struct pt\_regs *regs)}, where \texttt{*p} is the \ac{kprobe} struct and \texttt{*regs} contains registers saved during the trap.  
+          This function replaces the return address of the probed function on the stack with the trampoline address and stores the original return in the \texttt{kretprobe\_instance} struct.  
+          This has the affect that the trampoline is triggered when the original function returns.  
+          Aside from this kretprobe-specific pre-handler, regular \ac{kprobe} can execute user-defined code before the actual function.  
+          After the \texttt{pre\_handler}, the copied instruction is executed in a single-step manner, as desrcibed in \cite{kprobe_doc}  
+          Copying the instruction is necessary to avoid removing the breakpoint, which would allow other \acp{CPU} to skip the \ac{kprobe}.  
+          Execution then proceeds to either the trampoline or the post-handler.  
+          In the post-handler, the return value can be further processed, or additional user code executed.  
+          For a \ac{kretprobe}, the post-handler is not executed, as it is replaced by the next \ac{kprobe} triggered via the trampoline.  
+          If the function terminates in a fault, such as a page fault, the previously mentioned fault handler is invoked.
+          This handler prevents the function from crashing immediately and implements a user-defined routine for handling the error condition.
+    \item The \textbf{Trampoline} typically consists, as described in \cite{kprobe_doc}, of a NOP instruction.  
+          As described by Stallings in \cite[p. 545]{Stallings_2018}, the NOP instruction means no operation.
+          So this operation only acts as placeholder and makes space in the instruction stream.
+          The trampoline handler is executed and transfers control to the return handler.  
+          After execution of the return handler, the instruction pointer is restored to the original return address stored in \texttt{kretprobe\_instance}.  
+          Essentially, the trampoline acts as a NOP instruction with an additional \ac{kprobe}.  
+    \item The \textbf{Return-handler} corresponds to the second \ac{kprobe} in the \ac{kretprobe} and is used to execute user-specific code at the end of the probed function.  
 \end{itemize}
 
+As described in \cite{kprobe_doc}, the \texttt{fault\_handler} is only invoked if the probed function ends in a fault, but not if a handler itself triggers a fault.  
+For this reason, a safety check is necessary for \acp{kprobe}.  
+This check ensures that the breakpoint instruction, which replaces the original function, lies entirely within a single function.  
+Since the breakpoint spans multiple bytes, this is not guaranteed by default.  
+Furthermore, it is verified that the function does not contain jumps back to the original code, which has been replaced by the \ac{kprobe} breakpoint instruction.  
+Finally, it is ensured that each instruction of the original function can be executed out-of-line.  
+
+As stated in \cite{kprobe_doc}, almost everything in the kernel can be probed using \acp{kprobe}, except the probes themselves.  
+There are some exceptions, which are recorded in a blacklist.  
+This list includes all functions marked with the macro \texttt{NOKPROBE\_SYMBOL()}.  
+The blacklist can also be dynamically viewed in DebugFS under \texttt{/sys/kernel/debug/kprobes/blacklist}.  
+It contains functions used in the \ac{kprobe} workflow.  
+For example, \texttt{do\_int3} is blacklisted because probing it would cause recursion, because the \ac{kprobe} would continuously probe itself.
+Another function on the blacklist is \texttt{do\_debug}.  
+As shown in \cite{linux_trap} and confirmed by Intel in \cite[p. 1468]{single_step}, this function handles the debug-exception vector \#DB.  
+It is used, among other things, for single stepping.  
+Since \acp{kprobe} use single stepping to execute the probed function, instrumenting this function would affect the handler used for single stepping.  
+Because \texttt{do\_debug} executes when a \#DB occurs and the TS flag is set, which is always the case for single stepping, probing it would lead to a deadlock.  
+
+The performance of \acp{kprobe} can be optimized, as described by Gregg in \cite[Chap. 2.7]{Gregg_2020}, by replacing the break instruction with a jump instruction.  
+This has been possible since kernel version 5.x and is applied automatically if feasible.  
+Since a \ac{kprobe} cannot instrument itself, measuring the overhead is challenging.  
+Moreover, the required execution time depends heavily on the hardware.  
+According to the official documentation \cite{kprobe_doc}, \acp{kprobe} on an Intel Xeon E5410 CPU take between 0.5 and 1 $\mu$s.  
+In contrast, \acp{kretprobe} take between 0.75 and 1.75 $\mu$s.  
+Optimized \acp{kprobe} achieve significantly better results on the same hardware.  
+For \acp{kprobe}, execution times range between 50 and 60 ns, while \acp{kretprobe} require between 300 and 400 ns.  
+Babrou presents measurements of \acp{kprobe} on an Apple M1 processor in \cite{k_probe_benchmark}, yielding results between 110 and 350 ns.  
+These results suggest that the \acp{kprobe} were not optimized, because the M1 \ac{CPU} for Apple is about 10 years younger and contains more cores and a higher frequency, as described later.
+
+In this work, a Raspberry Pi 5 is used.  
+The performance of its quad-core ARM Cortex-A76 processor is closer to that of the Intel Xeon E5410 than to the Apple M1.  
+This is due to both the number of cores and the clock frequency.  
+The M1 chip has 8 cores and a clock frequency of 3.2 GHz, as described by Hübner in \cite[p. 3]{m1}.  
+In contrast, the Intel Xeon E5410 has 4 cores and a clock frequency of 2.3 GHz, as can be seen in \cite{xeone5410}.  
+As described in \cite{Pi5} the BCM2712 chip in the Raspberry Pi 5 also has 4 cores and a clock frequency of 2.4 GHz.  
+Even though the Intel and Broadcom chips have similar specifications, this does not necessarily imply equal \ac{kprobe} performance.  
+The Broadcom chip is approximately 15 years newer, while the Intel chip is designed as a desktop CPU.  
+This is reflected in the \ac{TDP}.
+The Intel CPU has a \ac{TDP} of 80 W, and is in this way capable to use about seven times more ressources than the Broadcom chip with a \ac{TDP} of 12 W.  
+Additionally, the Intel CPU is based on the x86\_64 architecture, whereas the Broadcom chip uses an ARM architecture.  
+Nevertheless, the Intel CPU’s performance metrics are much closer to the Raspberry Pi 5 CPU than to the Apple M1.
+It can therefore be assumed that the overhead of an optimized \ac{kprobe} on the Raspberry Pi 5 is approximately 50--100~ns, whereas a \ac{kretprobe} requires around 250--500~ns.
+
+
 Dabei stellt sich jetzt natürlich die Frage, was ist besser geeignet, zum Monitoring?
+Ringbuffer vs Perfbuffer https://dl.acm.org/doi/pdf/10.1145/3672197.3673430
 \subsection{Server and Client Implementation} \label{subsec:impl}
 
 \begin{figure}[ht]
