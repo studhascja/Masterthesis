@@ -863,6 +863,12 @@ Additionally, the Intel CPU is based on the x86\_64 architecture, whereas the Br
 Nevertheless, the Intel CPU’s performance metrics are much closer to the Raspberry Pi 5 CPU than to the Apple M1.
 It can therefore be assumed that the overhead of an optimized \ac{kprobe} on the Raspberry Pi 5 is approximately 50--100~ns, whereas a \ac{kretprobe} requires around 250--500~ns.
 
+As previously described, the probes consist not only of \acp{kprobe} but also of \acp{uprobe}. 
+In the following, the functioning of \acp{uprobe} and how they can be distinguished from \acp{kprobe}, is described.
+
+As Corbet notes in \cite{uprobe}, \acp{uprobe} were added to the mainline kernel in version 3.5 in 2007. 
+Thus, they were introduced approximately three years after \acp{kprobe}.
+
 
 Dabei stellt sich jetzt natürlich die Frage, was ist besser geeignet, zum Monitoring?
 Ringbuffer vs Perfbuffer https://dl.acm.org/doi/pdf/10.1145/3672197.3673430
