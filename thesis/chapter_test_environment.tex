@@ -658,17 +658,18 @@ Thus, while traditional syscalls are monofunctional, the \texttt{bpf()} syscall 
 Compared to traditional syscalls, \texttt{bpf()} does not directly implement a single syscall in the classical sense, but rather acts as a wrapper for the syscalls of the \ac{BPF} subsystem.  
 However, the fundamental purpose of syscalls, to provide a communication interface between userspace and kernelspace, remains unchanged in the \ac{BPF} implementation.  
 
-As shown in Figure~\ref{fig:bpf:working_principle}, events also interact with \ac{BPF}.  
-As described by Gregg in~\cite[Chap.~1]{Gregg_2020}, the primary functionality of \ac{BPF} is to execute user-defined code in response to events.  
-Therefore, the events shown in Figure~\ref{fig:bpf:working_principle} are among the most crucial components of the overall system.  
-Like described by Gregg in \cite[Chap. 1]{Gregg_2020}, events can be divided into the two categories static and dynamic events.  
+As shown in Figure~\ref{fig:bpf:working_principle}, event sources also interact with \ac{BPF}.  
+As described by Gregg in~\cite[Chap.~1]{Gregg_2020}, the primary functionality of \ac{BPF} is to execute user-defined code in response to event sources.  
+Therefore, the event sources shown in Figure~\ref{fig:bpf:working_principle} are among the most crucial components of the overall system.  
+Like described by Gregg in \cite[Chap. 1]{Gregg_2020}, event sources can be divided into the two categories static and dynamic.
+While dynamic event sources are called probes, static event sources are know as events.  
 In Figure~\ref{fig:probes}, a software stack is illustrated.  
-This illustration indicates, among other aspects, where specific static and dynamic events are located and which monitoring techniques can be used to observe them.  
+This illustration indicates, among other aspects, where specific static and dynamic event sources are located and which monitoring techniques can be used to observe them.  
 
 \begin{figure}[ht]
     \centering
     \includegraphics[width=\textwidth]{figures/Probes.drawio.pdf}
-    \caption{Presentation of a software stack and selection of static and dynamic probes}
+    \caption{Presentation of a software stack and selection of event sources}
     \label{fig:probes}
 \end{figure}
 
@@ -756,8 +757,13 @@ One example of a sampling tool is \texttt{gprof}.
 As shown in \cite{gprof}, this tool can be used to perform measurements at regular time intervals in order to determine how much time the program spends in various functions.  
 
 In this work, tracing is primarily used, and therefore sampling and profiling will not be discussed further at this point.  
-After having described the commonly used analysis techniques according to Gregg, all of which operate partially or exclusively with events, the following section explains what an event is and which types of events exist in the Linux context.  
-As previously mentioned, and as shown in Figure \ref{fig:bpf:working_principle}, events can be classified into static and dynamic events.  
+After having described the commonly used analysis techniques according to Gregg, all of which operate partially or exclusively with events, the following section explains what an event is and which types of event sources exist in the Linux context.  
+As previously mentioned, and as shown in Figure \ref{fig:bpf:working_principle}, event  can be classified into static and dynamic events.
+But like stated before and also described by Gregg in \cite[Chap. 2.6]{Gregg_2020}, events are always static.
+As an umbrella term for events and probes, Gregg uses the term event sources.
+Since this term is inconvenient, in literature often the term static and dynamic envents is used.
+To be more precise in the following the term event is only used for static event sources and the term probes is only used for dynamic event sources.
+
 In Figure \ref{fig:probes}, the diagram is also divided into three sections, again distinguishing static and dynamic tracing.  
 Sampling, i.e., which probes are involved, will be described later in this chapter.  
 The description begins with dynamic probes, as these were more readily adopted into the Linux kernel.  
@@ -869,6 +875,93 @@ In the following, the functioning of \acp{uprobe} and how they can be distinguis
 As Corbet notes in \cite{uprobe}, \acp{uprobe} were added to the mainline kernel in version 3.5 in 2007. 
 Thus, they were introduced approximately three years after \acp{kprobe}.
 
+As described by Gregg in \cite[Chap. 2.8]{Gregg_2020}, \acp{uprobe} are very similar to \acp{kprobe} in both functionality and implementation.  
+In contrast to \acp{kprobe}, \acp{uprobe} are used to dynamically trace userspace programs.  
+Similar to \acp{kprobe}, there exist both \acp{uprobe} and the derived \acp{uretprobe}, which probe the return of a function.  
+
+Unlike \acp{kprobe}, \acp{uprobe} are attached to a function in an executable file in userspace.  
+As described in \cite{uprobe_doc}, this can be achieved by registering uprobes in the file \\
+\texttt{/sys/kernel/tracing/uprobe\_events}.  
+For instance, using the command \\
+\texttt{echo 'p /usr/test:0x5329c0' > /sys/kernel/tracing/uprobe\_events} attaches a uprobe to the executable \texttt{test} at offset \texttt{0x5329c0}.  
+In other words, the function to be probed in \texttt{test} starts at byte \texttt{0x5329c0}.  
+This implies that the function and offset must always be provided when registering a \ac{uprobe}.  
+
+This behavior can also be seen in \cite{uprobe_code}, where the function in listing \ref{lst:uprobe} is defined.  
+
+\begin{listing}[H]
+    \centering
+\begin{minted}[fontsize=\small]{c}
+struct uprobe *uprobe_register(
+                                struct inode *inode, 
+                                loff_t offset, 
+                                loff_t ref_ctr_offset, 
+                                struct uprobe_consumer *uc);
+\end{minted}
+\caption{Function blueprint to register a Uprobe}
+\label{lst:uprobe}
+\end{listing}
+
+In listing \ref{lst:uprobe}, \texttt{inode} specifies the file to be probed, and \texttt{offset} indicates the offset of the function in the file where the breakpoint should be set.  
+The argument \texttt{uc} provides information on how the probe should be handled, including callback functions for the handlers.  
+
+The beginning of the function, i.e., the location in the file pointed to by the offset, is replaced by a breakpoint instruction, similar to \acp{kprobe}.  
+However, the breakpoint instruction is not set immediately upon registering the \ac{uprobe}, as noted in \cite{uprobe_mail}, but only when the file is loaded by a process.  
+This ensures that the file is modified only if necessary.  
+
+As described by Zhen et al. in \cite[p. 2, 3]{zheng2023bpftimeuserspaceebpfruntime}, a context switch from userspace to kernel space occurs when the \ac{CPU} reaches the breakpoint instruction.  
+Subsequently, as with \acp{kprobe}, the handlers are executed in kernel space in a virtual machine.  
+Once the \ac{uprobe} has been fully executed in kernel space, another context switch from kernel to userspace occurs, and the program continues normally.  
+
+As described in \cite{uprobe_mail}, the instructions are loaded into a separate area.  
+This area is implemented using a page where the instructions are single-stepped.  
+Therefore, the instructions are executed per process.  
+Dronamraju refers to this area, where instructions are executed per process using single-stepping, as the XOL area.
+In this context XOL means execute out of line.  
+The main difference in the execution flow of a \ac{uprobe} is that it requires two context switches and is executed per process.  
+As described by Zhen et al. in \cite[p. 2]{zheng2023bpftimeuserspaceebpfruntime}, these context switches can increase the runtime of a uprobe by a factor of 10.  
+
+Furthermore, at the time of this work, no optimizations exist for \acp{uprobe} that are part of the kernel mainline.  
+Optimization of \acp{uprobe} by using a jump instruction, as in the case of \acp{kprobe}, is not possible because, due to per process execution in the XOL area, the jump instruction would otherwise overwrite the original instructions of other processes that are not currently executing the \ac{uprobe}.  
+This is because, as described in \cite[p. 3-333]{jmp}, the jump instruction loads the handler, i.e., the XOL area, into the current page.  
+As a result, all processes executing the code containing the probed function would execute the \ac{uprobe} handler using single-stepping.  
+This behavior contradicts the design principle of \acp{uprobe}, which is that they are executed per process.
+Therefore, the breakpoint instruction \texttt{int3} is used, which triggers an exception and causes a context switch into kernel space, where execution is redirected to the XOL area.  
+Since there exists one XOL area per process, the per process design can be preserved.  
+
+Because \acp{uprobe} cannot be optimized and additionally involve context switches, they are slower than \acp{kprobe}.  
+There is less documentation and fewer studies available on \acp{uprobe} compared to \acp{kprobe}, which is why there are only limited reliable data regarding the overhead of \acp{uprobe}.  
+Nevertheless Zhen et al. measured an overhead of 3.2~$\mu$s in \cite[p. 7]{zheng2023bpftimeuserspaceebpfruntime}.  
+Keniston et al. reported similar values in \cite[p. 218]{keniston}, with an overhead of 3.4~$\mu$s.  
+For comparison, Keniston et al. also presented results for optimized \acp{kprobe}, where the overhead was reduced to 0.25~$\mu$s.  
+This is consistent with the values given in the official documentation \cite{kprobe_doc}.  
+Thus, it can be assumed that the overhead of \acp{uprobe} is approximately 10 to 15 times higher than that of \acp{kprobe}.  
+
+The performance of \acp{uretprobe} is unexpectedly good in the results described by Zhen et al., with values close to 4~$\mu$s.  
+Given an overhead of 3.2~$\mu$s, this corresponds to only a 25\% increase.  
+In contrast, the results for non-optimized \acp{kprobe} in \cite{kprobe_doc} showed an additional overhead of 50\% to 75\%, while the optimized variant reached as high as 500\% to 600\%.  
+This can be explained by the fact that \acp{uretprobe} do not introduce an additional context switch, which, as also described in \cite{zheng2023bpftimeuserspaceebpfruntime}, accounts for a major portion of the total execution time.  
+
+There are already initial optimization approaches that specifically target \acp{uprobe}.  
+One such approach was presented by Zheng et al. in \cite{zheng2023bpftimeuserspaceebpfruntime}.  
+They optimized the behavior of \acp{uprobe} by reducing context switches.  
+This is achieved by handling \acp{uprobe} entirely in userspace.  
+The approach is limited to the use of \acp{uprobe} in the context of \ac{BPF}.  
+In the proposed program \textit{bpftime}, the virtual machine for \ac{BPF} is implemented in userspace instead of in the kernel.  
+Thus, the entire execution of a \ac{BPF} program, as described before, takes place in userspace.  
+It would go beyond the scope here to explain the execution flow in detail, but Zheng et al. were able to fully implement \acp{uprobe} in userspace.  
+The per process principle was preserved in this implementation.  
+As a result, all context switches were eliminated, which is also reflected in the performance results.  
+
+The performance of userspace \acp{uprobe} and \acp{uretprobe} is approximately 10 times better than that of the original probes.  
+In \cite[p. 7]{zheng2023bpftimeuserspaceebpfruntime} values of about 314~ns for \acp{uprobe} and 381~ns for \acp{uretprobe} were achieved.  
+These results are already very close to those of optimized \acp{kprobe}.  
+In particular, the values of optimized \acp{uretprobe} show no significant difference compared to bpftime.  
+
+However, at the time of this work, bpftime is still a work in progress and suffers from several bugs and an unstable API, as described in \cite{bpftime}.  
+Nevertheless, bpftime is mentioned here to illustrate that the performance of \acp{uprobe} could soon approach that of \acp{kprobe}.  
+
+
 
 Dabei stellt sich jetzt natürlich die Frage, was ist besser geeignet, zum Monitoring?
 Ringbuffer vs Perfbuffer https://dl.acm.org/doi/pdf/10.1145/3672197.3673430
@@ -881,6 +974,7 @@ Ringbuffer vs Perfbuffer https://dl.acm.org/doi/pdf/10.1145/3672197.3673430
     \label{fig:state_machine}
 \end{figure}
 
+probes, besoners uporbes nicht echtzeitfähig (zheng)
 
 \subsection{Test Automatization}
 \subsection{Access point configuration}

@@ -186,6 +186,38 @@ year={2020}
   institution  = {The Linux Foundation},
 }
 
+@misc{uprobe_code,
+  author       = {Dronamraju, Srikar},
+  title        = {Linux Kernel Source Code: uprobe.c},
+  url		   = {https://elixir.bootlin.com/linux/v6.16.1/source/kernel/events/uprobes.c},  
+  note         = {Version 6.16.1},
+  year         = {2025},
+  institution  = {The Linux Foundation},
+}
+
+@article{keniston,
+author = {Keniston, Jim and Mavinakayanahalli, Ananth and Panchamukhi, Prasanna and Prasad, Vara},
+pages = {215 - 224},
+title = {Ptrace, Utrace, Uprobes: Lightweight, Dynamic Tracing of User Apps}
+}
+
+@misc{zheng2023bpftimeuserspaceebpfruntime,
+      title={bpftime: userspace eBPF Runtime for Uprobe, Syscall and Kernel-User Interactions}, 
+      author={Yusheng Zheng and Tong Yu and Yiwei Yang and Yanpeng Hu and Xiaozheng Lai and Andrew Quinn},
+      year={2023},
+      eprint={2311.07923},
+      archivePrefix={arXiv},
+      primaryClass={cs.OS},
+      url={https://arxiv.org/abs/2311.07923}, 
+}
+
+@misc{bpftime,
+      title={bpftime: Userspace eBPF runtime for Observability, Network, GPU \& General extensions Framework}, 
+      author={Yusheng Zheng and Tong Yu and Yiwei Yang and Yanpeng Hu and Xiaozheng Lai and Andrew Quinn},
+      year={2023},
+      url={https://github.com/eunomia-bpf/bpftime?tab=readme-ov-file#roadmap}, 
+}
+
 @misc{k_probe_benchmark,
   author       = {Ivan, Babrou},
   title        = {eBPF overhead benchmark},
@@ -228,6 +260,14 @@ doi = {10.48550/arXiv.2502.05317}
   institution  = {Intel},
 }
 
+@misc{jmp,
+  author       = {Intel},
+  title        = {Intel Architecture Software Developer’s Manual Volume 2: Instruction Set Reference},
+  url		   = {https://web.archive.org/web/20090219101735/http://download.intel.com/design/PentiumII/manuals/24319102.PDF},  
+  year         = {2025},
+  institution  = {Intel},
+}
+
 @book{Stallings_2018, 
 place={Sydney}, 
 title={Computer Organization and Architecture}, 
@@ -258,8 +298,20 @@ year={2018}
 
 @misc{kprobe_doc,
 	  author={Vamis, Krishma},
+      title={Uprobe-tracer: Uprobe-based Event Tracing}, 
+      url={https://docs.kernel.org/trace/uprobetracer.html},
+}
+
+@misc{uprobe_doc,
+	  author={Dronamraju, Srikar},
       title={PATCH kprobes for 2.5.48}, 
       url={https://www.cs.helsinki.fi/linux/linux-kernel/2002-46/0267.html},
+}
+
+@misc{uprobe_mail,
+	  author={Dronamraju, Srikar},
+      title={PATCH v4 0/13 Uprobes v4}, 
+      url={https://lkml.org/lkml/2010/5/18/307},
 }
 
 @misc{relayfs,
