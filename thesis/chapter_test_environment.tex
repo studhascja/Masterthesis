@@ -961,15 +961,26 @@ In particular, the values of optimized \acp{uretprobe} show no significant diffe
 However, at the time of this work, bpftime is still a work in progress and suffers from several bugs and an unstable API, as described in \cite{bpftime}.  
 Nevertheless, bpftime is mentioned here to illustrate that the performance of \acp{uprobe} could soon approach that of \acp{kprobe}.  
 
-Nachdem nun erklärt wurde was eine Probe ist, und wie diese in Linux, sowohl im Kernel- als auch im userspace umgesetzt ist, wird im Folgenden werklärt, was ein Event ist.
-Es wird außerdem darauf eingegangen, wie diese umgesetzt sind und welche Unterschiede es zu den Probes gibt.
+After having explained what a probe is, and how it is implemented in Linux, both in the kernel and in userspace, the following section explains what an event is.  
+Furthermore, it will be discussed how events are implemented and what differences exist compared to probes.  
 
-Ein Event dient, wie Gregg in \cite[Chap. 2.9, Chap. 2.10]{Gregg_2020} beschreibt, der statischen User und kernelspace instrumentierung.
-Dabei werden diese im Kernelspace mittel tracepoints realisiert und im userspace mittels \ac{USDT}.
-Im Folgenden wird zunächst auf die Umsetzung von tracepoints genauer eingegangen.
+An event, as Gregg describes in \cite[Chap. 2.9, Chap. 2.10]{Gregg_2020}, serves the purpose of static instrumentation in both user space and kernel space.  
+In the kernel space, they are implemented using tracepoints, while in user space they are realized by means of \ac{USDT}.  
+The following section will first take a closer look at the implementation of tracepoints.  
 
+Tracepoints were developed in 2008 by Desnoyers.  
+They were introduced as the successor to kernel markers, which had also been merged into mainline in 2008 with the release of version 2.6.24, as can be seen in \cite{kernel_markers-changelog}.  
+Kernel markers are also static event sources and were developed in the context of the tracing tool LTTng, as described by Desnoyers in \cite{lttng_kernel_markers}.  
+As Desnoyers explains in \cite[p. 170]{Desnoyers2009}, the original motivation for kernel markers was to provide an alternative to \acp{kprobe}, since their overhead was too high for the development of LTTng.  
+Tracepoints were implemented shortly thereafter as an extension of kernel markers.  
+As Desnoyers notes in \cite[p. 171]{Desnoyers2009}, the essential difference is a stable API.  
+This ensures that both the caller and the callee side have a well defined agreement about the arguments of a given function.  
+As can be seen in \cite{tracepoints_commit}, the first commits for tracepoints by Desnoyers were made in 2008.  
+However, as Gregg notes in \cite[Chap. 2.9]{Gregg_2020}, they were not released until 2009 with kernel version 2.6.32.  
 
-tracepoints sind statisch und bleiben normalerweise\footnote{Wie Gregg in \cite[Chap. 2.9]{Gregg_2020} beschreibt, so kann sich die API der tracepoints ändern, auch wenn dies nur seltend eintritt.} immer gleich. 
+Tracepoints are static and therefore normally\footnote{As Gregg describes in \cite[Chap. 2.9]{Gregg_2020}, the API of tracepoints may change, although this happens only rarely.} remain unchanged.  
+In the kernel, tracepoints have been placed at more than 100 points of interest for monitoring. 
+
 Dabei stellt sich jetzt natürlich die Frage, was ist besser geeignet, zum Monitoring?
 Ringbuffer vs Perfbuffer https://dl.acm.org/doi/pdf/10.1145/3672197.3673430
 \subsection{Server and Client Implementation} \label{subsec:impl}
