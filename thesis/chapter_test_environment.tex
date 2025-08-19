@@ -961,8 +961,15 @@ In particular, the values of optimized \acp{uretprobe} show no significant diffe
 However, at the time of this work, bpftime is still a work in progress and suffers from several bugs and an unstable API, as described in \cite{bpftime}.  
 Nevertheless, bpftime is mentioned here to illustrate that the performance of \acp{uprobe} could soon approach that of \acp{kprobe}.  
 
+Nachdem nun erklärt wurde was eine Probe ist, und wie diese in Linux, sowohl im Kernel- als auch im userspace umgesetzt ist, wird im Folgenden werklärt, was ein Event ist.
+Es wird außerdem darauf eingegangen, wie diese umgesetzt sind und welche Unterschiede es zu den Probes gibt.
+
+Ein Event dient, wie Gregg in \cite[Chap. 2.9, Chap. 2.10]{Gregg_2020} beschreibt, der statischen User und kernelspace instrumentierung.
+Dabei werden diese im Kernelspace mittel tracepoints realisiert und im userspace mittels \ac{USDT}.
+Im Folgenden wird zunächst auf die Umsetzung von tracepoints genauer eingegangen.
 
 
+tracepoints sind statisch und bleiben normalerweise\footnote{Wie Gregg in \cite[Chap. 2.9]{Gregg_2020} beschreibt, so kann sich die API der tracepoints ändern, auch wenn dies nur seltend eintritt.} immer gleich. 
 Dabei stellt sich jetzt natürlich die Frage, was ist besser geeignet, zum Monitoring?
 Ringbuffer vs Perfbuffer https://dl.acm.org/doi/pdf/10.1145/3672197.3673430
 \subsection{Server and Client Implementation} \label{subsec:impl}
