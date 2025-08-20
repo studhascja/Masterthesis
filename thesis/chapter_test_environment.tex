@@ -1095,14 +1095,37 @@ Therefore, at the time of the development of tracepoints, they were not yet avai
 There are no reliable data indicating whether optimized \acp{kprobe} or tracepoints exhibit lower overhead.  
 However, in both cases, the overhead is very small.  
 
-Neben den tracepoints für den Kernelspace existieren ebenfalls die \acp{USDT} für den User-space.
-Wie Gregg in \cite[Chap. 2.10]{Gregg_2020} beschreibt, funktionieren diese sehr ähnlich wie die tracepoints.
+Besides the tracepoints for the kernel space, there also exist \acp{USDT} for the user space.  
+As Gregg describes in \cite[Chap.~2.10]{Gregg_2020}, they work in a very similar way to kernel tracepoints.  
+\acp{USDT} were developed to enable static tracing in user space.  
+The functionality was first implemented in 2004 as part of DTrace \cite{USDT,269899}, but was only added to Linux later.  
+From 2016 onwards, an integration with \ac{BPF} was available through BCC.  
 
-Über perf\_event\_open/() Perf Buffer \cite[Chap. 2.13]{Gregg_2020}
+Technically, at the designated location in the program, a \ac{USDT} is placed, which initially exists as a NOP.  
+When the probe is enabled by a tracer, the kernel tracing subsystem replaces the instruction with a software breakpoint.  
+Through this breakpoint, execution switches to the kernel, where the corresponding eBPF program or perf event is triggered.  
 
-\cite{USDT} eingebunden über   \#include <sys/sdt.h>
-\cite[p. 26:28]{tracepoint_comp} zwischen 80 und 450 ns, leider keine Angaben für ebpf.
-Dabei stellt sich jetzt natürlich die Frage, was ist besser geeignet, zum Monitoring?
+The processing of data does not take place via explicit callback functions in user space, but rather through the perf\_event infrastructure, as described by Gregg in \cite[Chap.~2.13]{Gregg_2020}.  
+A file descriptor is opened via \texttt{perf\_event\_open()}, through which data is written into the perf ring buffer, as shown in \cite{perf_event}.  
+
+In contrast to \acp{uprobe}, no currently running instruction needs to be replaced or emulated when patching, which makes \acp{USDT} more efficient.  
+However, even with \acp{USDT}, a transition into the kernel is always necessary when the tracepoint is triggered, and thus a context switch occurs.  
+
+As described in \cite{USDT}, \acp{USDT} can be defined in user code via the library \texttt{\#include <sys/sdt.h>}.  
+A tracer must then be attached to activate them.  
+
+There are only very few data sources available regarding the overhead of \acp{USDT}.  
+According to \cite[p.~26:28]{tracepoint_comp}, the overhead varies between 80~ns and 450~ns depending on the tracer.  
+This is the only source that provides overhead measurements for \ac{USDT}.  
+The values are considered reliable, as the same source already provides reference values for kernel tracepoints.  
+However, no specific data for eBPF was given.  
+Nevertheless, it can be seen that the overhead is significantly lower than that of a \ac{uprobe}.  
+The order of magnitude lies between a factor of 10 and 40.  
+
+The overhead of a non-activated \ac{USDT} remains the same as that of a kernel tracepoint and is therefore between 1~ns and 1.5~ns.  
+
+After various event sources\footnote{Not all event sources were described, but only a selection of the most common ones and those relevant for this work. Gregg additionally describes dynamic \acp{USDT} and performance monitoring counters in \cite[Chap.~2.11, Chap.~2.12]{Gregg_2020}.}, both static and dynamic, have been explained, the question arises: which is more suitable for monitoring?  
+
 Ringbuffer vs Perfbuffer https://dl.acm.org/doi/pdf/10.1145/3672197.3673430
 \subsection{Server and Client Implementation} \label{subsec:impl}
 
