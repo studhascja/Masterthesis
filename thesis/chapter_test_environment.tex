@@ -95,7 +95,7 @@ In this section the requirements shown in blue where discussed.
 The following section defines the requirements for the test environment which are shown in yellow in Figure \ref{fig:requirements}.
 For both the test system and the \ac{OS}, the previously defined criteria for \ac{rt} capability are assumed to be fulfilled.
 
-The requirements for the \ac{OS} include providing appropriate support for both the hardware and the software components of the test evnironment. 
+The requirements for the \ac{OS} include providing appropriate support for both the hardware and the software components of the test environment. 
 As described in Chapter \ref{sec:used_hardware}, this work utilizes a Raspberry Pi 5, to which a MediaTek 7925B22M and an Atheros AR5BXB92 Wi-Fi module can be connected via PCIe.
 Accordingly, the \ac{OS} have to support the Raspberry Pi 5 architecture and offer compatibility with the drivers mt76, mt7925e and ath9k.
 
@@ -931,7 +931,7 @@ Since there exists one XOL area per process, the per process design can be prese
 
 Because \acp{uprobe} cannot be optimized and additionally involve context switches, they are slower than \acp{kprobe}.  
 There is less documentation and fewer studies available on \acp{uprobe} compared to \acp{kprobe}, which is why there are only limited reliable data regarding the overhead of \acp{uprobe}.  
-Nevertheless Zhen et al. measured an overhead of 3.2~$\mu$s in \cite[p. 7]{zheng2023bpftimeuserspaceebpfruntime}.  
+Nevertheless, Zhen et al. measured an overhead of 3.2~$\mu$s in \cite[p. 7]{zheng2023bpftimeuserspaceebpfruntime}.  
 Keniston et al. reported similar values in \cite[p. 218]{keniston}, with an overhead of 3.4~$\mu$s.  
 For comparison, Keniston et al. also presented results for optimized \acp{kprobe}, where the overhead was reduced to 0.25~$\mu$s.  
 This is consistent with the values given in the official documentation \cite{kprobe_doc}.  
@@ -973,14 +973,135 @@ They were introduced as the successor to kernel markers, which had also been mer
 Kernel markers are also static event sources and were developed in the context of the tracing tool LTTng, as described by Desnoyers in \cite{lttng_kernel_markers}.  
 As Desnoyers explains in \cite[p. 170]{Desnoyers2009}, the original motivation for kernel markers was to provide an alternative to \acp{kprobe}, since their overhead was too high for the development of LTTng.  
 Tracepoints were implemented shortly thereafter as an extension of kernel markers.  
-As Desnoyers notes in \cite[p. 171]{Desnoyers2009}, the essential difference is a stable API.  
-This ensures that both the caller and the callee side have a well defined agreement about the arguments of a given function.  
+As Desnoyers notes in \cite[p. 171]{Desnoyers2009}, the essential difference is a stable\footnote{Tracepoints are static and therefore normally remain unchanged, but as Gregg describes in \cite[Chap. 2.9]{Gregg_2020}, the API of tracepoints may change, although this happens only rarely.} API.  
+This ensures that both the user and the callee side have a well defined agreement about the arguments of a given function.  
+This is implemented using the library \texttt{include/trace/events}, in which the corresponding tracepoint function can be inserted into the source code at the desired location.  
+For this tracepoint function, both the parameters to be passed and the return values are well defined.  
+The structure of the tracepoints can be found under \texttt{/sys/kernel/debug/tracing/events/subsystem/event/format}.
+
 As can be seen in \cite{tracepoints_commit}, the first commits for tracepoints by Desnoyers were made in 2008.  
 However, as Gregg notes in \cite[Chap. 2.9]{Gregg_2020}, they were not released until 2009 with kernel version 2.6.32.  
 
-Tracepoints are static and therefore normally\footnote{As Gregg describes in \cite[Chap. 2.9]{Gregg_2020}, the API of tracepoints may change, although this happens only rarely.} remain unchanged.  
-In the kernel, tracepoints have been placed at more than 100 points of interest for monitoring. 
+Gregg describes that in the kernel, tracepoints have been placed at more than 100 points of interest for monitoring. 
+Tracepoints are continuously added by developers, which causes their number to steadily increase.  
+On the operating system used in this work, nearly 2500 tracepoints are already available.\footnote{This number can be determined with the command \texttt{find /sys/kernel/debug/tracing/events -type d | wc -l}, since all tracepoints are documented in this directory.}  
 
+A tracepoint follows the format \texttt{subsystem:eventname}.  
+For example, the tracepoint \texttt{net/net\_dev\_xmit} consists of the subsystem \texttt{net} and the event \texttt{net\_dev\_xmit}.  
+As shown in \cite[Line 3831]{linux_xmit}, this event is triggered when a network packet is handed over to the driver for transmission.  
+
+As described by Desnoyers in \cite{tracepoints}, a tracepoint can be in either the \emph{active} or the \emph{inactive} state.  
+Gregg explains in \cite[Chap. 2.9.2]{Gregg_2020} that, when compiling the kernel, a 5-byte NOP instruction is inserted at the location where the tracepoint will reside.  
+This instruction performs no operation and therefore introduces only a minimal runtime overhead.  
+It represents the tracepoint in its inactive state.  
+
+When the tracepoint is activated, the kernel replaces the NOP instruction with a JMP instruction of also 5-bytes that points to a trampoline.  
+In addition, a callback routine is registered for the tracepoint.  
+The trampoline in this context is a small routine that executes all callback functions registered for this tracepoint and forwards the arguments collected by the tracepoint.  
+Multiple callback functions can be registered per tracepoint, typically by tracers such as ftrace, perf, or LTTng.  
+As described by Desnoyers in \cite[p.~218]{Ecole23165}, the results of these callback functions are usually delivered to the tracers in user space via a ring buffer.  
+
+\begin{listing}[H]
+    \centering
+\begin{minted}[fontsize=\small, linenos, escapeinside=||]{c}
+|\textcolor{blue}{TRACE\_EVENT}|(event_name,
+
+    |\textcolor{blue}{TP\_PROTO}|(|\textcolor{green}{type1}| |\textcolor{magenta}{arg1}|,
+            |\textcolor{green}{type2}| |\textcolor{magenta}{arg2}|,
+            ... ),
+
+    |\textcolor{blue}{TP\_ARGS}|(|\textcolor{magenta}{arg1}|, |\textcolor{magenta}{arg2}|, ...),
+
+    |\textcolor{blue}{TP\_STRUCT\_\_entry}|(
+        |\textcolor{blue}{\_\_field}|(|\textcolor{green}{type1}| |\textcolor{magenta}{field1}|)
+        |\textcolor{blue}{\_\_field}|(|\textcolor{green}{type2}| |\textcolor{magenta}{field2}|)
+        |\textcolor{blue}{\_\_array}|(|\textcolor{green}{char}|, |\textcolor{magenta}{arr}|, LEN)
+        |\textcolor{blue}{\_\_string}|(|\textcolor{magenta}{str\_field}|, some_pointer_to_string)
+    ),
+
+    |\textcolor{blue}{TP\_fast\_assign}|(
+        |\textcolor{magenta}{\_\_entry}|->|\textcolor{magenta}{field1}| = |\textcolor{magenta}{arg1}|;
+        |\textcolor{magenta}{\_\_entry}|->|\textcolor{magenta}{field2}| = |\textcolor{magenta}{arg2}|;
+        |\textcolor{blue}{\_\_assign\_str}|(|\textcolor{magenta}{str\_field}|, some_pointer_to_string);
+    ),
+
+    |\textcolor{blue}{TP\_printk}|("field1=%d field2=%u str=%s",
+        |\textcolor{magenta}{\_\_entry}|->|\textcolor{magenta}{field1}|,
+        |\textcolor{magenta}{\_\_entry}|->|\textcolor{magenta}{field2}|,
+        |\textcolor{blue}{\_\_get\_str}|(|\textcolor{magenta}{str\_field}|))
+);
+\end{minted}
+\caption{Structure of Tracepoint}
+\label{lst:tracepoint}
+\end{listing}
+
+In the following, the structure of a tracepoint function is described.  
+
+A tracepoint is structured as shown in Listing~\ref{lst:tracepoint}.  
+As illustrated in line~1 and explained by Rostedt in \cite{tracepoints_3}, the definition of every tracepoint always begins with the macro \texttt{TRACE\_EVENT}.  
+This macro consists of the following six components:  
+
+\begin{enumerate}
+    \item First, a tracepoint always requires a \textbf{name}.  
+          This name corresponds to the name of the event, as described earlier.  
+          In the previous example, this would be \texttt{net\_dev\_xmit}.  
+          The function invoked to place the tracepoint also contains this name.  
+          It follows the naming convention \texttt{trace\_event-name}.  
+
+    \item Next, the \textbf{prototype} of the tracepoint function is defined.  
+          As shown in line~3 of Listing~\ref{lst:tracepoint} and explained by Desnoyers in \cite{tracepoints}, this prototype contains all arguments passed when the tracepoint is invoked.  
+
+    \item The \textbf{arguments} used in the prototype must also be explicitly declared as parameters.  
+          While this appears contradictory and redundant, it is necessary, as described by Rostedt in \cite{tracepoints_3}, because the tracepoint function executes callback functions to which these arguments must be forwarded.  
+          Therefore, the arguments need to be provided again as separate parameters using \texttt{TP\_ARGS}, as illustrated in line~7 of Listing~\ref{lst:tracepoint}.  
+
+    \item Furthermore, the \textbf{structure} of the data passed to the ring buffer must be specified.  
+          This structure can include additional macros such as \texttt{\_\_field(type1, field1)} or \texttt{\_\_array(char, arr, LEN)}, as shown in lines~9--14 of Listing~\ref{lst:tracepoint}.  
+          Here, \texttt{type1} could, for example, be an \texttt{int}, and \texttt{field1} is the name of the variable.  
+          For arrays, the same applies, with the additional parameter \texttt{LEN} which is specifying the number of elements.  
+
+    \item In addition, the \textbf{assignment} must define how the data is stored in the ring buffer.  
+          As explained by Rostedt in \cite{tracepoints_3}, this step specifies how the previously defined structure is populated with the arguments introduced in step~2.  
+          This is implemented using the parameter \texttt{TP\_fast\_assign}, as shown in line~16 of Listing~\ref{lst:tracepoint}.  
+
+    \item Finally, the \textbf{output} is defined using \texttt{TP\_printk}.  
+          As Rostedt explains in \cite{tracepoints_3}, this represents a format specification for the output of the fields contained in \texttt{TP\_STRUCT\_\_entry}.  
+\end{enumerate}  
+
+Having described how tracepoints function and the fact that they were developed to deliver better performance than \acp{kprobe},  the following section will focus on the performance of tracepoints.  
+
+Also for tracepoints, there are only very few reliable data regarding their overhead time.  
+A distinction must be made between inactive and active tracepoints.  
+
+As Edge describes in \cite{min_imp}, inactive tracepoints incur an overhead of approximately 2–4 cycles.  
+At a clock frequency of 2.4\,GHz, as provided by the Raspberry Pi 5, this would correspond to a permanent overhead of about 1–1.5\,ns.  
+In the active state, both Zheng et al.\ in \cite[p.~7]{zheng2023bpftimeuserspaceebpfruntime} and Gebai in \cite[p.~26:19]{tracepoint_comp} measure an overhead of 100–150\,ns.  
+However, this exceeds the overhead of the optimized \ac{kprobe}, which incurs only around 60\,ns.  
+
+In contrast Gregg, in \cite[Chap.~2.9.5]{Gregg_2020}, reports different figures.  
+He compares the overhead of \acp{kprobe} with tracepoints and raw tracepoints.  
+Raw tracepoints were introduced in Linux 4.17 in 2018 and do not provide a stable API, but only a stable tracepoint name.  
+This reduces the overhead slightly.  
+According to his results, raw tracepoints exhibited a maximum overhead of 9\%, regular tracepoints up to 14\%, and \acp{kprobe} up to 30\%.  
+However, he does not provide any information on whether the \acp{kprobe} used in the measurements were optimized or not.  
+These results contradict the previously mentioned findings.
+For optimized \acp{kprobe} they appear too poor, while for unoptimized ones they appear too good.  
+
+Desnoyers reports in \cite[p.~94]{Desnoyers2009} that \acp{kprobe} require 1.49\,$\mu$s.  
+This also explains why tracepoints were developed as an evolution of \acp{kprobe}.  
+Optimized \acp{kprobe} were only added to the kernel at the end of 2009, as indicated in \cite{kprobe_opt}.  
+Therefore, at the time of the development of tracepoints, they were not yet available.  
+
+There are no reliable data indicating whether optimized \acp{kprobe} or tracepoints exhibit lower overhead.  
+However, in both cases, the overhead is very small.  
+
+Neben den tracepoints für den Kernelspace existieren ebenfalls die \acp{USDT} für den User-space.
+Wie Gregg in \cite[Chap. 2.10]{Gregg_2020} beschreibt, funktionieren diese sehr ähnlich wie die tracepoints.
+
+Über perf\_event\_open/() Perf Buffer \cite[Chap. 2.13]{Gregg_2020}
+
+\cite{USDT} eingebunden über   \#include <sys/sdt.h>
+\cite[p. 26:28]{tracepoint_comp} zwischen 80 und 450 ns, leider keine Angaben für ebpf.
 Dabei stellt sich jetzt natürlich die Frage, was ist besser geeignet, zum Monitoring?
 Ringbuffer vs Perfbuffer https://dl.acm.org/doi/pdf/10.1145/3672197.3673430
 \subsection{Server and Client Implementation} \label{subsec:impl}
