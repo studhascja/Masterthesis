@@ -443,21 +443,15 @@ The file can then be created using the command:
 With these extensions, the Rust applications—including binaries, source code and a local compilation environment—are fully installed on the target system.
 
 In summary, this chapter described the steps required to build an operating system using the Yocto Project that fulfills all requirements for the intended test environment.  
-The following chapter focuses on the implementation details of the test system itself.
+To explain the implementation of the test system an explanation of monitoring in general and the functionallity of the used technologies in monitoring is necessary.
+So this will be described in the following chapter.
 
-\section{Test system}
-In this chapter, the test system is divided into the four components Server and Client, Monitoring, Test Automation and Access Point Configuration. 
-Since the implementation of the client and server is closely linked to monitoring, an understanding of the fundamentals of monitoring is required for its description.  
-Therefore, the following section first addresses monitoring, followed by the description of the implementation of the client and server.  
-Subsequently, the focus shifts to test automation, and finally to the creation of the access point.  
-
-\subsection{Monitoring} \label{subsec:monitoring}
-
-
+\section{Monitoring} \label{subsec:monitoring}
 As already mentioned in Chapter \ref{subsec:used_technologies}, \ac{BPF} is used for monitoring, which is integrated into the Rust code via \texttt{libbpf-rs}.  
 The following section explains what \ac{BPF} is, how it works, and how it is used to implement the monitoring of the test system.  
 The integration into Rust is described in more detail in Chapter \ref{subsec:impl}.  
 
+\subsection{Berkley Package Filter}
 \ac{BPF} was originally developed in 1992 by McCanne and Jacobson, as presented at the USENIX Winter Conference 1993 \cite{260309}.  
 It was significantly extended in 2013 by Alexei Starovoitov, laying the foundation for \ac{eBPF}, as indicated in this patch thread \cite{ebpf}.  
 \ac{eBPF} is the modern standard for \ac{BPF} and is also used in this work.  
@@ -554,13 +548,17 @@ Maps can be accessed from userspace, providing a way to transfer collected data 
 Command-line tools such as \texttt{bpftrace} use these maps to display statistics, for example.  
 
 As Gregg explains in \cite[Chap.~2.2]{Gregg_2020}, this has the advantage that no communication between user- and kernelspace is necessary.  
-Since the program runs entirely in kernelspace at runtime, events can be filtered and processed there.  
-Events or network packets can also be discarded in kernelspace if they are harmful or would endanger further processing in userspace due to their value ranges.  
+Since the program runs entirely in kernelspace at runtime, different event sources can be filtered and processed there.  
+Event sources or network packets can also be discarded in kernelspace if they are harmful or would endanger further processing in userspace due to their value ranges.  
 Thus, the mechanism of maps and the virtual machine specified therein ensure security and efficiency by preventing unnecessary kernel-to-userspace interactions.  
+
+Gregg uses in \cite[Chap. 2.6]{Gregg_2020} the event source as an umbrella term for events and probes, so for static and dynamic event sources.
+Since this term is inconvenient, in literature often the term static and dynamic envents is used, or in general it is not used uniform.
+So to be more precise in the following the term event is only used for static event sources and the term probes is only used for dynamic event sources.
 
 As shown in Figure~\ref{fig:bpf:working_principle}, the event configuration from userspace interacts with the virtual machine in kernelspace.  
 The event configuration particularly refers to the settings of command-line tools.  
-Among other things, it can be configured which events should be tracked, for how long they should be tracked, and how they should be processed.  
+Among other things, it can be configured which event sources should be tracked, for how long they should be tracked, and how they should be processed.  
 Since command-line tools are not used in this work, the event configuration will not be discussed further here, but it is mentioned for completeness and illustrated in the figure.  
 
 As shown in Figure~\ref{fig:bpf:working_principle}, the virtual machine provides another method for transferring data from the kernel to userspace.  
@@ -594,7 +592,7 @@ This is likely because maps and perf buffers are well integrated with \ac{BPF} a
 As a result, the effort to integrate, for example, RelayFS with \ac{BPF} is not justified.  
 Therefore, this work also relies on maps and perf buffers.
 
-The modules not yet mentioned from Figure~\ref{fig:bpf:working_principle} are BPF helpers, events, and BPF syscalls.  
+The modules not yet mentioned from Figure~\ref{fig:bpf:working_principle} are BPF helpers, event sources, and BPF syscalls.  
 All of these are shown as yellow boxes, which, as explained earlier, indicates that they represent components, which do not belong fully to \ac{BPF}, but influence the execution of the \ac{BPF} program.  
 
 As described by Gregg in \cite[Chap.~2.3.6]{Gregg_2020}, a \ac{BPF} program cannot execute arbitrary kernel functions.  
@@ -605,7 +603,7 @@ As illustrated in Figure~\ref{fig:bpf:working_principle}, these helpers can be i
 
 The following paragraphs present selected helper functions to provide an overview of their capabilities.  
 Among these restricted kernel calls is \texttt{bpf\_ktime\_get\_ns()}, which returns the time since kernel start in nanoseconds.  
-This enables access to a monotonic clock, allowing the measurement of time intervals between specific events at kernel level.  
+This enables access to a monotonic clock, allowing the measurement of time intervals between specific event sources at kernel level.  
 
 Other important BPF helpers are \texttt{bpf\_get\_current\_pid\_tgid()} and \\
 \texttt{bpf\_get\_current\_comm(buf, buf\_size)}.  
@@ -614,7 +612,7 @@ $R_1$ returns both the TGID and the PID of the current process, where TGID (Thre
 The 64-bit value returned by $R_1$ is composed such that the high 32 bits contain the TGID and the low 32 bits contain the PID.  
 $R_2$ returns the current task name, also known as the command name (\texttt{comm}) of the process.  
 With these two functions, process names and precise IDs can be determined both in user space and kernel space.  
-This is important for filtering, and also for diagnostics when it is necessary to determine which process triggered a given event.  
+This is important for filtering, and also for diagnostics when it is necessary to determine which process triggered a given event source.  
 
 Another essential kernel function accessible via helpers is \texttt{bpf\_trace\_printk}.  
 As described in \cite{print}, this function can write print messages to the kernel trace log.  
@@ -660,9 +658,7 @@ However, the fundamental purpose of syscalls, to provide a communication interfa
 
 As shown in Figure~\ref{fig:bpf:working_principle}, event sources also interact with \ac{BPF}.  
 As described by Gregg in~\cite[Chap.~1]{Gregg_2020}, the primary functionality of \ac{BPF} is to execute user-defined code in response to event sources.  
-Therefore, the event sources shown in Figure~\ref{fig:bpf:working_principle} are among the most crucial components of the overall system.  
-Like described by Gregg in \cite[Chap. 1]{Gregg_2020}, event sources can be divided into the two categories static and dynamic.
-While dynamic event sources are called probes, static event sources are know as events.  
+Therefore, the event sources shown in Figure~\ref{fig:bpf:working_principle} are among the most crucial components of the overall system.   
 In Figure~\ref{fig:probes}, a software stack is illustrated.  
 This illustration indicates, among other aspects, where specific static and dynamic event sources are located and which monitoring techniques can be used to observe them.  
 
@@ -720,19 +716,20 @@ Also Gregg's definition is more practical orientated, where the original definit
 In order for a system to produce outputs from which its internal state can be inferred, certain analysis techniques are required.  
 Gregg categorizes these techniques in \cite[Chap.~1.2]{Gregg_2020} into \emph{tracing}, \emph{snooping}, \emph{sampling}, and \emph{profiling}.  
 
-Tracing, as described by Gregg in \cite[Chap.~1.2]{Gregg_2020}, refers to recording the system state based on events.  
+Tracing, as described by Gregg in \cite[Chap.~1.2]{Gregg_2020}, refers to recording the system state based on event sources.  
 The origins of tracing can be traced back to 1951, when Gill in \cite{doi:10.1098/rspa.1951.0087} described a method to rapidly diagnose errors in the code of digital computers.  
 This topic is closely related to debugging, yet Gill already employed several techniques in this paper that are also relevant to tracing.  
 He also emphasized that his error detection method should have as little impact on the system as possible.  
-Furthermore, he employed monitoring and reacting to events, as can be seen in \cite[p.~540, 547]{doi:10.1098/rspa.1951.0087}.  
+Furthermore, he employed monitoring and reacting to event sources, as can be seen in \cite[p.~540, 547]{doi:10.1098/rspa.1951.0087}.  
 He's not using the term ``tracing`` in his paper yet, but he describes a method that nowerdays is considered between debugging and tracing.
 Like Gregg describes in \cite[Chap. 1.2]{Gregg_2020} nowerdays there are various tools in the Linux context that enable tracing, such as \texttt{strace} \cite{strace} or \texttt{top}.  
-According to Gregg, \texttt{top} internally also works with events and subsequently outputs a summary of the information extracted from these events to the console.  
-From this, it follows that tracers must, on the one hand, be capable of detecting events, and, on the other hand, also be able to read their metadata in order to fully understand their context.  
-Furthermore, since events can occur very frequently, the overhead of a tracer must remain low; otherwise, the system would be significantly impaired.  
+According to Gregg, \texttt{top} internally also works with event sources and subsequently outputs a summary of the information extracted from these event sources to the console.  
+From this, it follows that tracers must, on the one hand, be capable of detecting event sources, and on the other hand, also be able to read their metadata in order to fully understand their context.  
+Furthermore, since event sources can occur very frequently, the overhead of a tracer must remain low.
+Otherwise, the system would be significantly impaired.  
 
 As Gregg explains in \cite[Chap.~1.2]{Gregg_2020}, snooping is very similar to tracing.  
-It also describes the observation of events.  
+It also describes the observation of event sources.  
 Snooping was introduced in 1983 by Ravishankar and Goodman in \cite{osti_5139336}.  
 They presented a bus snooping technique that monitors a memory block stored across multiple caches and informs other caches when this memory block has been modified.  
 This approach avoids cache incoherency.  
@@ -743,26 +740,22 @@ The two additional analysis techniques presented by Gregg in \cite[Chap.~1.2]{Gr
 Sampling and profiling are both techniques that use a subset of data to represent the state of the system as accurately as possible.  
 This approach is most commonly applied for monitoring the \ac{CPU}.  
 
-Sampling also records events, but not all of them.
+Sampling also records event sources, but not all of them.
 Instead, it captures data only at specific time intervals. 
 For example, sampling may take a snapshot of the current system state every three milliseconds for a duration of 0.5 milliseconds, including information such as current events or \ac{CPU} utilization.  
-Sampling is therefore well suited for contexts in which many events occur.  
-Because sampling does not capture every single event, its overhead is generally lower than that of tracing.  
+Sampling is therefore well suited for contexts in which many event sources occur.  
+Because sampling does not capture every single event source, its overhead is generally lower than that of tracing.  
 
 The recorded samples are then aggregated into a system profile.  
 This process is referred to as profiling.  
-By combining sampling and profiling, it is possible to represent contexts with many events as accurately as possible through regular snapshots.  
+By combining sampling and profiling, it is possible to represent contexts with many event sources as accurately as possible through regular snapshots.  
 
 One example of a sampling tool is \texttt{gprof}.  
 As shown in \cite{gprof}, this tool can be used to perform measurements at regular time intervals in order to determine how much time the program spends in various functions.  
 
 In this work, tracing is primarily used, and therefore sampling and profiling will not be discussed further at this point.  
-After having described the commonly used analysis techniques according to Gregg, all of which operate partially or exclusively with events, the following section explains what an event is and which types of event sources exist in the Linux context.  
-As previously mentioned, and as shown in Figure \ref{fig:bpf:working_principle}, event  can be classified into static and dynamic events.
-But like stated before and also described by Gregg in \cite[Chap. 2.6]{Gregg_2020}, events are always static.
-As an umbrella term for events and probes, Gregg uses the term event sources.
-Since this term is inconvenient, in literature often the term static and dynamic envents is used.
-To be more precise in the following the term event is only used for static event sources and the term probes is only used for dynamic event sources.
+After having described the commonly used analysis techniques according to Gregg, all of which operate partially or exclusively with event sources, the following section explains what an event sources is and which types of event sources exist in the Linux context.  
+As previously mentioned, and as shown in Figure \ref{fig:bpf:working_principle}, can be classified into static and dynamic event sources.
 
 In Figure \ref{fig:probes}, the diagram is also divided into three sections, again distinguishing static and dynamic tracing.  
 Sampling, i.e., which probes are involved, will be described later in this chapter.  
@@ -773,6 +766,7 @@ As shown in Figure \ref{fig:probes}, \ac{kprobe} affects the kernel space, while
 According to Mavinakayanahalli \cite[p. 101]{Mavinakayanahalli_Panchamukhi_Keniston_Keshavamurthy_Hiramatsu_2006}, \acp{kprobe} were developed by the IBM Linux Technology Center and were integrated into the mainline kernel in version 2.6.9 in 2004.  
 However, the mailing list \cite{kprobe_early} indicates that \acp{kprobe} were patched into kernel 2.5.48 already in 2002, although they were not yet part of the mainline at that time.  
 
+\subsection{Kprobes}
 A \ac{kprobe} allows instrumentation of any kernel instruction or function.  
 This is achieved, as described in \cite[p. 101-104]{Mavinakayanahalli_Panchamukhi_Keniston_Keshavamurthy_Hiramatsu_2006}, by replacing an instruction with a software breakpoint and redirecting control to a handler.  
 As described in \cite[p. 102]{Mavinakayanahalli_Panchamukhi_Keniston_Keshavamurthy_Hiramatsu_2006}, a \texttt{kprobe struct} exists.  
@@ -872,6 +866,7 @@ It can therefore be assumed that the overhead of an optimized \ac{kprobe} on the
 As previously described, the probes consist not only of \acp{kprobe} but also of \acp{uprobe}. 
 In the following, the functioning of \acp{uprobe} and how they can be distinguished from \acp{kprobe}, is described.
 
+\subsection{Uprobes}
 As Corbet notes in \cite{uprobe}, \acp{uprobe} were added to the mainline kernel in version 3.5 in 2007. 
 Thus, they were introduced approximately three years after \acp{kprobe}.
 
@@ -963,7 +958,7 @@ Nevertheless, bpftime is mentioned here to illustrate that the performance of \a
 
 After having explained what a probe is, and how it is implemented in Linux, both in the kernel and in userspace, the following section explains what an event is.  
 Furthermore, it will be discussed how events are implemented and what differences exist compared to probes.  
-
+ \subsection{Tracepoints}
 An event, as Gregg describes in \cite[Chap. 2.9, Chap. 2.10]{Gregg_2020}, serves the purpose of static instrumentation in both user space and kernel space.  
 In the kernel space, they are implemented using tracepoints, while in user space they are realized by means of \ac{USDT}.  
 The following section will first take a closer look at the implementation of tracepoints.  
@@ -1073,7 +1068,7 @@ Having described how tracepoints function and the fact that they were developed 
 Also for tracepoints, there are only very few reliable data regarding their overhead time.  
 A distinction must be made between inactive and active tracepoints.  
 
-As Edge describes in \cite{min_imp}, inactive tracepoints incur an overhead of approximately 2–4 cycles.  
+As Edge describes in \cite{min_imp}, inactive tracepoints incur an overhead of approximately 2-4 cycles.  
 At a clock frequency of 2.4\,GHz, as provided by the Raspberry Pi 5, this would correspond to a permanent overhead of about 1–1.5\,ns.  
 In the active state, both Zheng et al.\ in \cite[p.~7]{zheng2023bpftimeuserspaceebpfruntime} and Gebai in \cite[p.~26:19]{tracepoint_comp} measure an overhead of 100–150\,ns.  
 However, this exceeds the overhead of the optimized \ac{kprobe}, which incurs only around 60\,ns.  
@@ -1096,6 +1091,9 @@ There are no reliable data indicating whether optimized \acp{kprobe} or tracepoi
 However, in both cases, the overhead is very small.  
 
 Besides the tracepoints for the kernel space, there also exist \acp{USDT} for the user space.  
+In the following section the userspace equivalent of tracepoints will be explained,
+
+\subsection{User-level statically defined tracing}
 As Gregg describes in \cite[Chap.~2.10]{Gregg_2020}, they work in a very similar way to kernel tracepoints.  
 \acp{USDT} were developed to enable static tracing in user space.  
 The functionality was first implemented in 2004 as part of DTrace \cite{USDT,269899}, but was only added to Linux later.  
@@ -1111,7 +1109,8 @@ A file descriptor is opened via \texttt{perf\_event\_open()}, through which data
 In contrast to \acp{uprobe}, no currently running instruction needs to be replaced or emulated when patching, which makes \acp{USDT} more efficient.  
 However, even with \acp{USDT}, a transition into the kernel is always necessary when the tracepoint is triggered, and thus a context switch occurs.  
 
-As described in \cite{USDT}, \acp{USDT} can be defined in user code via the library \texttt{\#include <sys/sdt.h>}.  
+As described in \cite{USDT}, \acp{USDT} can be defined in user code via the library \\
+\texttt{\#include <sys/sdt.h>}.  
 A tracer must then be attached to activate them.  
 
 There are only very few data sources available regarding the overhead of \acp{USDT}.  
@@ -1124,7 +1123,75 @@ The order of magnitude lies between a factor of 10 and 40.
 
 The overhead of a non-activated \ac{USDT} remains the same as that of a kernel tracepoint and is therefore between 1~ns and 1.5~ns.  
 
-After various event sources\footnote{Not all event sources were described, but only a selection of the most common ones and those relevant for this work. Gregg additionally describes dynamic \acp{USDT} and performance monitoring counters in \cite[Chap.~2.11, Chap.~2.12]{Gregg_2020}.}, both static and dynamic, have been explained, the question arises: which is more suitable for monitoring?  
+After various event sources\footnote{Not all event sources were described, but only a selection of the most common ones and those relevant for this work. Gregg additionally describes dynamic \acp{USDT} and performance monitoring counters in \cite[Chap.~2.11, Chap.~2.12]{Gregg_2020}.}, both static and dynamic, have been explained, the question arises, which is more suitable for monitoring? 
+This will be presented in the following section.
+
+\subsection{Comparison of various event sources}
+In Table \ref{tab:event}, the most important characteristics of the described event sources are summarized.  
+The four event sources are compared in terms of type, overhead in active and inactive states, as well as maintainability, stability and flexibility.  
+
+As shown in Table \ref{tab:event}, the static variants offer less flexibility.  
+This means that fewer probe points are available, both in the kernel and in user space, where they can be attached.  
+In addition, even when inactive, a small amount of overhead remains.  
+Furthermore, maintenance effort is required to ensure that they remain available in all future versions of the program or the kernel.  
+
+Despite these disadvantages, the static event sources also provide several important advantages.  
+First, a stable API exists that defines exactly which information is made available by a tracepoint.  
+Moreover, tracepoints are preserved in future kernel versions.  
+A performance improvement over dynamic event sources\footnote{For the overhead of dynamic event sources, the minimum values correspond to the minimal reported latency of a simple probe, i.e. a \ac{kprobe} or \ac{uprobe}, and the maximum values correspond to the maximum reported latency of the respective return probes.} can also be observed.  
+
+On the kernel side, tracepoints are similar as fast as optimized \acp{kprobe}.  
+Since kprobes, however, cannot always be optimized, the overall performance of tracepoints is generally better.  
+On the user-level side, the performance of \acp{USDT} is significantly better than that of \acp{uprobe}.  
+The performance of \acp{USDT} is only slightly worse than that of tracepoints and is therefore, depending on the tracer, between 10 and 40 times faster than a \ac{uprobe}.  
+
+\begin{table}[ht]
+\centering
+\begin{tabular}{ ||p{3.5cm} || p{2.5cm} | p{2.5cm} | p{2.5cm} | p{2.5cm}|| } 
+ \hline
+\textbf{Event source} & \textbf{\ac{kprobe}} & \textbf{\ac{uprobe}} & \textbf{tracepoint} & \textbf{\ac{USDT}} \\ 
+   \hline\hline
+ Type of event source & dynamic & dynamic & static & static  \\ 
+ \hline
+ Overhead (inactive) & 0 & 0 & \textasciitilde 1.5 ns & \textasciitilde 1.5 ns  \\ 
+ \hline
+ Overhead (active) & 500 -- 1750 ns (50 -- 300 ns)\footnote{Values in parentheses refer to optimized \acp{kprobe}.} & 3000 -- 4000 ns & 100 -- 200 ns &  60 -- 450 ns  \\ 
+ \hline 
+ Stable in different kernel versions & No & No & Yes & Yes \\ 
+ \hline
+ Count of available events & 60000+ & nearly all symbols in user space & 2400+ & only predefined tracepoints \\ 
+ \hline
+ Maintenance & No & No & Yes & Yes \\ 
+ \hline
+\end{tabular}
+\caption{Comparison of the event sources kprobes, uprobes, tracepoints, and USDTs}
+\label{tab:event}
+\end{table}
+
+From these data, it follows that static event sources require more effort to maintain and to implement.  
+However, this effort is compensated by better performance and higher stability.  
+
+This observation is also supported in the literature.  
+Gregg \cite[Chap.~2.9]{Gregg_2020} explains that tracepoints should always be used first whenever possible.  
+Kprobes should only be employed as a fallback when no tracepoints exist for a specific use case.  
+Gregg's opinion is further supported by Calavera et al. \cite[Chap.~4]{Calavera_Fontana_Frazelle_2020}.  
+
+For monitoring in user space, uprobes are also considered insufficient, as argued by Zheng et al. \cite[p.~3]{zheng2023bpftimeuserspaceebpfruntime}.  
+They explain that, due to the relatively high overhead of \acp{uprobe} and the additional required context switches, these are not suitable for time-critical or real-time monitoring tasks.  
+
+In summary, considering the advantages and disadvantages of the respective event sources, it is considered best practice to prefer static ones.  
+If this is not possible due to lack of support or disproportionately high effort, then, as also mentioned by Calavera et al. \cite[Chap.~4]{Calavera_Fontana_Frazelle_2020}, dynamic event sources can and should be used.  
+
+Since the basics to monitoring and the functionalities of event sources, which are needed for the implementation, were described, the following chapter focuses on the implementation details of the test system itself.
+
+\section{Test system}
+In this chapter, the test system is divided into the four components Server and Client, Monitoring, Test Automation and Access Point Configuration. 
+Since the implementation of the client and server is closely linked to monitoring, an understanding of the fundamentals of monitoring is required for its description.  
+Therefore, the following section first addresses monitoring, followed by the description of the implementation of the client and server.  
+Subsequently, the focus shifts to test automation, and finally to the creation of the access point.  
+
+
+
 
 Ringbuffer vs Perfbuffer https://dl.acm.org/doi/pdf/10.1145/3672197.3673430
 \subsection{Server and Client Implementation} \label{subsec:impl}
