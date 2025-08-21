@@ -758,7 +758,19 @@ After having described the commonly used analysis techniques according to Gregg,
 As previously mentioned, and as shown in Figure \ref{fig:bpf:working_principle}, can be classified into static and dynamic event sources.
 
 In Figure \ref{fig:probes}, the diagram is also divided into three sections, again distinguishing static and dynamic tracing.  
-Sampling, i.e., which probes are involved, will be described later in this chapter.  
+Sampling, as described is normally used when many event sources are triggered, so normally in the context of the \ac{CPU}, like can be seen in Figure \ref{fig:probes}.  
+Furthermore, Figure \ref{fig:probes} illustrates how a system stack is organized and which areas can be instrumented with event sources.  
+The kernel space is separated from the user space by the system call interface.  
+
+In the kernel space, event sources can be attached in the three categories memory, shown in blue, networking, shown in green, and the \ac{CPU}, shown in orange.  
+In addition, Figure \ref{fig:probes} depicts the I/O controllers and the network controller, which are connected to the device drivers through the I/O bridge.  
+
+In this work, only event sources from the networking subsystem and the network controller are required.  
+Therefore, Figure \ref{fig:probes} highlights only selected events and tools from these areas.  
+For the network controller, no native traceable events exist.  
+However, the tools \texttt{netstat}, \texttt{ip}, and \texttt{ethtool} can be used to configure and monitor it, as described in \cite{ethtool,netstat,ip}.  
+
+Having explained where event sources can be attached, the following section discusses in detail how they operate and in which aspects they differ.  
 The description begins with dynamic probes, as these were more readily adopted into the Linux kernel.  
 
 As Gregg describes in \cite[Chap. 1.2]{Gregg_2020}, dynamic probes consist of \acp{kprobe} and \acp{uprobe}.  
