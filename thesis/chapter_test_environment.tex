@@ -1197,17 +1197,41 @@ If this is not possible due to lack of support or disproportionately high effort
 Since the basics to monitoring and the functionalities of event sources, which are needed for the implementation, were described, the following chapter focuses on the implementation details of the test system itself.
 
 \section{Test system}
-In this chapter, the test system is divided into the four components Server and Client, Monitoring, Test Automation and Access Point Configuration. 
-Since the implementation of the client and server is closely linked to monitoring, an understanding of the fundamentals of monitoring is required for its description.  
-Therefore, the following section first addresses monitoring, followed by the description of the implementation of the client and server.  
+In this chapter, the test system is divided into the four components test application Server and Client, Test Automation and Access Point Configuration. 
+Since for the implementation of the client and server the test application, which is generating the data is required, the test application wil be described first.  
+Afterwards the implementation of the client and server will be explained.  
 Subsequently, the focus shifts to test automation, and finally to the creation of the access point.  
 
+\subsection{Test Application} \label{subsec:impl}
 
+First, the requirements that the test application must fulfill are discussed.  
+Afterwards, the test application itself is explained, and it is described how it meets these requirements.  
 
+For the test application, the following three aspects are relevant:  
 
-Ringbuffer vs Perfbuffer https://dl.acm.org/doi/pdf/10.1145/3672197.3673430
+\begin{enumerate}
+    \item \textbf{Real-time capability and execution time}:  
+    The focus of this work is to evaluate influencing factors on the real-time capability of Wi-Fi.  
+    Therefore, influencing factors that are not related to Wi-Fi should be minimized.  
+    If the execution time of the application is too long or if it requires many shared system resources such as the \ac{CPU}, cache, memory, or graphics card, then the application becomes vulnerable to real-time issues.  
+    That resource contention is a common problom for real-time systems, as stated among other by Aceituno et al. in \cite[p. 1]{ACEITUNO2021102223}.
+    Especially in a multi-core environment it is not possible to avoid resource contention completely, but to restrict it as far as possible.
+    It is mandatory that the application achieves real-time capability, since real-time violations would otherwise directly affect the test results.  
+    Furthermore, it is necessary that the application in general does not consume too much time, since otherwise the previously defined deadline of 3 ms, maybe cannot be met, or this at least becomes more difficult, as less time remains available for the Wi-Fi operation.  
+
+    \item \textbf{Amount of data}:  
+    It is also required that the application continuously generates data that can be transmitted.  
+    This ensures that a sufficiently large number of data transmissions take place, which in turn are the foundation for reliable test results.  
+    In other words, if the application only generates two data sets, only two transmissions occur.  
+    From such a small number of transmissions, no reliable conclusions regarding the influencing factors on Wi-Fi performance can be drawn.  
+
+    \item \textbf{Visualization}:  
+    This point is rather a benefit than a strict requirement.  
+    If real-time violations within the application can be visualized, the results become more intuitive and easier to interpret.  
+    While this is not strictly necessary, it can enhance the comprehensibility of the results.  
+\end{enumerate}
 \subsection{Server and Client Implementation} \label{subsec:impl}
-
+Ringbuffer vs Perfbuffer https://dl.acm.org/doi/pdf/10.1145/3672197.3673430
 \begin{figure}[ht]
     \centering
      \includegraphics[width=\textwidth]{figures/Zustandsautomat.drawio.pdf}
