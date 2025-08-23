@@ -22,7 +22,7 @@
 
 \usepackage[utf8]{inputenc}
 \usepackage{lmodern} % or another scalable font package
-
+\usepackage{pifont}
 % \usepackage{lmodern}    % statt mathpazo, falls CM Fonts verwendet werden sollen
 %\usepackage{mathptmx}    % statt mathpazo, falls Times  verwendet werden soll
 \usepackage[scaled=.95]{helvet}
@@ -72,7 +72,11 @@
 \floatsetup[table]{capbesideposition={inside,top},style=plaintop}
 \renewfloatcommand{fcapside}{figure}[\capbeside][\FBwidth]
 \newfloatcommand{tcapside}{table}[\capbeside][\FBwidth]
-
+\newcommand{\circnum}[2][fill=yellow!20,draw=orange,thick,text=black]{%
+  \tikz[baseline=(char.base)]{
+    \node[shape=circle,inner sep=2pt,#1] (char) {\textbf{#2}};
+  }%
+}
 % Einstellung für Bezeichnung des Quellcode-Verzeichnises
 % comment out for English settings
 %\renewcommand{\lstlistlistingname}{Code-Verzeichnis}

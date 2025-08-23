@@ -1230,8 +1230,141 @@ For the test application, the following three aspects are relevant:
     If real-time violations within the application can be visualized, the results become more intuitive and easier to interpret.  
     While this is not strictly necessary, it can enhance the comprehensibility of the results.  
 \end{enumerate}
+
+In Figure \ref{fig:application}, the concept of the test application is presented.  
+It is divided into the three sections Application Concept, Calculation, and Visualization.  
+The discussion first addresses the Concept.  
+
+\begin{figure}[ht]
+    \centering
+     \includegraphics[width=\textwidth]{figures/test_application.drawio.pdf}
+    \caption{Presentation of the concept and visualization of the test application}
+    \label{fig:application}
+\end{figure}
+
+The concept consists of two main components, namely the Network Model and the Job.  
+The Network Model specifies which jobs are executed and at what time.  
+It is inspired by the theory of scheduling workload models, as described by Baruah et al.\ in \cite[p.~14--20]{Baruah2015}.  
+Although this work does not investigate the real-time capability of scheduling itself, the models can nevertheless be applied in an adapted form to the network.  
+
+In scheduling theory, jobs are also used to represent workload models.  
+There a job represents an application that is executed by a thread.  
+Each job is characterized by three properties:  
+
+\begin{itemize}
+    \item The \textbf{arrival time}, which specifies when the job begins.  
+          It corresponds to the point in time when the event \texttt{scheduleswitch} is triggered, where the parameter \texttt{nextpid} contains the identifier of the thread.  
+    \item The \textbf{deadline}, which is the latest point in time by which the job must be completed.  
+          The interval between arrival time and deadline is referred to as the scheduling window and represents the time available for execution.  
+    \item The \textbf{\ac{WCET}}, which denotes the maximum execution time required by the job.  
+          It corresponds to the execution time in the worst case, i.e., when the job is executed under the most unfavorable conditions.  
+          Such conditions may arise due to external influences such as interrupts or blocked resources.  
+          In the networking context especially the time in the networkstack can be considered as a part of these conditions.
+          The \ac{WCET} must be smaller than the scheduling window to guarantee that the job finishes before its deadline, thereby ensuring that the application represented by the job is real-time capable.  
+\end{itemize}
+
+These properties can also be transferred to the application in this work.  
+Although scheduling itself is not the subject of observation, the underlying theory remains the same.  
+By assigning a given period, the job can be repeated multiple times, allowing conclusions to be drawn about the behavior of the network.  
+
+As illustrated in Figure \ref{fig:application}, the periodic model of Liu et al.\ has been applied, originally published in 1973 in \cite{10.1145/321738.321743}.  
+This model has been used for more than fifty years to evaluate the real-time properties of applications.  
+The model assumes an implicit deadline, which is defined by the length of the period.  
+
+A job $J_i$ starts at its arrival time $S_i$ and should complete by its deadline $D_i$.  
+In the case of an implicit deadline, the deadline $D_i$ is equivalent to the arrival time of the subsequent job, i.e., $S_{i+1}$.  
+These time points are always separated by the period $p_i$.  
+The period usually remains constant, such that $\forall i,j \in [0, k]$, $k \in \mathbb{N}\setminus \{0\}: p_i = p_j$.  
+The period therefore also defines the length of the scheduling window.  
+
+Besides the original workload model proposed by Liu et al., there exist other models, such as the three-parameter sporadic task model, which is introduced by Baruah et al. in \cite[p.~15, 16]{Baruah2015}.  
+This model is structured similarly to the periodic model but differs in two essential aspects.  
+
+First, it includes an explicit parameter for the deadline, which allows the deadline to occur either before or after the release of the next job.  
+In other words, the constraint $D_i = S_{i+1}$, which always holds in the model of Liu et al., does not apply here.  
+
+The second major difference is that the period length $p_i$ is no longer fixed.  
+Since the sporadic model is not fully periodic, a stochastic component is introduced.  
+As a result, the model only guarantees a minimum interarrival time $p_{\min}$ between two tasks.  
+However, it is not ensured that $S_{i+1}$ occurs exactly or shortly after $p_{\min}$ time units following $S_i$.  
+Consequently, the model exhibits both periodic and sporadic characteristics.  
+
+For evaluating the real-time capability of an application, the periodic factor is highly relevant, since otherwise the data set might be too small to enable result-based conclusions.  
+
+In the context of network communication, there also exist two models, as described by Khojasteh et al. in \cite{khojasteh2017timetriggeringversuseventtriggeringcontrol}.  
+These are categorized into the time-triggered and the event-triggered models.  
+They define the conditions under which network data is transmitted in an application.  
+
+In the time-triggered variant, data is sent at fixed time intervals, analogous to the periodic task model.  
+In contrast, the event-triggered variant transmits data only when a specific event occurs, which resembles the sporadic task model.  
+According to Khojasteh et al. \cite[p.~6]{khojasteh2017timetriggeringversuseventtriggeringcontrol}, the event-triggered approach requires less bandwidth and, for the same stability requirements, achieves a lower transmission frequency compared to the time-triggered approach.  
+Thus, the event-triggered model is described as the more efficient option.  
+
+However, this view is contrasted by the study of Meister et al. in \cite{meister2023sharednetworkeffectstime}, where the two models are also compared.  
+Their results demonstrate that in practice, especially under network effects, the time-triggered model can outperform the event-triggered one.  
+Since the studies of Khojasteh et al. where only theoratical and the network load were not considered, the results of Meister et al. can be considered as meaningfull.
+
+Since this work also considers network effects, and because the periodic model provides lower complexity, improved observability, and enhanced predictability, a periodic model is adopted in this thesis.  
+The periodic model has a lower complexity, because it has no separate parameter for a deadline or a minimum period and therefore less parameters in general.
+It can also be monitored more easily, because it is more predictable.  
+It can be determined exactly when the next job will occur and when all jobs will be completed.  
+
+In Figure \ref{fig:application}, the jobs are shown in a model that is very similar to the one of Liu et al.  
+A distinction is made between real-time jobs, which are shown in blue, and non-real-time jobs, which are shown in green.  
+It can be observed that only the real-time jobs possess a period duration and an arrival time.  
+The non-real-time job extends across the entire timeline.  
+This is because there is no specific regulation for it.  
+The requirement was to transmit as much bulk data as possible alongside the real-time data, which results in these data being sent continuously.  
+Only the real-time jobs are subject to timing constraints.  
+For $J_{i+2}$, the model also visualizes how a real-time violation occurs.  
+$J_{i+2}$ finishes at the time $E_{i+2}$, which is the interval $rt_{v-i+2}$ after its deadline $D_{i+2}$.  
+This interval is shown in red.  
+Thus, the diagram does not represent the load on the \ac{CPU}, but instead the load on the network, at least in part.  
+
+The execution of a job is depicted on the right side in the Application Concept.  
+A job is one iteration in which a step of the application is executed.  
+The application visualizes a unit circle.  
+In the following, it is described how this circle is constructed.  
+The entire coordination is performed by the server, while the client has no information other than what the server provides.  
+The execution of the job is labeled with numbers, starting with \circnum{1} which represents $S_i$.
+The server is managing this, by starting a timer.
+In the first step, also the angle $\alpha$ is calculated, which determines the point on the circle.  
+It is computed using $2\pi \div k \times i$ and is shown at the bottom left of the circle.  
+Here, $2\pi \div k$ denotes the step size and $i$ the step number.  
+The previously described variable $k$ defines the number of points on the circle and thus also the number of jobs.  
+
+In step \circnum{2}, the server computes the x-coordinate of the point by evaluating $cos(\alpha)$.  
+This process is illustrated in the Calculation box.  
+In step \circnum{3}, the server sends a message to the client.  
+This message contains the angle $\alpha$ and the radius of the circle.  
+In step \circnum{4}, after receiving the network packet with $\alpha$, the client computes the y-coordinate of the point.  
+This is again shown in the Calculation box and is obtained using the function $sin(\alpha)$.  
+Then, in step \circnum{5}, the client sends a packet back to the server containing the y-coordinate.  
+In step \circnum{6}, the job, as shown in the workload diagram, ends.  
+As soon as the server receives the client’s message, it stops the timer and checks whether the deadline $D_i$ was met.  
+If the deadline is met, the penalty value $y_p$ is set to 0.  
+If the deadline is missed, a penalty is applied.  
+As described in Section \ref{sec:real_time}, the value of a real-time application does not only depend on the result but also on the timing constraints.  
+Therefore, $y_p$ was introduced.  
+Even if $D_i$ were missed, the result would still be correct.  
+However, in order to visualize the real-time violation, the result is deliberately distorted by $y_p$, since according to the definition of a real-time application it must be considered incorrect.  
+
+In step \circnum{7}, the angle $\alpha$, the calculated coordinates $(x_i, y_i)$, and the penalty $y_{pi}$, which is 0 if the real-time constraints are satisfied, are stored in a pre-allocated array.  
+This is shown in the middle of Figure \ref{fig:application}.  
+In step \circnum{8}, after all jobs are completed, the results are visualized.  
+This ensures that the real-time capability of the application is not restricted.  
+The effect of $y_p$ on the visualization can be seen in the lower left of Figure \ref{fig:application}, where a red square marks the new point that no longer lies on the circle.  
+The Visualization box shows the unit circle and how it is composed of the sine and cosine functions.  
+
+After describing the job execution, it becomes clear that in this modified model, unlike in the original scheduling workload model of Liu et al., a job is not an executed application, but rather one iteration in a sequence of instructions within an application.  
+This sequence of instructions also includes two network communications, one from the server to the client and one back.  
+
+After describing how the application is structured and how it functions, the following section will discuss how it is technically implemented.  
+
 \subsection{Server and Client Implementation} \label{subsec:impl}
 Ringbuffer vs Perfbuffer https://dl.acm.org/doi/pdf/10.1145/3672197.3673430
+
+
 \begin{figure}[ht]
     \centering
      \includegraphics[width=\textwidth]{figures/Zustandsautomat.drawio.pdf}
