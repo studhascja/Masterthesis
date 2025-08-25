@@ -1202,7 +1202,7 @@ Since for the implementation of the client and server the test application, whic
 Afterwards the implementation of the client and server will be explained.  
 Subsequently, the focus shifts to test automation, and finally to the creation of the access point.  
 
-\subsection{Test Application} \label{subsec:impl}
+\subsection{Test Application} \label{subsec:appl}
 
 First, the requirements that the test application must fulfill are discussed.  
 Afterwards, the test application itself is explained, and it is described how it meets these requirements.  
@@ -1362,7 +1362,17 @@ This sequence of instructions also includes two network communications, one from
 After describing how the application is structured and how it functions, the following section will discuss how it is technically implemented.  
 
 \subsection{Server and Client Implementation} \label{subsec:impl}
-Ringbuffer vs Perfbuffer https://dl.acm.org/doi/pdf/10.1145/3672197.3673430
+
+As described before, the entire logic is implemented on the server side, and the client only reacts to the messages of the server.  
+
+The application, as illustrated in Figure~\ref{fig:application}, constitutes only a small part of the overall server.  
+
+The logic of the server can be represented as a state machine, as shown in Figure~\ref{fig:state_machine}.  
+The state machine is deterministic, since, as described by Rabin et al.\ in \cite[p.~120]{5392601}, a deterministic state machine requires that for a given state and a given operation the target state must be uniquely defined.  
+This property holds for the state machine in Figure~\ref{fig:state_machine}.  
+
+Furthermore, the state machine has finitely many states, which according to \cite[p.~114]{5392601} is the defining property of a finite state machine.  
+Consequently, the state machine in Figure~\ref{fig:state_machine} is a \ac{DFSM}.  
 
 
 \begin{figure}[ht]
@@ -1372,6 +1382,75 @@ Ringbuffer vs Perfbuffer https://dl.acm.org/doi/pdf/10.1145/3672197.3673430
     \label{fig:state_machine}
 \end{figure}
 
+It can be observed that the server consists of nine states.  
+
+The application, as described in Section~\ref{subsec:appl}, occupies only two of these states.  
+Steps~\circnum{1} to \circnum{7} of Figure~\ref{fig:application} are executed in the state \textit{Calculation}, and Step~\circnum{8} is executed in the state \textit{Save}.  
+
+The states in Figure~\ref{fig:state_machine} can be classified into four categories.  
+First, there are the start and end nodes, as is common for finite state machines.  
+Second, the regular states in Figure~\ref{fig:state_machine} are distinguished into states without real-time requirements, shown in green, and states with real-time requirements, shown in red.  
+It can be seen that the automaton starts in the state \textit{Setup} and can terminate in the two states \textit{Error} and \textit{End}.  
+Furthermore, only the state \textit{Calculation} has real-time requirements.  
+
+The following describes the function of each state and how it is implemented.  
+
+The state \textit{Setup} is the initial state.  
+It sets the priority to real-time priority, loads and initializes the \ac{BPF} program, and starts the server.  
+As shown in Listing~\ref{lst:setup}, line~3, the real-time priority is set to 99, which, as described in Section~\ref{subsec:real_time_kernel}, corresponds to a priority of 139.  
+For monitoring, \ac{BPF} is used, which is integrated into Rust through \texttt{libbpf\_rs}.  
+As described in \cite{libbpf-rs}, the Rust code resides in the \texttt{/src} directory, while the \ac{BPF} code, written in C, resides in \texttt{/src/bpf}.  
+The \ac{BPF} file must have the extension \texttt{.bpf.c}.
+In order to integrate the \ac{BPF} program into the Rust code, a skeleton must be generated.  
+A skeleton is an automatically created binding layer that provides a type-safe interface to the maps and programs defined in the compiled \ac{BPF} object file.  
+It abstracts away low-level details of loading, attaching, and accessing kernel objects, and thus enables the interaction from rust with the \ac{BPF} subsystem in a safe and idiomatic manner.  
+
+As shown in Listing~\ref{lst:setup}, line~1, this skeleton is subsequently included in the Rust code.  
+
+In order to generate the skeleton, a build script must be written, which, as described in \cite{build_script}, has to be placed in the file \texttt{build.rs}.  
+This integration ensures that the creation of the skeleton becomes part of the Rust compilation process.  
+
+The build script is presented in Listing~\ref{lst:build_script}.  
+In this script, the path to the kernel headers must first be determined, since the \ac{BPF} program has to be compiled against them in order to make use of kernel structures, such as tracepoints.  
+To identify the kernel headers, the script attempts to read the path from an environment variable, as shown in lines~5 and~6.  
+If this attempt fails, the default path \texttt{/usr/src/kernel} is assumed.  
+
+Subsequently, the skeleton can be generated by means of the \texttt{SkeletonBuilder}.  
+As indicated in \cite{skeleton}, the builder requires three arguments.  
+First, it requires the \ac{BPF} source file, which in this case is \texttt{monitore.bpf.c}, as illustrated in line~8 of Listing~\ref{lst:build_script}.  
+Second, it requires the output file, that is, the file name in which the skeleton will be stored after generation.  
+This is shown in line~15.  
+Finally, the builder requires compile flags for \texttt{clang}.  
+These include, among others, the kernel UAPI headers, as depicted in lines~9--14.  
+
+\begin{listing}[H]
+    \centering
+\begin{minted}[fontsize=\small, escapeinside=||, linenos, style=vs]{rust}
+use std::env;
+use libbpf_cargo::SkeletonBuilder;
+
+fn main() {
+    let |\textcolor{blue}{kernel\_headers}| = |\textcolor{teal}{env}|::|\textcolor{orange}{var(}|"KERNEL_HEADERS"|\textcolor{orange}{)}|.
+        |\textcolor{orange}{unwrap\_or(}|"/usr/src/kernel".|\textcolor{orange}{to\_string())}|;
+    |\textcolor{teal}{SkeletonBuilder}|::|\textcolor{orange}{new()}|
+        .|\textcolor{orange}{source(}|"src/bpf/monitore.bpf.c"|\textcolor{orange}{)}|
+        .|\textcolor{orange}{clang\_args(}|&format!(
+            "-I{}/arch/arm64/include/generated/uapi 
+            -I{}/include 
+            -I{}/include/uapi 
+            -I{}/include/generated", 
+            |\textcolor{blue}{kernel\_headers}, \textcolor{blue}{kernel\_headers}, \textcolor{blue}{kernel\_headers}, \textcolor{blue}{kernel\_headers})||\textcolor{orange}{)}|
+        .|\textcolor{orange}{build\_and\_generate(}|"src/bpf/monitore.skel.rs"|\textcolor{orange}{)}|
+        .|\textcolor{orange}{unwrap()}|;
+}
+\end{minted}
+\caption{Rust Build Script}
+\label{lst:build_script}
+\end{listing}
+
+
+Daher wird 
+Ringbuffer vs Perfbuffer https://dl.acm.org/doi/pdf/10.1145/3672197.3673430
 probes, besoners uporbes nicht echtzeitfähig (zheng)
 
 \subsection{Test Automatization}
