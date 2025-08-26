@@ -365,9 +365,12 @@ fn main() -> Result<()> {
                     )?;
                     socket.send(&encoded)?;
                     increment_message_count();
-                    let send_event = wait_for_event(seq, MessageType::NtpResult, 2)
-                        .expect("Expected send_event");
-                    client_sent_time = (send_event.timestamp - get_kernel_zero()) as u128;
+                        client_sent_time =
+                        Instant::now().duration_since(read_user_zero()).as_nanos() as u128;
+
+                    if let Some(event) = wait_for_event(seq, MessageType::NtpResult, 2) {
+                        client_sent_time = (event.timestamp - get_kernel_zero()) as u128;
+                    }
                 }
                 Ok(MessageType::PTP) => {
                     update_user_zero();
@@ -419,8 +422,7 @@ fn main() -> Result<()> {
                     }
 
                     let start = Instant::now();
-                    let mut client_recv =
-                        start.duration_since(read_user_zero()).as_nanos() as u64;
+                    let mut client_recv = start.duration_since(read_user_zero()).as_nanos() as u64;
 
                     if let Some(event) = wait_for_event(seq, MessageType::Calc, 1) {
                         client_recv = event.timestamp - get_kernel_zero();
@@ -439,12 +441,13 @@ fn main() -> Result<()> {
                     socket.send(&encoded)?;
                     increment_message_count();
 
-                    let mut client_sent_time = Instant::now().duration_since(read_user_zero()).as_nanos() as u128;
-          
+                    let mut client_sent_time =
+                        Instant::now().duration_since(read_user_zero()).as_nanos() as u128;
+
                     if let Some(event) = wait_for_event(seq, MessageType::Calc, 2) {
                         client_sent_time = (event.timestamp - get_kernel_zero()) as u128;
-                    } 
-                    
+                    }
+
                     let duration_queue = start.elapsed();
 
                     let queue_event = wait_for_queue_event(client_sent_time as u64);
