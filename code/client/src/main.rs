@@ -169,11 +169,11 @@ fn update_user_zero() {
     measure_instant();
 }
 
-/*
+
 fn read_user_zero() -> Instant {
     *USER_ZERO.lock().unwrap()
 }
-*/
+
 fn wait_for_event(seq: u64, msg_type: MessageType, event_type: u8) -> Option<Event> {
     let start = Instant::now();
     let queue = CURRENT_EVENT
