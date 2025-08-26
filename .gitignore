@@ -54,6 +54,7 @@ build/
 output/
 results/
 result_ohne/
+target/
 #Other
 *.pygtex
 *.pygstyle

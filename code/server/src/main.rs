@@ -629,7 +629,7 @@ fn calculation_phase(context: &SetupContext) -> Result<SetupContext> {
             let x = RADIUS * theta.cos();
             let calc_send_time = Instant::now();
             let calc_send_elapsed = calc_send_time.duration_since(read_user_zero());
-
+	    //println!("Calc {}", i);
             let encoded_msg = encode_message(MessageType::Calc, i, 0, 0, 0, theta, RADIUS, 0)?;
             if let Err(e) = stream.write_all(&encoded_msg) {
                 eprintln!("Error while sending: {}", e);

@@ -53,7 +53,7 @@ def process_line(line, index):
     val1, val2, val3, val4, val5, param = parts
 
     config_process_container = []
-    if val3 == "1":
+    if val4 == "1":
         print(f"Start QoS")
         subprocess.run(['bash', 'setup_qos.sh'])
     else:

@@ -1,10 +1,10 @@
 use std::{
     convert::TryFrom,
     fs::OpenOptions,
-    io::{Read, Write},
+    io::Write,
     mem::{MaybeUninit},
     net::UdpSocket,
-    process::{self, Command, Stdio},
+    process::{Command, Stdio},
     sync::{
         atomic::{AtomicBool, Ordering},
         Arc, Mutex, OnceLock,
@@ -21,7 +21,6 @@ use libbpf_rs::skel::{OpenSkel, Skel, SkelBuilder};
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
 use libc::{sched_param, pthread_setschedparam, pthread_self, SCHED_OTHER, SCHED_RR, sched_setscheduler};
-
 include!("bpf/monitore.skel.rs");
 
 // Global state
@@ -167,11 +166,38 @@ fn update_user_zero() {
     measure_instant();
 }
 
-/*
+fn set_user_zero(value: Instant) {
+    let mut user = USER_ZERO.lock().unwrap();
+    *user = value;
+}
+
+fn test_user_kernel_sync() {
+    let user_old = read_user_zero();
+    let kernel_old = get_kernel_zero();
+
+    update_user_zero();
+    thread::sleep(Duration::from_millis(100));
+
+    let user_new = read_user_zero();
+    let kernel_new = get_kernel_zero();
+    let user_diff = user_new.duration_since(user_old).as_nanos() as i128;
+    let kernel_diff = (kernel_new as i128) - (kernel_old as i128);
+
+    println!(
+        "User diff: {} ns, Kernel diff: {} ns, Difference: {} ns",
+        user_diff,
+        kernel_diff,
+        (user_diff - kernel_diff)
+    );
+
+    set_kernel_zero(kernel_old);
+    set_user_zero(user_old);
+}
+
 fn read_user_zero() -> Instant {
     *USER_ZERO.lock().unwrap()
 }
-*/
+
 fn wait_for_event(seq: u64, msg_type: MessageType, event_type: u8) -> Event {
     let queue = CURRENT_EVENT
         .get()
@@ -248,8 +274,11 @@ fn main() -> Result<()> {
 
         let event = *from_bytes::<Event>(data);
 
-        match event.event_type {
-            0 => set_kernel_zero(event.timestamp),
+	        match event.event_type {
+      0 => {
+                let timestamp = event.timestamp;
+                set_kernel_zero(timestamp);
+            }
             3 => {
                 let mut queue = queue_event_ref.lock().unwrap();
                 queue.push_back(event);
@@ -267,12 +296,17 @@ fn main() -> Result<()> {
 
     // Start polling thread for ring buffer
     let ring_running = running.clone();
-    let poll_thread = thread::spawn(move || {
+    let _ = thread::spawn(move || {
         while ring_running.load(Ordering::Relaxed) {
-            ringbuf.poll(Duration::from_millis(100)).unwrap();
+            ringbuf.poll(Duration::from_millis(5)).unwrap();
         }
     });
- 
+    update_user_zero();
+    for _ in 0..20 {
+        thread::sleep(Duration::from_millis(100));
+        test_user_kernel_sync();
+    }
+    // Setup UDP socket
     let socket = UdpSocket::bind("0.0.0.0:0")?;
     socket.connect("192.168.1.1:8080")?;
     // Send Start message
@@ -337,10 +371,10 @@ fn main() -> Result<()> {
 				_difference += msg.i_val;
                         }
                         Ok(MessageType::Calc) => {
-                            let (theta, radius) = (msg.first_f64, msg.second_f64);
+			    let (theta, radius) = (msg.first_f64, msg.second_f64);
                             let y = radius * theta.sin();
                             let seq = msg.seq;
-
+			
                             // Launch iperf3 in background
                             if seq == 0 {
                                 thread::spawn(|| {
