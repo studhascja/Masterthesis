@@ -57,3 +57,4 @@ result_ohne/
 #Other
 *.pygtex
 *.pygstyle
+*.Identifier
