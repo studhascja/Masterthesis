@@ -201,7 +201,7 @@ def main():
                 connect_to_wifi(0)
         if parts[3] == "1":
             print("Starte QoS...")
-            subprocess.run(['bash', 'setup_qos.sh'])
+           # subprocess.run(['bash', 'setup_qos.sh'])
         else:
             print("Lösche QoS Config...")
             subprocess.run(['bash', 'clean_qos.sh'])

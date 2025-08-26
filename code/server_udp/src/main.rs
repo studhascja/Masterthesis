@@ -272,10 +272,14 @@ fn wait_for_queue_event(timestamp: u64) -> Option<Event> {
     return None;
 }
 
-fn wait_for_event(number: u64, msg_t: MessageType, event_t: u8) -> Event {
+fn wait_for_event(number: u64, msg_t: MessageType, event_t: u8) -> Option<Event> {
+    let start = Instant::now();
     let queue_arc = CURRENT_EVENT.get().expect("CURRENT_EVENT not initialized");
     loop {
         {
+            if start.elapsed() > Duration::from_millis(2) {
+                return None;
+            }
             let mut queue = queue_arc.lock().unwrap();
             while let Some(evt) = queue.pop_front() {
                 // println!("{:?}", evt.data.msg_type);
@@ -283,7 +287,7 @@ fn wait_for_event(number: u64, msg_t: MessageType, event_t: u8) -> Event {
                     Ok(msg_type) => {
                         if msg_type == msg_t && evt.data.seq == number && evt.event_type == event_t
                         {
-                            return evt;
+                            return Some(evt);
                         }
                     }
                     _ => (),
@@ -428,9 +432,11 @@ fn ntp_phase(context: &SetupContext) -> Result<SetupContext> {
                 Ok((amt, _src)) => {
                     let msg: Message = *bytemuck::from_bytes::<Message>(&buf[..amt]);
                     let number = msg.seq;
-                    let event_snapshot = wait_for_event(number, MessageType::NTP, 1);
-
-                    let end_time = event_snapshot.timestamp - get_kernel_zero();
+                    let mut end_time =
+                        Instant::now().duration_since(read_user_zero()).as_nanos() as u64;
+                    if let Some(event) = wait_for_event(number, MessageType::NTP, 1) {
+                        end_time = event.timestamp - get_kernel_zero();
+                    }
 
                     needed_time = end_time as u128 - elapsed_start_time.as_nanos();
                     /*println!(
@@ -579,8 +585,12 @@ fn latency_test_phase(context: &SetupContext) -> Result<SetupContext> {
         )?;
         socket.send_to(&encoded_msg, &context.src_client)?;
         increment_message_count();
-        let event_snapshot_sending = wait_for_event(i, MessageType::NtpResult, 2);
-        let server_kernel_sent = event_snapshot_sending.timestamp - get_kernel_zero();
+
+        let mut server_kernel_sent =
+            Instant::now().duration_since(read_user_zero()).as_nanos() as u64;
+        if let Some(event) = wait_for_event(i, MessageType::NtpResult, 2) {
+            server_kernel_sent = event.timestamp - get_kernel_zero();
+        }
 
         loop {
             if start_time.elapsed() > TIMEOUT_DURATION {
@@ -601,17 +611,22 @@ fn latency_test_phase(context: &SetupContext) -> Result<SetupContext> {
             }
             match socket.recv_from(&mut buf) {
                 Ok((amt, _src)) => {
-                    let end_time = Instant::now();
+                    let mut server_arrival_kernel =
+                        Instant::now().duration_since(read_user_zero()).as_nanos() as u64;
+
                     let msg: Message = *bytemuck::from_bytes::<Message>(&buf[..amt]);
                     let number = msg.seq;
-                    let event_snapshot = wait_for_event(number, MessageType::NtpResult, 1);
-                    let server_arrival = end_time.duration_since(read_user_zero());
-                    let server_arrival_kernel = event_snapshot.timestamp - get_kernel_zero();
+
+                    let server_arrival = Instant::now().duration_since(read_user_zero()).as_nanos();
+
+                    if let Some(event) = wait_for_event(number, MessageType::NtpResult, 1) {
+                        server_arrival_kernel = event.timestamp - get_kernel_zero();
+                    }
 
                     match (msg.first_u128, msg.second_u128, msg.timestamp) {
                         (server_sent, client_arrival, client_sent) => {
                             if i < test_mesg_count {
-                                timestamps[index].server_arrival = server_arrival.as_nanos();
+                                timestamps[index].server_arrival = server_arrival;
                                 timestamps[index].server_arrival_kernel =
                                     server_arrival_kernel as u128;
                                 timestamps[index].server_sent = server_sent;
@@ -709,8 +724,12 @@ fn calculation_phase(context: &SetupContext) -> Result<SetupContext> {
         socket.send_to(&encoded_msg, &context.src_client)?;
         increment_message_count();
 
-        let event_snapshot_sending = wait_for_event(i, MessageType::Calc, 2);
-        let server_sent_kernel = event_snapshot_sending.timestamp - get_kernel_zero();
+        let mut server_sent_kernel =
+            Instant::now().duration_since(read_user_zero()).as_nanos() as u64;
+
+        if let Some(event) = wait_for_event(i, MessageType::Calc, 2) {
+            server_sent_kernel = event.timestamp - get_kernel_zero();
+        }
 
         let event_snapshot_queue = wait_for_queue_event(server_sent_kernel);
         let server_queue = event_snapshot_queue.unwrap().timestamp - get_kernel_zero();
@@ -740,8 +759,13 @@ fn calculation_phase(context: &SetupContext) -> Result<SetupContext> {
                     let msg: Message = *bytemuck::from_bytes::<Message>(&buf[..amt]);
 
                     let number = msg.seq;
-                    let event_snapshot = wait_for_event(number, MessageType::Calc, 1);
-                    let server_arrival_kernel = event_snapshot.timestamp - get_kernel_zero();
+
+                    let mut server_arrival_kernel =
+                        Instant::now().duration_since(read_user_zero()).as_nanos() as u64;
+
+                    if let Some(event) = wait_for_event(number, MessageType::Calc, 1) {
+                        server_arrival_kernel = event.timestamp - get_kernel_zero();
+                    }
 
                     calc_send_duration = calc_end_time.as_nanos() - calc_send_elapsed.as_nanos();
 
@@ -922,7 +946,7 @@ fn handle_error(context: &SetupContext) -> Result<()> {
             thread::sleep(Duration::from_millis(100));
         }
     }
-    
+
     increment_message_count();
     Ok(())
 }

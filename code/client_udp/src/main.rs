@@ -1,27 +1,28 @@
+use anyhow::Result;
+use bytemuck::{bytes_of, from_bytes, Pod, Zeroable};
+use libbpf_rs::skel::{OpenSkel, Skel, SkelBuilder};
+use libbpf_rs::RingBufferBuilder;
+use libc::{
+    pthread_self, pthread_setschedparam, sched_param, sched_setscheduler, SCHED_OTHER, SCHED_RR,
+};
+use once_cell::sync::Lazy;
+use serde::{Deserialize, Serialize};
 use std::{
+    collections::VecDeque,
     convert::TryFrom,
     fs::OpenOptions,
-    io::{Read, Write},
-    mem::{MaybeUninit},
+    io::Write,
+    mem::MaybeUninit,
     net::UdpSocket,
-    process::{self, Command, Stdio},
+    os::unix::process::CommandExt,
+    process::{Command, Stdio},
     sync::{
         atomic::{AtomicBool, Ordering},
         Arc, Mutex, OnceLock,
     },
     thread,
     time::{Duration, Instant},
-    collections::VecDeque,
-    os::unix::process::CommandExt
 };
-use anyhow::Result;
-use bytemuck::{bytes_of, from_bytes, Pod, Zeroable};
-use libbpf_rs::RingBufferBuilder;
-use libbpf_rs::skel::{OpenSkel, Skel, SkelBuilder};
-use once_cell::sync::Lazy;
-use serde::{Deserialize, Serialize};
-use libc::{sched_param, pthread_setschedparam, pthread_self, SCHED_OTHER, SCHED_RR, sched_setscheduler};
-
 include!("bpf/monitore.skel.rs");
 
 // Global state
@@ -167,12 +168,40 @@ fn update_user_zero() {
     measure_instant();
 }
 
-/*
+fn set_user_zero(value: Instant) {
+    let mut user = USER_ZERO.lock().unwrap();
+    *user = value;
+}
+
+fn test_user_kernel_sync() {
+    let user_old = read_user_zero();
+    let kernel_old = get_kernel_zero();
+
+    update_user_zero();
+    thread::sleep(Duration::from_millis(100));
+
+    let user_new = read_user_zero();
+    let kernel_new = get_kernel_zero();
+    let user_diff = user_new.duration_since(user_old).as_nanos() as i128;
+    let kernel_diff = (kernel_new as i128) - (kernel_old as i128);
+
+    println!(
+        "User diff: {} ns, Kernel diff: {} ns, Difference: {} ns",
+        user_diff,
+        kernel_diff,
+        (user_diff - kernel_diff)
+    );
+
+    set_kernel_zero(kernel_old);
+    set_user_zero(user_old);
+}
+
 fn read_user_zero() -> Instant {
     *USER_ZERO.lock().unwrap()
 }
-*/
-fn wait_for_event(seq: u64, msg_type: MessageType, event_type: u8) -> Event {
+
+fn wait_for_event(seq: u64, msg_type: MessageType, event_type: u8) -> Option<Event> {
+    let start = Instant::now();
     let queue = CURRENT_EVENT
         .get()
         .expect("CURRENT_EVENT not initialized")
@@ -180,12 +209,15 @@ fn wait_for_event(seq: u64, msg_type: MessageType, event_type: u8) -> Event {
 
     loop {
         {
+            if start.elapsed() > Duration::from_millis(2) {
+                return None;
+            }
             let mut queue_lock = queue.lock().unwrap();
             while let Some(event) = queue_lock.pop_front() {
-                 let Ok(t) = MessageType::try_from(event.data.msg_type);
-                    if t == msg_type && event.data.seq == seq && event.event_type == event_type {
-                        return event;
-                    }
+                let Ok(t) = MessageType::try_from(event.data.msg_type);
+                if t == msg_type && event.data.seq == seq && event.event_type == event_type {
+                    return Some(event);
+                }
             }
         }
         thread::sleep(Duration::from_nanos(5));
@@ -215,7 +247,6 @@ fn wait_for_queue_event(timestamp: u64) -> Option<Event> {
 
     queue_lock.back().cloned()
 }
-
 
 fn main() -> Result<()> {
     set_rt_priority(99);
@@ -249,7 +280,10 @@ fn main() -> Result<()> {
         let event = *from_bytes::<Event>(data);
 
         match event.event_type {
-            0 => set_kernel_zero(event.timestamp),
+            0 => {
+                let timestamp = event.timestamp;
+                set_kernel_zero(timestamp);
+            }
             3 => {
                 let mut queue = queue_event_ref.lock().unwrap();
                 queue.push_back(event);
@@ -267,12 +301,17 @@ fn main() -> Result<()> {
 
     // Start polling thread for ring buffer
     let ring_running = running.clone();
-    let poll_thread = thread::spawn(move || {
+    let _ = thread::spawn(move || {
         while ring_running.load(Ordering::Relaxed) {
-            ringbuf.poll(Duration::from_millis(100)).unwrap();
+            ringbuf.poll(Duration::from_millis(5)).unwrap();
         }
     });
- 
+    update_user_zero();
+    for _ in 0..20 {
+        thread::sleep(Duration::from_millis(100));
+        test_user_kernel_sync();
+    }
+    // Setup UDP socket
     let socket = UdpSocket::bind("0.0.0.0:0")?;
     socket.connect("192.168.1.1:8080")?;
     // Send Start message
@@ -295,117 +334,144 @@ fn main() -> Result<()> {
         unsafe {
             std::ptr::copy_nonoverlapping(buf.as_ptr(), ptr, size);
             let msg = raw.assume_init();
-		
+
             match MessageType::try_from(msg.msg_type) {
-	        Ok(MessageType::Start) => {
+                Ok(MessageType::Start) => {
                     println!("⚠️ Received unexpected Start message from server.");
                 }
                 Ok(MessageType::NTP) => {
-	            update_user_zero();
+                    update_user_zero();
                     let encoded = encode_message(MessageType::NTP, msg.seq, 0, 0, 0, 0.0, 0.0, 0)?;
                     socket.send(&encoded)?;
                     increment_message_count();
                 }
                 Ok(MessageType::NtpResult) => {
-			let seq = msg.seq;
-                        let event = wait_for_event(seq, MessageType::NtpResult, 1);
-                        let client_recv = event.timestamp - get_kernel_zero();
+                    let seq = msg.seq;
+                    let mut client_recv =
+                        Instant::now().duration_since(read_user_zero()).as_nanos() as u64;
 
-                            //let duration = Instant::now().duration_since(read_user_zero());
-                        let encoded = encode_message(
-                            MessageType::NtpResult,
-                            seq,
-                            client_sent_time,
-                            msg.timestamp,
-                            client_recv as u128,
-                            0.0,
-                            0.0,
-                            0,
-                        )?;
-                        socket.send(&encoded)?;
-                        increment_message_count();
-			let send_event = wait_for_event(seq, MessageType::NtpResult, 2);
-                        client_sent_time = (send_event.timestamp - get_kernel_zero()) as u128;
+                    if let Some(event) = wait_for_event(seq, MessageType::NtpResult, 1) {
+                        client_recv = event.timestamp - get_kernel_zero();
                     }
-                        Ok(MessageType::PTP) => {
-                            update_user_zero();
-                            let encoded = encode_message(MessageType::PTP, msg.seq, 0, 0, 0, 0.0, 0.0, 0)?;
-                            socket.send(&encoded)?;
-                            increment_message_count();
-                        }
-                        Ok(MessageType::PtpResult) => {
-				_difference += msg.i_val;
-                        }
-                        Ok(MessageType::Calc) => {
-                            let (theta, radius) = (msg.first_f64, msg.second_f64);
-                            let y = radius * theta.sin();
-                            let seq = msg.seq;
+                    let encoded = encode_message(
+                        MessageType::NtpResult,
+                        seq,
+                        client_sent_time,
+                        msg.timestamp,
+                        client_recv as u128,
+                        0.0,
+                        0.0,
+                        0,
+                    )?;
+                    socket.send(&encoded)?;
+                    increment_message_count();
+                        client_sent_time =
+                        Instant::now().duration_since(read_user_zero()).as_nanos() as u128;
 
-                            // Launch iperf3 in background
-                            if seq == 0 {
-                                thread::spawn(|| {
-                                    let mut command = Command::new("iperf3");
-                                    let _ = command
-                                        .args(["-c", "192.168.1.1", "-u", "-b", "15M", "-t", "12", "-p", "5202"])
-                                        .stderr(Stdio::piped())
-                                        .stdout(Stdio::piped())
-                                        .pre_exec(|| {
-                                            let param = sched_param { sched_priority: 0 };
-                                            let ret = sched_setscheduler(0, SCHED_OTHER, &param);
-                                            if ret != 0 {
-                                                return Err(std::io::Error::last_os_error());
-                                            }
-                                            Ok(())
-                                        })
-                                        .spawn()
-                                        .and_then(|mut child| {
-                                            notify_python();
-                                            child.wait()?;
-                                            Ok(())
-                                        });
-                                });
-                            }
-
-                            let start = Instant::now();
-                            let recv_event = wait_for_event(seq, MessageType::Calc, 1);
-                            let client_recv = recv_event.timestamp - get_kernel_zero();
-
-                            let encoded = encode_message(
-                                MessageType::Calc,
-                                seq,
-                                client_queue_time,
-                                client_recv as u128,
-                                client_sent_time,
-                                y,
-                                0.0,
-                                0,
-                            )?;
-                            socket.send(&encoded)?;
-                            increment_message_count();
-
-                            let send_event = wait_for_event(seq, MessageType::Calc, 2);
-                            client_sent_time = (send_event.timestamp - get_kernel_zero()) as u128;
-			    let duration_queue = start.elapsed();
-
-                            let queue_event = wait_for_queue_event(client_sent_time as u64);
-                            if let Some(evt) = queue_event {
-                                client_queue_time = (evt.timestamp - get_kernel_zero()) as u128;
-                            }
-
-                            let duration = start.elapsed();
-                            if duration.as_millis() > 2 {
-                                println!("⚠️ Calc function took {:.4?} ms", duration);
-				println!(" ^z   ^o Calc function without queue took {:.4?} ms", duration_queue);
-                            }
-			    if seq == u64::MAX {
-				break;
-			    }
-                        }
-                        Err(_) => {
-                            eprintln!("⚠️ Unknown message type: {}", msg.msg_type);
-                        }
+                    if let Some(event) = wait_for_event(seq, MessageType::NtpResult, 2) {
+                        client_sent_time = (event.timestamp - get_kernel_zero()) as u128;
                     }
                 }
+                Ok(MessageType::PTP) => {
+                    update_user_zero();
+                    let encoded = encode_message(MessageType::PTP, msg.seq, 0, 0, 0, 0.0, 0.0, 0)?;
+                    socket.send(&encoded)?;
+                    increment_message_count();
+                }
+                Ok(MessageType::PtpResult) => {
+                    _difference += msg.i_val;
+                }
+                Ok(MessageType::Calc) => {
+                    let (theta, radius) = (msg.first_f64, msg.second_f64);
+                    let y = radius * theta.sin();
+                    let seq = msg.seq;
+
+                    // Launch iperf3 in background
+                    if seq == 0 {
+                        thread::spawn(|| {
+                            let mut command = Command::new("iperf3");
+                            let _ = command
+                                .args([
+                                    "-c",
+                                    "192.168.1.1",
+                                    "-u",
+                                    "-b",
+                                    "15M",
+                                    "-t",
+                                    "12",
+                                    "-p",
+                                    "5202",
+                                ])
+                                .stderr(Stdio::piped())
+                                .stdout(Stdio::piped())
+                                .pre_exec(|| {
+                                    let param = sched_param { sched_priority: 0 };
+                                    let ret = sched_setscheduler(0, SCHED_OTHER, &param);
+                                    if ret != 0 {
+                                        return Err(std::io::Error::last_os_error());
+                                    }
+                                    Ok(())
+                                })
+                                .spawn()
+                                .and_then(|mut child| {
+                                    notify_python();
+                                    child.wait()?;
+                                    Ok(())
+                                });
+                        });
+                    }
+
+                    let start = Instant::now();
+                    let mut client_recv = start.duration_since(read_user_zero()).as_nanos() as u64;
+
+                    if let Some(event) = wait_for_event(seq, MessageType::Calc, 1) {
+                        client_recv = event.timestamp - get_kernel_zero();
+                    }
+
+                    let encoded = encode_message(
+                        MessageType::Calc,
+                        seq,
+                        client_queue_time,
+                        client_recv as u128,
+                        client_sent_time,
+                        y,
+                        0.0,
+                        0,
+                    )?;
+                    socket.send(&encoded)?;
+                    increment_message_count();
+
+                    let mut client_sent_time =
+                        Instant::now().duration_since(read_user_zero()).as_nanos() as u128;
+
+                    if let Some(event) = wait_for_event(seq, MessageType::Calc, 2) {
+                        client_sent_time = (event.timestamp - get_kernel_zero()) as u128;
+                    }
+
+                    let duration_queue = start.elapsed();
+
+                    let queue_event = wait_for_queue_event(client_sent_time as u64);
+                    if let Some(evt) = queue_event {
+                        client_queue_time = (evt.timestamp - get_kernel_zero()) as u128;
+                    }
+
+                    let duration = start.elapsed();
+                    if duration.as_millis() > 2 {
+                        println!("⚠️ Calc function took {:.4?} ms", duration);
+                        println!(
+                            " ^z   ^o Calc function without queue took {:.4?} ms",
+                            duration_queue
+                        );
+                    }
+                    if seq == u64::MAX {
+                        break;
+                    }
+                }
+                Err(_) => {
+                    eprintln!("⚠️ Unknown message type: {}", msg.msg_type);
+                }
             }
+        }
+    }
     Ok(())
 }

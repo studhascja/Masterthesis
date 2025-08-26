@@ -1,9 +1,20 @@
+use anyhow::Result;
+use bytemuck::{bytes_of, from_bytes, Pod, Zeroable};
+use libbpf_rs::skel::{OpenSkel, Skel, SkelBuilder};
+use libbpf_rs::RingBufferBuilder;
+use libc::{
+    pthread_self, pthread_setschedparam, sched_param, sched_setscheduler, SCHED_OTHER, SCHED_RR,
+};
+use once_cell::sync::Lazy;
+use serde::{Deserialize, Serialize};
 use std::{
+    collections::VecDeque,
     convert::TryFrom,
     fs::OpenOptions,
     io::{Read, Write},
-    mem::{MaybeUninit},
+    mem::MaybeUninit,
     net::TcpStream,
+    os::unix::process::CommandExt,
     process::{self, Command, Stdio},
     sync::{
         atomic::{AtomicBool, Ordering},
@@ -11,16 +22,7 @@ use std::{
     },
     thread,
     time::{Duration, Instant},
-    collections::VecDeque,
-    os::unix::process::CommandExt
 };
-use anyhow::Result;
-use bytemuck::{bytes_of, from_bytes, Pod, Zeroable};
-use libbpf_rs::RingBufferBuilder;
-use libbpf_rs::skel::{OpenSkel, Skel, SkelBuilder};
-use once_cell::sync::Lazy;
-use serde::{Deserialize, Serialize};
-use libc::{sched_param, pthread_setschedparam, pthread_self, SCHED_OTHER, SCHED_RR, sched_setscheduler};
 
 include!("bpf/monitore.skel.rs");
 
@@ -167,12 +169,13 @@ fn update_user_zero() {
     measure_instant();
 }
 
-/*
+
 fn read_user_zero() -> Instant {
     *USER_ZERO.lock().unwrap()
 }
-*/
-fn wait_for_event(seq: u64, msg_type: MessageType, event_type: u8) -> Event {
+
+fn wait_for_event(seq: u64, msg_type: MessageType, event_type: u8) -> Option<Event> {
+    let start = Instant::now();
     let queue = CURRENT_EVENT
         .get()
         .expect("CURRENT_EVENT not initialized")
@@ -180,12 +183,15 @@ fn wait_for_event(seq: u64, msg_type: MessageType, event_type: u8) -> Event {
 
     loop {
         {
+            if start.elapsed() > Duration::from_millis(2) {
+                return None;
+            }
             let mut queue_lock = queue.lock().unwrap();
             while let Some(event) = queue_lock.pop_front() {
-                 let Ok(t) = MessageType::try_from(event.data.msg_type);
-                    if t == msg_type && event.data.seq == seq && event.event_type == event_type {
-                        return event;
-                    }
+                let Ok(t) = MessageType::try_from(event.data.msg_type);
+                if t == msg_type && event.data.seq == seq && event.event_type == event_type {
+                    return Some(event);
+                }
             }
         }
         thread::sleep(Duration::from_nanos(5));
@@ -204,10 +210,8 @@ fn wait_for_queue_event(timestamp: u64) -> Option<Event> {
     for i in 1..queue_lock.len() {
         let idx = queue_lock.len() - i;
         let event = &queue_lock[idx];
-//	println!("Queue: {} Count: {}", queue_lock.len(), count);
-        if queue_lock.len() >= count - 2
-            &&(event.timestamp - get_kernel_zero()) < timestamp
-        {
+        //	println!("Queue: {} Count: {}", queue_lock.len(), count);
+        if queue_lock.len() >= count - 2 && (event.timestamp - get_kernel_zero()) < timestamp {
             return Some(event.clone());
         }
 
@@ -311,17 +315,20 @@ fn main() -> Result<()> {
                         }
                         Ok(MessageType::NTP) => {
                             update_user_zero();
-                            let encoded = encode_message(MessageType::NTP, msg.seq, 0, 0, 0, 0.0, 0.0, 0)?;
+                            let encoded =
+                                encode_message(MessageType::NTP, msg.seq, 0, 0, 0, 0.0, 0.0, 0)?;
                             stream.write_all(&encoded)?;
                             increment_message_count();
                         }
                         Ok(MessageType::NtpResult) => {
                             let seq = msg.seq;
-                            let event = wait_for_event(seq, MessageType::NtpResult, 1);
-			    let time = event.timestamp;
-			    let kernel = get_kernel_zero();
-                          //  println!("Timestamp: {}, Kernel {}", time, kernel);
-			    let client_recv = event.timestamp - get_kernel_zero();
+                            let mut client_recv =
+                                Instant::now().duration_since(read_user_zero()).as_nanos() as u64;
+
+                            if let Some(event) = wait_for_event(seq, MessageType::NtpResult, 1) {
+                                client_recv = event.timestamp - get_kernel_zero();
+                            }
+                            let kernel = get_kernel_zero();
 
                             //let duration = Instant::now().duration_since(read_user_zero());
                             let encoded = encode_message(
@@ -337,18 +344,23 @@ fn main() -> Result<()> {
                             stream.write_all(&encoded)?;
                             increment_message_count();
 
-                            let send_event = wait_for_event(seq, MessageType::NtpResult, 2);
-                            client_sent_time = (send_event.timestamp - get_kernel_zero()) as u128;
-			//    println!("durchgekommen");
+                            client_sent_time =
+                                Instant::now().duration_since(read_user_zero()).as_nanos() as u128;
+
+                            if let Some(event) = wait_for_event(seq, MessageType::NtpResult, 2) {
+                                client_sent_time = (event.timestamp - get_kernel_zero()) as u128;
+                            }
+                            //    println!("durchgekommen");
                         }
                         Ok(MessageType::PTP) => {
                             update_user_zero();
-                            let encoded = encode_message(MessageType::PTP, msg.seq, 0, 0, 0, 0.0, 0.0, 0)?;
+                            let encoded =
+                                encode_message(MessageType::PTP, msg.seq, 0, 0, 0, 0.0, 0.0, 0)?;
                             stream.write_all(&encoded)?;
                             increment_message_count();
                         }
                         Ok(MessageType::PtpResult) => {
-                           _difference += msg.i_val;
+                            _difference += msg.i_val;
                         }
                         Ok(MessageType::Calc) => {
                             let (theta, radius) = (msg.first_f64, msg.second_f64);
@@ -360,7 +372,17 @@ fn main() -> Result<()> {
                                 thread::spawn(|| {
                                     let mut command = Command::new("iperf3");
                                     let _ = command
-                                        .args(["-c", "192.168.1.1", "-u", "-b", "15M", "-t", "12", "-p", "5202"])
+                                        .args([
+                                            "-c",
+                                            "192.168.1.1",
+                                            "-u",
+                                            "-b",
+                                            "15M",
+                                            "-t",
+                                            "12",
+                                            "-p",
+                                            "5202",
+                                        ])
                                         .stderr(Stdio::piped())
                                         .stdout(Stdio::piped())
                                         .pre_exec(|| {
@@ -381,8 +403,12 @@ fn main() -> Result<()> {
                             }
 
                             let start = Instant::now();
-                            let recv_event = wait_for_event(seq, MessageType::Calc, 1);
-                            let client_recv = recv_event.timestamp - get_kernel_zero();
+                            let mut client_recv =
+                                start.duration_since(read_user_zero()).as_nanos() as u64;
+
+                            if let Some(event) = wait_for_event(seq, MessageType::Calc, 1) {
+                                client_recv = event.timestamp - get_kernel_zero();
+                            }
 
                             let encoded = encode_message(
                                 MessageType::Calc,
@@ -397,8 +423,12 @@ fn main() -> Result<()> {
                             stream.write_all(&encoded)?;
                             increment_message_count();
 
-                            let send_event = wait_for_event(seq, MessageType::Calc, 2);
-                            client_sent_time = (send_event.timestamp - get_kernel_zero()) as u128;
+                            let mut client_sent_time =
+                                Instant::now().duration_since(read_user_zero()).as_nanos() as u128;
+
+                            if let Some(event) = wait_for_event(seq, MessageType::Calc, 2) {
+                                client_sent_time = (event.timestamp - get_kernel_zero()) as u128;
+                            }
 
                             let queue_event = wait_for_queue_event(client_sent_time as u64);
                             if let Some(evt) = queue_event {

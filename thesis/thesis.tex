@@ -48,7 +48,7 @@
 \usepackage{ellipsis}  % Korrigiert den Weißraum um Auslassungspunkte
 \usepackage{microtype}  % optischer Randausgleich etc.
 \usepackage{lmodern}
-
+\usepackage[dvipsnames]{xcolor}
 \usepackage{xcolor}         % z.B. für schattierte Boxen
 \usepackage{framed}			% shaded Umgebung
 \definecolor{shadecolor}{gray}{.85}%
@@ -74,7 +74,7 @@
 \newfloatcommand{tcapside}{table}[\capbeside][\FBwidth]
 \newcommand{\circnum}[2][fill=yellow!20,draw=orange,thick,text=black]{%
   \tikz[baseline=(char.base)]{
-    \node[shape=circle,inner sep=2pt,#1] (char) {\textbf{#2}};
+    \node[shape=circle,inner sep=1pt,#1] (char) {\textbf{#2}};
   }%
 }
 % Einstellung für Bezeichnung des Quellcode-Verzeichnises

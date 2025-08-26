@@ -238,6 +238,17 @@ year={2020}
   note         = {Zugriff am 19. August 2025}
 }
 
+@ARTICLE{5392601,
+  author={Rabin, M. O. and Scott, D.},
+  journal={IBM Journal of Research and Development}, 
+  title={Finite Automata and Their Decision Problems}, 
+  year={1959},
+  volume={3},
+  number={2},
+  pages={114-125},
+  keywords={},
+  doi={10.1147/rd.32.0114}}
+
 @misc{USDT,
   author       = {Matt Fleming},
   title        = {Using user-space tracepoints with BPF},
@@ -346,6 +357,43 @@ title = {Ptrace, Utrace, Uprobes: Lightweight, Dynamic Tracing of User Apps}
       url={https://arxiv.org/abs/2311.07923}, 
 }
 
+@inproceedings{10.1145/3672197.3673430,
+author = {Liu, Chang and Tak, Byungchul and Wang, Long},
+title = {Understanding Performance of eBPF Maps},
+year = {2024},
+isbn = {9798400707124},
+publisher = {Association for Computing Machinery},
+address = {New York, NY, USA},
+url = {https://doi.org/10.1145/3672197.3673430},
+doi = {10.1145/3672197.3673430},
+abstract = {The Linux community has witnessed the rapid development of eBPF technology that allows users to load custom programs into the Linux kernel to extend its capabilities. A key feature that makes eBPF powerful is eBPF maps, which provide data storage and communication capabilities for eBPF programs. However, despite being widely used in eBPF programs, the performance of eBPF maps has received little attention. To understand the performance characteristics of eBPF maps, we conduct a comprehensive benchmark on them. The benchmark results demonstrate the access overhead of different types of eBPF maps and reveal the impact of various factors on the access overhead. By analyzing the benchmark results, we derive some implications for eBPF users to use eBPF maps more efficiently.},
+booktitle = {Proceedings of the ACM SIGCOMM 2024 Workshop on EBPF and Kernel Extensions},
+pages = {9–15},
+numpages = {7},
+keywords = {eBPF, eBPF map, performance benchmark},
+location = {Sydney, NSW, Australia},
+series = {eBPF '24}
+}
+
+@misc{skeleton,
+     title={Struct SkeletonBuilder},
+     url={https://docs.rs/libbpf-cargo/latest/libbpf_cargo/struct.SkeletonBuilder.html},
+}
+
+@misc{ring-buffer,
+     title={Struct RingBufferBuilder},
+     url={https://docs.rs/libbpf-rs/latest/libbpf_rs/struct.RingBufferBuilder.html},
+}
+
+@misc{rb,
+     title={Struct RingBuffer},
+     url={https://docs.rs/libbpf-rs/latest/libbpf_rs/struct.RingBuffer.html#method.poll},
+}
+
+@misc{build_script,
+     title={Build Scripts},
+     url={https://doc.rust-lang.org/cargo/reference/build-scripts.html},
+}
 @misc{bpftime,
       title={bpftime: Userspace eBPF runtime for Observability, Network, GPU \& General extensions Framework}, 
       author={Yusheng Zheng and Tong Yu and Yiwei Yang and Yanpeng Hu and Xiaozheng Lai and Andrew Quinn},

@@ -272,10 +272,14 @@ fn wait_for_queue_event(timestamp: u64) -> Option<Event> {
     return None;
 }
 
-fn wait_for_event(number: u64, msg_t: MessageType, event_t: u8) -> Event {
+fn wait_for_event(number: u64, msg_t: MessageType, event_t: u8) -> Option<Event> {
+    let start = Instant::now();
     let queue_arc = CURRENT_EVENT.get().expect("CURRENT_EVENT not initialized");
     loop {
         {
+            if start.elapsed() > Duration::from_millis(2) {
+                return None;
+            }
             let mut queue = queue_arc.lock().unwrap();
             while let Some(evt) = queue.pop_front() {
                 let msg_type = MessageType::try_from(evt.data.msg_type).unwrap();
@@ -285,7 +289,7 @@ fn wait_for_event(number: u64, msg_t: MessageType, event_t: u8) -> Event {
                 //		    println!("Number: {}, Actual: {}", number, seq);
                 //		    println!("Event: {}, Actual: {}", event_t, even);
                 if msg_type == msg_t && evt.data.seq == number && evt.event_type == event_t {
-                    return evt;
+                    return Some(evt);
                 }
             }
         }
@@ -359,9 +363,11 @@ fn ntp_phase(context: &SetupContext) -> Result<SetupContext> {
                 Ok(n) if n > 0 => {
                     let msg: Message = *bytemuck::from_bytes::<Message>(&buffer);
                     let number = msg.seq;
-                    let event_snapshot = wait_for_event(number, MessageType::NTP, 1);
-
-                    let end_time = event_snapshot.timestamp - get_kernel_zero();
+                    let mut end_time =
+                        Instant::now().duration_since(read_user_zero()).as_nanos() as u64;
+                    if let Some(event) = wait_for_event(number, MessageType::NTP, 1) {
+                        end_time = event.timestamp - get_kernel_zero();
+                    }
 
                     needed_time = end_time as u128 - elapsed_start_time.as_nanos();
                     /*
@@ -515,22 +521,28 @@ fn latency_test_phase(context: &SetupContext) -> Result<SetupContext> {
                 ));
             }
             increment_message_count();
-            let event_snapshot_sending = wait_for_event(i, MessageType::NtpResult, 2);
-            let server_kernel_sent = event_snapshot_sending.timestamp - get_kernel_zero();
+            let mut server_kernel_sent =
+                Instant::now().duration_since(read_user_zero()).as_nanos() as u64;
+            if let Some(event) = wait_for_event(i, MessageType::NtpResult, 2) {
+                server_kernel_sent = event.timestamp - get_kernel_zero();
+            }
 
             match stream.read(&mut buffer) {
                 Ok(n) if n > 0 => {
-                    let end_time = Instant::now();
+                    let mut server_arrival_kernel =
+                        Instant::now().duration_since(read_user_zero()).as_nanos() as u64;
                     let msg: Message = *bytemuck::from_bytes::<Message>(&buffer);
                     let number = msg.seq;
-                    let event_snapshot = wait_for_event(number, MessageType::NtpResult, 1);
-                    let server_arrival = end_time.duration_since(read_user_zero());
-                    let server_arrival_kernel = event_snapshot.timestamp - get_kernel_zero();
 
+                    let server_arrival = Instant::now().duration_since(read_user_zero()).as_nanos();
+
+                    if let Some(event) = wait_for_event(number, MessageType::NtpResult, 1) {
+                        server_arrival_kernel = event.timestamp - get_kernel_zero();
+                    }
                     let (server_sent, client_arrival, client_sent) =
                         (msg.first_u128, msg.second_u128, msg.timestamp);
                     if i < test_mesg_count {
-                        timestamps[index].server_arrival = server_arrival.as_nanos();
+                        timestamps[index].server_arrival = server_arrival;
                         timestamps[index].server_arrival_kernel = server_arrival_kernel as u128;
                         timestamps[index].server_sent = server_sent;
                         timestamps[index].server_kernel_sent = server_kernel_sent as u128;
@@ -629,7 +641,7 @@ fn calculation_phase(context: &SetupContext) -> Result<SetupContext> {
             let x = RADIUS * theta.cos();
             let calc_send_time = Instant::now();
             let calc_send_elapsed = calc_send_time.duration_since(read_user_zero());
-
+            //println!("Calc {}", i);
             let encoded_msg = encode_message(MessageType::Calc, i, 0, 0, 0, theta, RADIUS, 0)?;
             if let Err(e) = stream.write_all(&encoded_msg) {
                 eprintln!("Error while sending: {}", e);
@@ -643,8 +655,12 @@ fn calculation_phase(context: &SetupContext) -> Result<SetupContext> {
             }
             increment_message_count();
 
-            let event_snapshot_sending = wait_for_event(i, MessageType::Calc, 2);
-            let server_sent_kernel = event_snapshot_sending.timestamp - get_kernel_zero();
+            let mut server_sent_kernel =
+                Instant::now().duration_since(read_user_zero()).as_nanos() as u64;
+
+            if let Some(event) = wait_for_event(i, MessageType::Calc, 2) {
+                server_sent_kernel = event.timestamp - get_kernel_zero();
+            }
 
             let event_snapshot_queue = wait_for_queue_event(server_sent_kernel);
             let server_queue = event_snapshot_queue.unwrap().timestamp - get_kernel_zero();
@@ -657,8 +673,12 @@ fn calculation_phase(context: &SetupContext) -> Result<SetupContext> {
                     let msg: Message = *bytemuck::from_bytes::<Message>(&buffer);
 
                     let number = msg.seq;
-                    let event_snapshot = wait_for_event(number, MessageType::Calc, 1);
-                    let server_arrival_kernel = event_snapshot.timestamp - get_kernel_zero();
+                    let mut server_arrival_kernel =
+                        Instant::now().duration_since(read_user_zero()).as_nanos() as u64;
+
+                    if let Some(event) = wait_for_event(number, MessageType::Calc, 1) {
+                        server_arrival_kernel = event.timestamp - get_kernel_zero();
+                    }
 
                     calc_send_duration = calc_end_time.as_nanos() - calc_send_elapsed.as_nanos();
 
@@ -933,7 +953,7 @@ fn main() -> Result<(), libbpf_rs::Error> {
 
     for stream in listener.incoming() {
         if !running.load(Ordering::SeqCst) {
-            break; 
+            break;
         }
         match stream {
             Ok(stream) => {
@@ -941,8 +961,8 @@ fn main() -> Result<(), libbpf_rs::Error> {
                 let frequency = Arc::clone(&frequency);
                 let bandwith = Arc::clone(&bandwith);
                 let qos = Arc::clone(&qos);
-                 let running_thread = Arc::clone(&running);
-		let handle = thread::spawn(move || {
+                let running_thread = Arc::clone(&running);
+                let handle = thread::spawn(move || {
                     let context = SetupContext {
                         stream,
                         standard,
@@ -959,12 +979,12 @@ fn main() -> Result<(), libbpf_rs::Error> {
                     };
                     _ = run_state_machine(context);
                 });
-            handle.join();
-	    }
+                handle.join();
+            }
             Err(e) => eprintln!("Verbindungsfehler: {}", e),
         }
-	println!("test");
-	break;
+        println!("test");
+        break;
     }
     Ok(())
 }
