@@ -26,7 +26,8 @@ use std::{
 include!("bpf/monitore.skel.rs");
 
 // Global state
-static CURRENT_EVENT: OnceLock<Arc<Mutex<VecDeque<Event>>>> = OnceLock::new();
+static CURRENT_EVENT_REC: OnceLock<Arc<Mutex<VecDeque<Event>>>> = OnceLock::new();
+static CURRENT_EVENT_SEND: OnceLock<Arc<Mutex<VecDeque<Event>>>> = OnceLock::new();
 static CURRENT_QUEUE_EVENT: OnceLock<Arc<Mutex<VecDeque<Event>>>> = OnceLock::new();
 static MESSAGE_COUNT: Lazy<Mutex<u64>> = Lazy::new(|| Mutex::new(1));
 static USER_ZERO: Lazy<Mutex<Instant>> = Lazy::new(|| Mutex::new(Instant::now()));
@@ -202,24 +203,34 @@ fn read_user_zero() -> Instant {
 
 fn wait_for_event(seq: u64, msg_type: MessageType, event_type: u8) -> Option<Event> {
     let start = Instant::now();
-    let queue = CURRENT_EVENT
-        .get()
-        .expect("CURRENT_EVENT not initialized")
-        .clone();
-
+    let queue;
+    if event_type == 1 {
+        queue = CURRENT_EVENT_REC
+            .get()
+            .expect("CURRENT_EVENT not initialized")
+            .clone();
+    } else {
+        queue = CURRENT_EVENT_SEND
+            .get()
+            .expect("CURRENT_EVENT not initialized")
+            .clone();
+    }
     loop {
-        {
-            if start.elapsed() > Duration::from_millis(2) {
-                return None;
-            }
-            let mut queue_lock = queue.lock().unwrap();
-            while let Some(event) = queue_lock.pop_front() {
-                let Ok(t) = MessageType::try_from(event.data.msg_type);
-                if t == msg_type && event.data.seq == seq && event.event_type == event_type {
-                    return Some(event);
-                }
-            }
+        if start.elapsed() > Duration::from_millis(10) {
+            return None;
         }
+        let mut queue_lock = queue.lock().unwrap();
+        //println!("Message Queue length: {}", queue_lock.len());
+        if let Some(pos) = queue_lock.iter().position(|event| {
+            let Ok(t) = MessageType::try_from(event.data.msg_type);
+            t == msg_type && event.data.seq == seq && event.event_type == event_type
+        }) {
+            let result = Some(queue_lock.remove(pos).unwrap());
+            queue_lock.clear();
+            return result;
+        }
+
+        drop(queue_lock);
         thread::sleep(Duration::from_nanos(5));
     }
 }
@@ -232,28 +243,34 @@ fn wait_for_queue_event(timestamp: u64) -> Option<Event> {
 
     let count = *MESSAGE_COUNT.lock().unwrap() as usize;
 
-    let queue_lock = queue.lock().unwrap();
-    for i in 1..queue_lock.len() {
+    let mut queue_lock = queue.lock().unwrap();
+    println!("Queue Queue length: {}", queue_lock.len());
+ for i in 1..queue_lock.len() {
         let idx = queue_lock.len() - i;
         let event = &queue_lock[idx];
-        if queue_lock.len() >= count.saturating_sub(3)
-            && (event.timestamp - get_kernel_zero()) < timestamp
-        {
-            return Some(event.clone());
+        if (event.timestamp - get_kernel_zero()) < timestamp
+        {  
+            let result = Some(event.clone());
+            if queue_lock.len() > 5 {
+                queue_lock.clear();
+            }
+            return result;
         }
 
         thread::sleep(Duration::from_nanos(5));
     }
-
+println!("No matching queue event found. {} {}", queue_lock.len(), count);
     queue_lock.back().cloned()
 }
 
 fn main() -> Result<()> {
     set_rt_priority(99);
     let mut _difference = 0;
-    let event_queue = Arc::new(Mutex::new(VecDeque::new()));
+    let event_queue_rec = Arc::new(Mutex::new(VecDeque::new()));
+    let event_queue_send = Arc::new(Mutex::new(VecDeque::new()));
     let queue_event_queue = Arc::new(Mutex::new(VecDeque::new()));
-    CURRENT_EVENT.set(event_queue.clone()).unwrap();
+    CURRENT_EVENT_REC.set(event_queue_rec.clone()).unwrap();
+    CURRENT_EVENT_SEND.set(event_queue_send.clone()).unwrap();
     CURRENT_QUEUE_EVENT.set(queue_event_queue.clone()).unwrap();
 
     // Initialize and load BPF skeleton
@@ -264,7 +281,8 @@ fn main() -> Result<()> {
     skel.attach()?;
     println!("✅ eBPF program attached and running.");
 
-    let event_ref = CURRENT_EVENT.get().unwrap().clone();
+    let event_ref_rec = CURRENT_EVENT_REC.get().unwrap().clone();
+    let event_ref_send = CURRENT_EVENT_SEND.get().unwrap().clone();
     let queue_event_ref = CURRENT_QUEUE_EVENT.get().unwrap().clone();
     let running = Arc::new(AtomicBool::new(true));
     let maps = skel.maps();
@@ -284,13 +302,20 @@ fn main() -> Result<()> {
                 let timestamp = event.timestamp;
                 set_kernel_zero(timestamp);
             }
+            1 => {
+                let mut queue = event_ref_rec.lock().unwrap();
+                queue.push_back(event);
+            }
+            2 => {
+                let mut queue = event_ref_send.lock().unwrap();
+                queue.push_back(event);
+            }
             3 => {
                 let mut queue = queue_event_ref.lock().unwrap();
                 queue.push_back(event);
             }
             _ => {
-                let mut queue = event_ref.lock().unwrap();
-                queue.push_back(event);
+                eprintln!("⚠️ Unknown event type: {}", event.event_type);
             }
         }
 
@@ -321,8 +346,8 @@ fn main() -> Result<()> {
 
     let mut buf = [0u8; std::mem::size_of::<Message>()];
     let mut client_sent_time = 0u128;
-    let mut client_queue_time = 0u128;
-
+    let mut client_sent_time_calc = 0u128;
+    let mut client_queue_time_calc = 0u128;
     loop {
         let size = socket.recv(&mut buf)?;
         if size == 0 {
@@ -365,7 +390,7 @@ fn main() -> Result<()> {
                     )?;
                     socket.send(&encoded)?;
                     increment_message_count();
-                        client_sent_time =
+                    client_sent_time =
                         Instant::now().duration_since(read_user_zero()).as_nanos() as u128;
 
                     if let Some(event) = wait_for_event(seq, MessageType::NtpResult, 2) {
@@ -427,13 +452,13 @@ fn main() -> Result<()> {
                     if let Some(event) = wait_for_event(seq, MessageType::Calc, 1) {
                         client_recv = event.timestamp - get_kernel_zero();
                     }
-
+		    println!("Client Sent Time Calc: {}", client_sent_time_calc);
                     let encoded = encode_message(
                         MessageType::Calc,
                         seq,
-                        client_queue_time,
+                        client_queue_time_calc,
                         client_recv as u128,
-                        client_sent_time,
+                        client_sent_time_calc,
                         y,
                         0.0,
                         0,
@@ -441,18 +466,20 @@ fn main() -> Result<()> {
                     socket.send(&encoded)?;
                     increment_message_count();
 
-                    let mut client_sent_time =
+                    client_sent_time_calc =
                         Instant::now().duration_since(read_user_zero()).as_nanos() as u128;
 
                     if let Some(event) = wait_for_event(seq, MessageType::Calc, 2) {
-                        client_sent_time = (event.timestamp - get_kernel_zero()) as u128;
+                        client_sent_time_calc = (event.timestamp - get_kernel_zero()) as u128;
+                    }    else{
+                        println!("No matching send event found for seq {}", seq);
                     }
 
                     let duration_queue = start.elapsed();
 
-                    let queue_event = wait_for_queue_event(client_sent_time as u64);
+                    let queue_event = wait_for_queue_event(client_sent_time_calc as u64);
                     if let Some(evt) = queue_event {
-                        client_queue_time = (evt.timestamp - get_kernel_zero()) as u128;
+                        client_queue_time_calc = (evt.timestamp - get_kernel_zero()) as u128;
                     }
 
                     let duration = start.elapsed();

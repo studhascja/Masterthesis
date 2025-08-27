@@ -2,6 +2,7 @@
 #include <bpf/bpf_helpers.h>
 #include <bpf/bpf_core_read.h>
 #include <bpf/bpf_tracing.h>
+#include <bpf/usdt.bpf.h>
 
 char __license[] SEC("license") = "GPL";
 
@@ -58,6 +59,7 @@ struct {
 SEC("uretprobe//code/client_udp/target/debug/client_udp:measure_instant")
 int trace_measure_instant(struct pt_regs *ctx) {
     __u64 timestamp = bpf_ktime_get_ns();
+    bpf_printk("Timestamp: %d", timestamp);
     struct Event *e = bpf_ringbuf_reserve(&events, sizeof(*e), 0);
         if (!e) {
         return 0;
@@ -70,6 +72,7 @@ int trace_measure_instant(struct pt_regs *ctx) {
     bpf_ringbuf_submit(e, 0);
     return 0;
 }
+
 
 SEC("tracepoint/skb/consume_skb")
 int handle_netif_receive_skb(struct trace_event_raw_consume_skb *ctx) {
