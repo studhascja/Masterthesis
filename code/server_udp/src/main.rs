@@ -129,7 +129,7 @@ fn encode_message(
     Ok(encoded.to_vec())
 }
 
-#[repr(C, packed)]
+#[repr(C)]
 #[derive(Copy, Clone, Debug, Zeroable, Pod)]
 struct BpfData {
     msg_type: u8,
@@ -137,12 +137,14 @@ struct BpfData {
     seq: u64,
 }
 
-#[repr(C, packed)]
+#[repr(C)]
 #[derive(Copy, Clone, Debug, Zeroable, Pod)]
 struct Event {
     event_type: u8,
     _padding: [u8; 7],
     timestamp: u64,
+    pid: u32,
+    _padding_pid: [u8; 4],
     data: BpfData,
 }
 
@@ -272,29 +274,27 @@ fn wait_for_queue_event(timestamp: u64) -> Option<Event> {
     return None;
 }
 
-fn wait_for_event(number: u64, msg_t: MessageType, event_t: u8) -> Option<Event> {
+fn wait_for_event(seq: u64, msg_type: MessageType, event_type: u8) -> Option<Event> {
     let start = Instant::now();
-    let queue_arc = CURRENT_EVENT.get().expect("CURRENT_EVENT not initialized");
+    let queue = CURRENT_EVENT
+        .get()
+        .expect("CURRENT_EVENT not initialized")
+        .clone();
+
     loop {
-        {
-            if start.elapsed() > Duration::from_millis(2) {
+            if start.elapsed() > Duration::from_millis(10) {
                 return None;
             }
-            let mut queue = queue_arc.lock().unwrap();
-            while let Some(evt) = queue.pop_front() {
-                // println!("{:?}", evt.data.msg_type);
-                match MessageType::try_from(evt.data.msg_type) {
-                    Ok(msg_type) => {
-                        if msg_type == msg_t && evt.data.seq == number && evt.event_type == event_t
-                        {
-                            return Some(evt);
-                        }
-                    }
-                    _ => (),
-                }
-            }
+        let mut queue_lock = queue.lock().unwrap();
+        if let Some(pos) = queue_lock.iter().position(|event| {
+            let Ok(t) = MessageType::try_from(event.data.msg_type);
+            t == msg_type && event.data.seq == seq && event.event_type == event_type
+        }) {
+            return Some(queue_lock.remove(pos).unwrap());
         }
-        thread::sleep(Duration::from_nanos(50));
+
+        drop(queue_lock);
+        thread::sleep(Duration::from_nanos(5));
     }
 }
 
@@ -971,7 +971,7 @@ fn main() -> anyhow::Result<()> {
     println!("Skelett geladen.");
 
     skel.attach()?;
-
+   
     println!("eBPF-Programm l  uft  ^` ");
     let r = context.running.clone();
     let maps = skel.maps();
@@ -986,9 +986,9 @@ fn main() -> anyhow::Result<()> {
             );
             return 0;
         }
-
+	let my_pid = std::process::id() as u32;
         let event = bytemuck::from_bytes::<Event>(data);
-        if event.event_type == 0 {
+        if event.event_type == 0 && event.pid == my_pid {
             set_kernel_zero(event.timestamp);
         }
         /*
@@ -1009,13 +1009,15 @@ fn main() -> anyhow::Result<()> {
                                 Duration::from_nanos(kernel_diff),
                 );
         } */
-        else if event.event_type == 3 {
+        else if event.event_type == 3 && event.pid == my_pid{
             let mut queue = queue_event_ref.lock().unwrap();
             queue.push_back(*event);
-        } else {
+        } else if event.pid == my_pid {
             let mut queue = event_ref.lock().unwrap();
             queue.push_back(*event);
-        }
+        } else {
+		println!("andere pid");
+	}
         0 // R  ckgabewert: 0 bedeutet "OK"
     })?;
     let ringbuf = ringbuf_builder.build()?;
@@ -1026,7 +1028,7 @@ fn main() -> anyhow::Result<()> {
             ringbuf.poll(Duration::from_millis(100)).unwrap();
         }
     });
-
+    println!("Kerneltime: {}", get_kernel_zero());
     run_state_machine(context)?;
     Ok(())
 }
