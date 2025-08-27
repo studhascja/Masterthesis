@@ -1511,21 +1511,75 @@ enum MessageType {
 In the \textit{Start} state, the server waits until it receives a message of type \texttt{Start}.  
 Subsequently, it transitions into the next derivephase of the protocol.  
 
-Nach dem zustand Start folgen die drei Zustände \ac{NTP}, \ac{PTP} und Check.
-Diese dienen alle drei der Zeitsynchronisierung.
-Dabei wird nicht, wie die namen vermuten lassen, \ac{NTP} und \ac{PTP} angewendet, sondern die Namen beschreiben lediglich die Funktion der Protokolle.
-Somit wird in der \ac{NTP} Phase eine grobe Zeitsynchronisierung zwischen Client und Server durchgeführt.
-Wohingegen in der \ac{PTP} Phase eine feinere Synchronisierung erfolgt.
+After the state \emph{Start}, the three states \ac{NTP}, \ac{PTP}, and \emph{Check} follow.  
+All three states serve the purpose of time synchronization.  
+Contrary to what their names suggest, \ac{NTP} and \ac{PTP} are not directly applied.  
+Instead, the names merely describe the functionality of the corresponding synchronization protocols.  
+Accordingly, in the \ac{NTP} phase a coarse synchronization between client and server is performed.  
+In contrast, in the \ac{PTP} phase a finer synchronization is carried out.  
 
-Um zu verstehen, warum eine Synchronisierung erforderlich ist, wird zunächst auf die genaue Umsetzung des Monitoring eingegangen.
+To understand why synchronization is necessary, the exact implementation of the monitoring process is first considered.  
+The objective of the monitoring is to represent, as precisely as possible, the duration required by the program in specific parts of the data transmission process.  
+These include the program execution itself, the network stack, and the transmission time within the medium.  
+The schematic representation of the monitoring process is shown in Figure~\ref{fig:tx}.  
 
-\begin{figure}[ht]
+The figure illustrates both the server and the client.  
+Furthermore, the application is depicted as a simplified part of the network stack within the kernel space as well as on the hardware level.  
+The execution flow of the application, which was described in Section~\ref{subsec:appl}, is also included in the figure.  
+Measurement points are highlighted at specific positions, and the resulting time intervals are illustrated on the left-hand side of Figure~\ref{fig:tx}.  
+A distinction is made between eight intervals, denoted as $t_1$ through $t_8$.  
+Im folgenden wird darauf eingegangen, wie diese Intervalle gemessen werden und an wie sich diese zusammensetzen.
+Dabei wird davon ausgegangen, dass die Applikation am Server beginnt.
+Die Intervalle sind außerdem mit Pfeilen in den entsprechenden Farben in Abbildung \ref{fig:tx} gekennzeichnet.
+Für die Messung werden Tracepoints verwendet, da diese, die im Kapitel \ref{subsec:monitoring} beschriebenen Vorteile bieten.
+
+\begin{figure}[H]
     \centering
      \includegraphics[width=\textwidth]{figures/TX.drawio.pdf}
-    \caption{Presentation of the temporal order of the application in the network stack.}
+    \caption{Presentation of the temporal order of the application in the network stack, leaned on \cite{tx-grafic}}
     \label{fig:tx}
 \end{figure}
 
+\begin{itemize}
+    \item Das Interval $t_1$ beginnt in der Applikation des Servers, also zum Zeitpunkt \circnum{1} in Abbildung \ref{fig:application}.
+          Es endet am Tracepoint net\_dev\_queue, welcher den Eintritt in die \ac{Qdisc} und somit in die TX-API darstellt.
+          Die TX-API ist im Detail in Kapitel \ref{subsec:linux_stack} beschrieben.
+          Somit wird in diesem Zeitintervall die Zeit gemessen, die die Applikation benötigt, um die berechnung der X-Koordinate durchzuführen und das Paket vom User-Space in den kernelspace zu befördern.
+          Dabei durchläuft das Netzwerkpaket, wie in Abbildung \ref{fig:tx} dargestellt, bereits den Transport und den Network-Layer und endet am Eintritt des Link-Layers.
+          Dieser Punkt ist sehr interessant, da besonders in der \ac{Qdisc} sich Pakete anstauen können und bei wahl eines unvorteilhaften Schedulers die \ac{Qdisc} die Echtzeitpakete verlangsamen könnte.
+          Somit ist dieser Punkt ebenfalls relevant um die Messung de \ac{Qdisc} zu ermöglichen.
+          Des weiteren beinhaltet er einen Contextwechsel, welcher, wie in Kapitel \ref{subsec:monitoring} beschrieben, eine nicht zu vernachlässigende Latenz mit sich bringt.
+    \item Das Intervall $t_2$ beginnt am Ende von $t_1$ und somit an Tracepoint net\_dev\_queue und endet am Tracepoint net\_dev\_xmit, welcher den Austritt aus der \ac{Qdisc} und somit den Eintritt in den Tx-ringbuffer des Treibers darstellt.
+          Dieser Tracepoint ist der letzte Messpunkt auf Serverseite, bevor ein Netzwerkpaket diesen verlässt.
+          Das Interval $t_2$ misst somit die Zeit, die das Paket in der \ac{Qdisc} benötigt.
+          Dies ist vor allem relevant um festzzustellen, falls es in dieser einen Stau gibt.
+          Es ist jedoch ebenfalls relevant, um den Offset zu bestimmen, den bestimmte Queueing-Strategien mit sich bringen.
+          Denn, wie von Corbet in \cite{qdisc} beschrieben bringen alleine dessen locking mechanismen einen Delay von 48 ns mit sich.
+          Er berichtet von einem durchschnittlichen Delay von 58 - 68 ns, welches durch die \ac{Qdisc} verursacht wird. 
+    \item Das Intervall $t_3$ beginnt am Ende von $t_2$ und somit am Tracepoint net\_dev\_xmit und endet, am Tracepoint consume\_skb des clients.
+          Somit umfasst dieses Intervall den zetraum, den das Paket benötigt, um von dem Tx-Ringbuffer des Servers über \ac{DMA} in die \ac{NIC} dessens zu gelangen, dort verarbeitet zu werden und über das Medium zum Client übertragen zu werden.
+          Im Client muss das Paket von der \ac{NIC} des clients empfangen werden, erneut über \ac{DMA} in den Rx-Ringbuffer des Clients geschrieben werden und von dort in den Kernelspace gelangen.
+          Sobald sich ein neues Paket im Rx-Ringbuffer befindet, wird, wie in Grafik \cite{fig:tx} dargestellt, ein Interrupt ausgelöst, welcher mittels der soft irqs net\_rc\_action die Poll Queue des Clients aktiviert.
+          Ein Device in dieser Queue wird löst den tracepoint consume\_skb aus, um das Paket aus dem Ringbuffer zu lesen.
+          Somit umfasst das Intervall $t_3$ die Zeit, die das Paket benötigt, um von dem Link-Layer des Servers, über den Physical-Layer des Servers, das Medium, den Physical Laxer des Clients in den Link-Layer des Clients zu gelangen, genauer gesagt die NAPI.
+          Dei Begriffe NAPI, Rx-Ring sind in Kapitel \ref{subsec:linux_stack} und soft irq in Kapitel \ref{subsec:real_time_kernel} genauer erklärt.
+          Dieses Intervall umfasst viele Schicht wechsel des \ac{OSI-model} und ebenfalls kritische Punkte, wie die beiden Treiber Ringbuffer, Rx un Tx- Rungbuffer, als auch die verarbeitung in den beiden \acp{NIC}.
+          In diesen Bereichen existieren jedoch keine weiteren tracepoints, um das Monitoring feingranularer zu gestalten. 
+    \item Das Intervall $t_4$ beginnt am tracepoint consume\_skb des clients und endet , sobald es die Applikation im Client erreicht hat.
+          Somit umfasst es die Zeit vom Ausgang des Link-Layers des Clients und reicht über Network-Layer und Transport-Layer in die Applikation.
+          Auch in dieser Phase ist ein Kontextwechsel von Kernel in den User-Space und ein Syscall notwendig.
+          Besonders der Contextwechsel und der Syscall können die Zeit, je nach systemauslastung variieren lassen.
+    \item Mit diesem Interval ist die Hälfte des Application Flows vorbei und die Intervalle wiederholen sich, nur diesemal von Client zum Server.
+          Somit ist Interval $t_5$ das Gegenstück zu Interval $t_1$ und beginnt in der Applikation im Client, sobald er mit der Berechnung beginnt.
+          Dieses Interval endet im Tracepoint net\_dev\_queue des clients.
+          Das Interval $t_6$ findet ebenfalls vollständig im CLient statt und reicht von net\_dev\_queue bis net\_dev\_xmit und trackt somit die Zeit von \ac{Qdisc} auf dem Client.
+          Interval $t_7$ geht von dem Tracepoint net\_dev\_xmit auf dem CLient bis zum Tracepoint consume\_skb auf dem Server.
+          Es misst somit die Zeit, die vom Link-Layer des Clients zum Link-Layer des Servers benötigt wird.
+          Mit $t_8$ wird der Kreislauf geschlossen, indem die Zeit von consume\_skb bis zur Applikation auf dem Server gemessen wird, was somit die Zeit vom Link-layer bis zur Applikation wiederspiegelt.
+          Ab diesem Punkt beginnt die Messung mit dem Intervall $t_1$ erneut.
+\end{itemize}
+
+Es ist aufgrund der hohen Anzahl an Layer,Wechsel und der Übertragungszeit im Medium im allgemeinen zu erwarten, dass die Intervalle $t_3$ und $t_7$ den größten Anteil an der gesamtzeit ahben werden.
 probes, besoners uporbes nicht echtzeitfähig (zheng)
 
 \subsection{Test Automatization}
