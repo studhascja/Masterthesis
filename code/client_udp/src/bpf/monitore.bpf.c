@@ -237,8 +237,10 @@ bpf_probe_read(&udph, sizeof(udph), udp_header);
 
 char *payload = udp_header + sizeof(struct udphdr);
 struct Message msg = {};
-bpf_probe_read(&msg, sizeof(msg), payload);     
+bpf_probe_read(&msg, sizeof(msg), payload);    
+bpf_printk("msg_type=%d seq=%llu\n", msg.msg_type, msg.seq);
 
+if (msg.msg_type < 0 || msg.msg_type > 5) return 0;
         struct Event *event;
         event = bpf_ringbuf_reserve(&events, sizeof(*event), 0);
         if (!event) return 0;
