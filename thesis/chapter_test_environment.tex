@@ -1480,6 +1480,51 @@ The \texttt{SetupContext} is a structure encompassing all data required in subse
 After its initialization, in line 31, the main program flow, managed by the \texttt{run\_state\_machine()} function, is started.  
 The setup is identical for both server and client, with the exception that the client initializes a client object to connect to the server, whereas the server sets up a \ac{TCP} server.  
 
+In the \textit{Start} state, which is illustrated in Figure~\ref{fig:state_machine} and represents the next state after setupt, the server waits until the client has established a connection and transmitted the start message.  
+
+For the communication, different message types are employed.  
+These are shown in Listing~\ref{lst:msg_types}.  
+
+The attribute \texttt{\#[repr(u8)]} specifies that the enumeration \texttt{MessageType} is represented internally as an unsigned 8-bit integer as described in \cite{repr}.  
+The attribute \texttt{\#[derive(Serialize, Deserialize, Debug, PartialEq)]}, like state in \cite{derive}, instructs the Rust compiler to automatically generate implementations for the traits \texttt{Serialize}, \texttt{Deserialize}, \texttt{Debug}, and \texttt{PartialEq}.  
+This allows instances of the enumeration to be easily serialized and deserialized for communication purposes.
+For this the crate \texttt{bytemuck} is used, which is described in \cite{bytemuck}.
+This is necessary to reduce memory allocations and to ensure the correct layout of the message structures.
+
+\begin{listing}[H]
+    \centering
+\begin{minted}[fontsize=\small, escapeinside=||, linenos]{rust}
+#[repr(u8)]
+#[derive(Serialize, Deserialize, Debug, PartialEq)]
+enum MessageType {
+    Start = 0,
+    NTP = 1,
+    NtpResult = 2,
+    PTP = 3,
+    Calc = 5,
+}
+\end{minted}
+\caption{Message Types}
+\label{lst:msg_types}
+\end{listing}
+
+In the \textit{Start} state, the server waits until it receives a message of type \texttt{Start}.  
+Subsequently, it transitions into the next derivephase of the protocol.  
+
+Nach dem zustand Start folgen die drei Zustände \ac{NTP}, \ac{PTP} und Check.
+Diese dienen alle drei der Zeitsynchronisierung.
+Dabei wird nicht, wie die namen vermuten lassen, \ac{NTP} und \ac{PTP} angewendet, sondern die Namen beschreiben lediglich die Funktion der Protokolle.
+Somit wird in der \ac{NTP} Phase eine grobe Zeitsynchronisierung zwischen Client und Server durchgeführt.
+Wohingegen in der \ac{PTP} Phase eine feinere Synchronisierung erfolgt.
+
+Um zu verstehen, warum eine Synchronisierung erforderlich ist, wird zunächst auf die genaue Umsetzung des Monitoring eingegangen.
+
+\begin{figure}[ht]
+    \centering
+     \includegraphics[width=\textwidth]{figures/TX.drawio.pdf}
+    \caption{Presentation of the temporal order of the application in the network stack.}
+    \label{fig:tx}
+\end{figure}
 
 probes, besoners uporbes nicht echtzeitfähig (zheng)
 
