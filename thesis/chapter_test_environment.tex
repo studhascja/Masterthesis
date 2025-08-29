@@ -1612,8 +1612,82 @@ Although these points are very close to each other, they may still cause measura
     \label{fig:uprobe}
 \end{figure}
 
-Wie sich der Unterschied zwischen den beiden Zeitmessungen genau zusammensetzt, wird später in diesem Kapitel beschrieben.
+The exact composition of the difference between the two time measurements will be described later in this chapter.  
+The implementation of the User- and Kernelspace synchronization is shown in Figure~\ref{fig:uprobe}.  
+For synchronization, a uretprobe is used.  
+The goal is to establish a common time base simultaneously in user space and kernel space by means of the \ac{uretprobe}.  
+This common base then allows the times measured in user and kernel space to be related to each other.  
 
+As described in Section~\ref{subsec:monitoring}, a \ac{USDT} is more suitable than a \ac{uprobe} for performance reasons.  
+Zheng et al.\ also state in \cite{zheng2023bpftimeuserspaceebpfruntime} that a \ac{uprobe} is not real-time capable and that its overhead is particularly large under high invocation frequencies.  
+Since the implementation of a \ac{USDT} via \texttt{libbpf-rs} was not successful, a \ac{uprobe} must be used.  
+However, as the synchronization is performed only once and the overhead plays only a minor role, this choice is acceptable.  
+
+The following section discusses the technical implementation of the synchronization.  
+This process is illustrated in Figure~\ref{fig:uprobe}.  
+As can be seen, a \ac{uretprobe} is used for time synchronization.  
+Two timelines are depicted, one for user space and one for kernel space.  
+The user-space timeline starts at time $t_{u0}$, while the kernel-space timeline begins at time $t_{k0}$.  
+As previously mentioned, the problem is that $t_{u0} \neq t_{k0}$.  
+Therefore, it is desirable to establish a common reference point on both timelines from which times can be measured relative to each other.  
+This is achieved by the \ac{uretprobe}.  
+
+As discussed in Section~\ref{subsec:monitoring}, the implementation of a \ac{uretprobe} requires a \ac{uprobe}.  
+The \ac{uprobe} is attached to a user-space function and is triggered upon entering this function.  
+In Figure~\ref{fig:uprobe}, the function is entered at $t_{u1}$ in user space, and via the \texttt{int3} breakpoint, control is passed to the \ac{uprobe} in kernel space, which receives control at $t_{k1}$.  
+It holds that $t_{k1} > t_{u1}$\footnote{Like stated before, these timers can not be compared, because at this point no shared time basis is available. But if they were comparable, the described statement would apply}, since the context switch to the \ac{uprobe} requires time.  
+This interval is highlighted in blue in Figure~\ref{fig:uprobe} and corresponds to $t_{k1} - t_{u1}$, which can not be determined.  
+As described in Section~\ref{subsec:monitoring}, the \ac{uprobe} only manipulates the return address in order to prepare the trampoline for the \ac{uretprobe}.  
+Thus, the \ac{uprobe} terminates at $t_{k2}$ and returns control to the user-space function.  
+The duration of the \ac{uprobe} is marked in yellow in Figure~\ref{fig:uprobe} and has the value $t_{k2} - t_{k1}$.  
+
+At $t_{u2}$, the function in user space regains control.  
+It then sets a timer using the system call \texttt{clock\_gettime()}.  
+This syscall again requires a transition into kernel space.  
+The duration of this transition is shown in green in Figure~\ref{fig:uprobe}.  
+The syscall executes in kernel space starting at $t_{k3}$ and completes at $t_{k4}$.  
+At $t_{u3}$, the user-space function regains control, and the timer is set.  
+This point is marked by a orange dot in the figure and represents the relative moment from which measurements can be taken.  
+Since the function returns at this point, the \ac{uretprobe} is triggered.  
+
+The \ac{uretprobe} again switches to kernel space.  
+This transition is slightly longer than the syscall transition and is indicated in blue, analogous to the \ac{uprobe}.  
+At $t_{k5}$, the \ac{uretprobe} receives control and, using the function \texttt{bpf\_ktime\_get\_ns()}, measures the system time in nanoseconds.  
+Thus, at $t_{k6}$, the relative program start time in kernel space is set.  
+At $t_{k7}$, the \ac{uretprobe} terminates and returns control to the user-space function, which resumes execution at $t_{u4}$.  
+
+At this point, reference values have been established in both kernel and user space that can be used for future measurements.  
+When a tracepoint such as \texttt{consume\_skb} is triggered, a timestamp can be obtained in kernel space that can be correlated with the corresponding user-space timestamp.  
+As shown in Figure~\ref{fig:uprobe}, at $t_{k8}$ the tracepoint is triggered and at $t_{k9}$ the time is measured using \texttt{bpf\_ktime\_get\_ns()}.  
+The tracepoint is exited at $t_{k10}$, and control flows through the network layers back to the application in user space, as illustrated in Figure~\ref{fig:tx}.  
+The application regains control at $t_{u6}$ and measures the time at $t_{u7}$ using \texttt{Instant::now()}.  
+The time difference $d_u$ between the program start at $t_{u3}$ and the measurement at $t_{u7}$ can thus be related to the time difference $d_k$, which is defined as the difference between the kernel-space program start $t_{k6}$ and the tracepoint entry $t_{k9}$.  
+Consequently, the time needed by $t_4$ and $t_8$ in Figure~\ref{fig:tx} can be determined as $d_u - d_k$.  
+
+It is difficult to determine the delay between the user-space time $t_{u3}$ and the kernel-space time $t_{k6}$.  
+This delay reflects the accuracy of the synchronization between user space and kernel space.  
+Zheng et al.\ report in \cite{zheng2023bpftimeuserspaceebpfruntime} that the \ac{uretprobe} introduces an overall overhead of approximately $4\,\mu$s.  
+However, since the delay does not account for the entire duration of the \ac{uretprobe}, it is expected to be significantly smaller.  
+
+To estimate this delay, measurements can be performed in user space using \texttt{Instant::now()}.  
+From this, Equation~\ref{eq:uretprobe} is derived for the delay $d_{ku}$ between user space and kernel space.  
+Accordingly, the duration $t_{uretprobe}$ of the \ac{uretprobe} can be measured as $t_{u4} - t_{u1}$.  
+By replacing the \ac{uretprobe} with a \ac{uprobe}, the execution time of the \ac{uprobe} can be determined.  
+This corresponds to the duration $t_{uprobe} = t_{u3} - t_{u1}$.  
+It must be noted that the \ac{uprobe} returns immediately and does not, unlike the \ac{uretprobe} shown in Figure~\ref{fig:uprobe}, include the timing and ring-buffer logic, as this would distort the measurement results. 
+This logic is shown later in this chapter. 
+
+\begin{equation} \label{eq:uretprobe}
+d_{ku} = \frac{1}{2} [(t_{u4} - t_{u1}) - (t_{u3} - t_{u1})]
+\end{equation} 
+
+In this way, the measurement results presented in Table~\ref{tab:timer_comparison} were obtained.  
+For each case, 100 measurements were performed in order to determine the maximum and average values of latency and jitter.  
+The table reports both the maximum and average values for $d_{ku}$ as well as for jitter, in addition to the average durations of $t_{uretprobe}$ and $t_{uprobe}$.  
+
+Furthermore, these values are provided for two different timers in Rust.  
+Specifically, the measurements were conducted using the timer \texttt{SystemTime::now()}, which, as explained earlier, is said to be unsuitableand and the timer \texttt{Instant::now()}.  
+In addition, the experiments were carried out once with real-time priority enabled and once without real-time priority.  
 
 \begin{table}[ht]
 \centering
@@ -1621,9 +1695,13 @@ Wie sich der Unterschied zwischen den beiden Zeitmessungen genau zusammensetzt, 
  \hline
 \textbf{Kind of Timer} & \textbf{SystemTime} & \textbf{SystemTime and real time priority} & \textbf{Instant} & \textbf{Instant and real time priority} \\ 
    \hline\hline
- Max Latency & 3120 ns & 2740 ns & 1950 ns & 1440 ns  \\ 
+   $t_{uretprobe}$ & 6580 ns & 5920 ns & 5120 ns & 4500 ns \\
+   \hline
+   $t_{uprobe}$ & 3940 ns & 3560 ns & 3390 ns & 3310 ns \\
+   \hline
+ $d_{ku-max}$ & 3120 ns & 2740 ns & 1950 ns & 1440 ns  \\ 
  \hline
- Avg Latency & 2640 ns & 2360 ns & 1730 ns & 1190 ns  \\ 
+  $d_{ku-avg}$ & 2640 ns & 2360 ns & 1630 ns & 1190 ns  \\ 
  \hline
  Max Jitter & 470 ns & 440 ns & 360 ns & 310 ns  \\ 
  \hline 
@@ -1634,7 +1712,24 @@ Wie sich der Unterschied zwischen den beiden Zeitmessungen genau zusammensetzt, 
 \label{tab:timer_comparison}
 \end{table}
 
-probes, besoners uporbes nicht echtzeitfähig (zheng)
+The results reveal two clear tendencies.  
+First, the function \texttt{Instant::now()} is faster than \texttt{SystemTime::now()} both on average and in the maximum case and it also exhibits lower jitter.  
+Second, the measurements with real-time priority consistently outperform those without real-time priority.  
+Both tendencies were expected, since it was already shown in \cite{systemtime} that \texttt{SystemTime::now()} is less accurate than \texttt{Instant::now()}.  
+Real-time priority, as described in Section~\ref{subsec:real_time_kernel}, allows the scheduler to prioritize execution, which generally results in lower latency and jitter.  
+Since both timers, \texttt{SystemTime::now()} and \texttt{Instant::now()}, require a transition into kernel space, it was to be expected that prioritization by the scheduler would accelerate this process.  
+
+Another interesting observation concerns the duration of the \ac{uretprobe} and the \ac{uprobe}.  
+Zheng et al.\ report in \cite[p.~7]{zheng2023bpftimeuserspaceebpfruntime} that the \ac{uretprobe} introduces an overhead of about $4\,\mu$s, while the \ac{uprobe} introduces an overhead of about $3\,\mu$s.  
+In the measurement results shown in Table~\ref{tab:timer_comparison}, the times for both probes are higher.  
+This can be explained by the fact that this work uses a Raspberry Pi~5, which presumably has lower computational power compared to the \ac{CPU} used by Zheng et al.  
+Although \cite{zheng2023bpftimeuserspaceebpfruntime} does not specify the exact \ac{CPU}, it is reasonable to assume that a more powerful processor was employed, as the paper was published in 2023 and the \ac{CPU} of the Raspberry Pi~5 cannot match the performance of a desktop \ac{CPU} from this time.  
+Furthermore, additional overhead may be introduced by performing the measurements with Rust user-space functions.  
+Nevertheless, the results do not deviate substantially from the values reported in \cite{zheng2023bpftimeuserspaceebpfruntime}, which supports the conclusion that the values obtained for $d_{ku}$ are reliable.  
+
+As a final conclusion, the measurements demonstrate that synchronization between user space and kernel space can be achieved with the \ac{uretprobe} at an accuracy of approximately $1$--$1.5\,\mu$s.  
+Moreover, the results confirm the observation from \cite{systemtime} that \texttt{Instant::now()} provides more accurate timing than \texttt{SystemTime::now()}.  
+Finally, it can be concluded that synchronization should be performed after assigning real-time priority in order to maximize accuracy.  
 
 \subsection{Test Automatization}
 \subsection{Access point configuration}
