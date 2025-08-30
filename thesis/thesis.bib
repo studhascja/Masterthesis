@@ -583,6 +583,20 @@ abstract = {In hard real-time embedded systems, switching to multicores is a ste
       url={https://docs.ebpf.io/linux/helper-function/bpf\_ktime\_get\_ns/},
 }
 
+@misc{extern,
+      title={Keyword extern}, 
+      url={https://doc.rust-lang.org/std/keyword.extern.html},
+}
+
+@misc{no_mangle,
+      title={Application Binary Interface (ABI)}, 
+      url={https://doc.rust-lang.org/reference/abi.html?highlight=no_mangle#the-no_mangle-attribute},
+}
+
+@misc{uret_probe,
+      title={Program types (Linux)}, 
+      url={https://docs.ebpf.io/linux/program-type/},
+}
 @misc{rust_time,
       title={Module time}, 
       url={https://doc.rust-lang.org/std/time/index.html},
@@ -603,9 +617,49 @@ abstract = {In hard real-time embedded systems, switching to multicores is a ste
       url={https://man7.org/linux/man-pages/man3/printf.3.html},
 }
 
+@ARTICLE{1048550,
+  author={},
+  journal={IEEE Std 1588-2002}, 
+  title={IEEE Standard for a Precision Clock Synchronization Protocol for Networked Measurement and Control Systems}, 
+  year={2002},
+  volume={},
+  number={},
+  pages={1-154},
+  keywords={IEEE Standards;Patents;Licenses;Clocks;Synchronization;Control systems;clocks;distributed system;master clock;measurement and control systems;real-time clock;synchronized clocks},
+  doi={10.1109/IEEESTD.2002.94144}}
+
+@article{CHEFROUR202226,
+title = {Evolution of network time synchronization towards nanoseconds accuracy: A survey},
+journal = {Computer Communications},
+volume = {191},
+pages = {26-35},
+year = {2022},
+issn = {0140-3664},
+doi = {https://doi.org/10.1016/j.comcom.2022.04.023},
+url = {https://www.sciencedirect.com/science/article/pii/S0140366422001359},
+author = {Djalel Chefrour},
+keywords = {Network time protocols, Time synchronization, Clock skew estimation and removal, Network delay measurement},
+abstract = {We expose the state of the art in the topic of network time synchronization. Many distributed applications require a common notion of time to function properly. Without time synchronization, the nodes clocks will drift and report different values for the same instant. This problem is exacerbated by varying network delays between the cooperating nodes. Our survey covers how this issue is tackled by standard time synchronization mechanisms and a representative range of recent research works. We expose how some of them achieve micro and nanoseconds accuracy in wired networks. The reviewed techniques are classified in two categories based on whether they change the hosts clocks or not. The latter category includes schemes that detect and remove clock skew from network traffic trace. We discuss the advantages and drawbacks of the techniques in each category; compare them according to their application environment, accuracy and cost; and conclude this survey with a summary of learned lessons and insights into future work.}
+}
+@ARTICLE{103043,
+  author={Mills, D.L.},
+  journal={IEEE Transactions on Communications}, 
+  title={Internet time synchronization: the network time protocol}, 
+  year={1991},
+  volume={39},
+  number={10},
+  pages={1482-1493},
+  keywords={IP networks;Protocols;Clocks;Synchronization;Internet;Web server;Network servers;Milling machines;Maintenance;Wire},
+  doi={10.1109/26.103043}}
+
 @misc{tx-grafic,
       title={Linux Kernel Network stack and architecture}, 
       url={https://thelinuxchannel.org/2024/07/linux-kernel-network-stack-and-architecture/},
+}
+
+@misc{buffer_submit,
+      title={Helper function bpf\_ringbuf\_submit}, 
+      url={https://docs.ebpf.io/linux/helper-function/bpf\_ringbuf\_submit/},
 }
 
 @book{Tanenbaum_2014, 

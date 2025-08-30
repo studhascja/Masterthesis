@@ -1731,5 +1731,135 @@ As a final conclusion, the measurements demonstrate that synchronization between
 Moreover, the results confirm the observation from \cite{systemtime} that \texttt{Instant::now()} provides more accurate timing than \texttt{SystemTime::now()}.  
 Finally, it can be concluded that synchronization should be performed after assigning real-time priority in order to maximize accuracy.  
 
+Listing~\ref{lst:uprobe_rust} shows the function to which the \ac{uretprobe} is attached.  
+This function sets the variable \texttt{USER\_ZERO} to the current timestamp returned by \texttt{Instant::now()}, thereby establishing the time $t_{u3}$ shown in Figure~\ref{fig:uprobe}.  
+
+It can be observed that the function is annotated with the attribute \texttt{\#[no\_mangle]} and declared with the keyword \texttt{extern "C"}.  
+The attribute \texttt{\#[no\_mangle]} is required to prevent Rust from modifying the function name during compilation, as described in \cite{no_mangle}.  
+The keyword \texttt{extern "C"} specifies that the C \ac{ABI} is used for this function, as discussed in \cite{extern}.  
+This is necessary to ensure that C code\footnote{Since \ac{BPF} is based on C code, the C \ac{ABI} is required so that a \ac{uprobe} or \ac{uretprobe} can be attached to the function.} can correctly invoke it, particularly with respect to calling conventions and parameter passing.  
+
+\begin{listing}[H]
+    \centering
+\begin{minted}[fontsize=\small, escapeinside=||, linenos]{rust}
+
+#[no_mangle]
+pub extern "C" fn measure_instant() {
+    let mut time = USER_ZERO.lock().unwrap();
+    *time = Instant::now();
+}
+
+\end{minted}
+\caption{Function in Rust to which the uretprobe is attached}
+\label{lst:uprobe_rust}
+\end{listing}
+
+This is relevant to ensure that the \ac{uretprobe} can be attached to the function.  
+Listing~\ref{lst:bpf_uprobe} shows the structure of the function to which the \ac{uretprobe} is attached.  
+As described in \cite{uret_probe}, the \ac{uretprobe} is created using \texttt{SEC("uretprobe/path to file:function-name")}.  
+Therefore, it is crucial that the function name remains unchanged and that the function can be invoked by C code.  
+
+In the execution of the function, a timestamp is generated first in order to keep $d_{ku}$ as small as possible.  
+The timestamp represents the point in time $t_{k6}$ in Figure~\ref{fig:uprobe}.  
+Subsequently, memory is reserved in the ring buffer using the function \texttt{bpf\_ringbuf\_reserve}, after which the event is submitted via \texttt{bpf\_ringbuf\_submit} into it, in order get consumed by the user space.  
+After the message is submitted into the rinbuffer the user sace gets a notification that there is an message to collect, like described in \cite{buffer_submit}.
+The event consists of a type identifier \texttt{event\_type}, a data structure containing the parameters \texttt{msg\_type} and \texttt{seq} and a timestamp.  
+For the \ac{uretprobe}, only the event type and the timestamp are relevant.  
+The event type allows the user-space program to determine how the event should be processed.  
+For this reason, a unique event type is assigned to each \ac{BPF} function\footnote{Each event source can be associated with a different \ac{BPF} function.  
+In this work, a distinct \ac{BPF} function is attached to the \ac{uretprobe} as well as to the three tracepoints discussed earlier in this chapter.}.  
+For the \ac{BPF} function of the \ac{uretprobe}, this type is set to $0$.  
+In addition, the generated timestamp is passed in the field \texttt{timestamp}.  
+
+\begin{listing}[H]
+    \centering
+\begin{minted}[fontsize=\small, escapeinside=||, linenos]{c}
+SEC("uretprobe//code/client_udp/target/debug/client_udp:measure_instant")
+int trace_measure_instant(struct pt_regs *ctx) {
+    __u64 timestamp = bpf_ktime_get_ns();
+    struct Event *e = bpf_ringbuf_reserve(&events, sizeof(*e), 0);
+    if (!e) {
+        return 0;
+    }
+	e->event_type = 0;
+    e->data.msg_type = 0;
+    e->data.seq = 0;
+    e->timestamp = timestamp;
+
+    bpf_ringbuf_submit(e, 0);
+    return 0;
+}
+
+\end{minted}
+\caption{Handling uretprobe in BPF}
+\label{lst:bpf_uprobe}
+\end{listing}
+
+Da nun erklärt wurde, wie die User- Kernelspace Synchronisierung umgesetzt wurde, wird im folgenden darauf eingegangen, wie die Client - Server Synchronisierung umgesetzt wird.
+Die Synchornisierung findet in den drei Phasen \ac{NTP}, \ac{PTP} und Check statt, für welche die Vorraussetzung ist, dass auf beiden Geräten jeweils Kernel und Client bereits synchronisiert sind.
+Wie bereits erwähnt sind diese Phasen nach Zeitsynchronisierungsprotokollen benannt, jedoch wird in diesen nur deren Funktion implementiert, nicht jedoch das exakte protokoll.
+\ac{NTP} wurde bereits 1991 von Mills in \cite{103043} entwickelt.
+Dieses ist zum Zeitpunkt der Arbeit bereits seit über 30 Jahren im Einsatz.
+Dabei werden, wie von Chefrour in \cite[p. 31]{CHEFROUR202226} beschrieben, eine Genauigkeit von dutzenden Mikrosekunden bis hunderten Millisekunden erreicht, abhängig vom Netzwerk.
+Als Nachfolger und vor allem im Hinnblick auf bessere performance wurde 2002 \ac{PTP} entwickelt, wie in \cite{1048550} beschrieben.
+Dieses Protokoll wurde jedoch überwiegend für \ac{LAN} entwickelt.
+Damit werden, wie in \cite[p. 31]{CHEFROUR202226} beschrieben, Genauigkeiten zwischen 10 und 100 ns erreicht.
+Jedoch nur, wenn dieses Protokoll Hardwareseitig implementiert wurde, was wiederum spezialisierte Hardware erfordert.
+Sowohl \ac{NTP}  als auch \ac{PTP} sind wie in \cite[p. 29]{CHEFROUR202226} beschrieben bedeutente Meilensteine und Protokolle in der Netzwerksynchronisierung.
+Daher wurden diese Namen für die Phasen grobe Zeitsynchronisierung und feine Zeitsynchroniserung verwendet.
+Beide Protokolle basieren daruaf dass das Netzwerk synchron ist.
+Mit anderen Worten es wird davon augegangen, dass die Kommunikation von x zu y genau so lange dauert, wie von y zu x.
+Auf diesem Prinzip basiert die Zeitsynchronisierung ebenfalls in dieser Arbeit. 
+Das Prinzip der Synchronisierung wird in Abbildung \ref{fig:flow_chart} dargestellt.
+In dieser Abbildung ist zum Einen ein Flow chart der drei Zustände, als auch die jeweilige Wiederholung als Sequenzdiagramm zu sehen.
+
+\begin{figure}[ht]
+    \centering
+    \includegraphics[width=\textwidth]{figures/time_sync.drawio.pdf}
+    \caption{Presentation of a Flow Chart of the synchronization between Client and Server}
+    \label{fig:flow_chart}
+\end{figure}
+
+Die Zeitsynchronisierung beginnt mit der \ac{NTP} Phase, welche, wie in Abbildung \ref{fig:state_machine} zu sehen mit dem Zustand \ac{NTP} gekennzeichnet ist.
+Dabeir wird eine bestimmte Anzahl an wiederhoöungen durchgeführt, bis die \ac{RTT} dabei unter der spezifizierten Anforderung der $RTT_{Req}$ liegt.
+Eine \ac{NTP}-Wiederholung wird dabei in Abbilung \ref{fig:flow_chart} dargestellt. 
+Dabei synchronisiert zunächst der Server seinen Userspace mit dem Kernelspace, wie zuvor beschrieben.
+Anschließend schickt er dem Client eine Nachricht vom Typ \ac{NTP}, wie in Listing \ref{lst:msg_types} dargestellt.
+Sobald der Client eine Nachricht vom Typen \ac{NTP} erhalten hat, synchronisiert dieser ebenfalls seinen User- und Kernelspace und sendet eine Nachricht vom typen \ac{NTP} zurück.
+Der Server wartet bis er die Antwort des Clients erhält und kann somit die $\ac{RTT}_{NTP}$ bestimmten.
+Mit diesem Verfahren kann somit sichergestellt werden, dass Server und Client greob synchronisiert sind, mit einem Fehler von $\frac{\ac{RTT}_{NTP}}{2}$ 
+Dies gilt nur, wenn von einem synchronen Netzwerk ausgegangen wird, was WiFi normalerweise nicht zuverlässig bietet.
+Dennoch ist sichergestellt, dass die Zeitabweichung von Client und Server kleiner als $RTT_{NTP}$ ist.
+Daher ist es vorteilhaft, wenn die \ac{RTT} so gering wie möglich ist, weshalb die \ac{NTP} Phase einen Grenzwert $RTT_{Req}$ besitzt, wobei gelten muss, $\ac{RTT}_{NTP} < RTT_{Req}$.
+Falls dies nicht erfüllt ist wird \ac{NTP}-Repetition wiederholt und falls diese erfüllt ist wird in den Zustand \ac{PTP} gewechselt.
+
+Die benötigte $RTT_{NTP}$ dient als Grundlage für die Feinsynhronisiserung.
+Der Ablauf der \ac{PTP}-Phase wird in Abbildung \ref{fig:flow_chart} in \ac{PTP}-Repetition veranschaulicht.
+In der \ac{PTP}-Phase sendet der Server erneut eine Nachricht an den Client, jedoch diesmal vom Typen \ac{PTP}.
+Des weiteren synchronisiert der Server die Zeit von User- und Kernelspace nicht vor dem senden sondern eine bestimmte Zeit anch dem senden.
+Nachdem er die Nachricht gesendet hat, wartet er um die Zeit $\frac{\ac{RTT}_{NTP}}{2}$, bis er user- und Kernelsapce synchronisiert.
+Der CLient verhält sich identisch wie im \ac{NTP} Zustand, mit der Außnahme, dass er dem Server ein Paket vom Typen \ac{PTP} zurücksendet.
+Der Server misst die $\ac{RTT}_{PTP}$ und prüft, ob $|\ac{RTT}_{NTP} - \ac{RTT}_{PTP}| < \ac{PTP}_{Req}$ gilt.
+Falls ja, wird den Check zustand gewechselt, falls nein, muss der Vorgang wiederholt werden.
+Mit dieser Methode wird gewartet, bis eine \ac{RTT} wie in der \ac{NTP} Phase erreicht wird, damit der Server die Ankunft des Pakets am Client vorhesagen kann, und somit die Zeitsynchronisiserung deutlich genauer ist.
+Bei einem synchronen Netzwerk ist der maximale Fehler somit $PTP_{Req}$.
+Es kann jedoch sein, dass $\ac{RTT}_{NTP}$ nicht wiederhergestellt werden kann, da diese unter sehr vortwilhafeten Umständen entstanden ist, die nicht rekonstruiert werden können.
+Daher gibt es für die \ac{PTP}-Phase eine maximale Anzahl an Wiederholungen, falls diese überschritten wird, muss  $\ac{RTT}_{NTP}$ erneut bestimmt werden und es wird somit in den Zustand \ac{NTP} zurückgewechselt.
+
+Der Letzte Zustand der Zeit-synchronisiserungphase ist der Zustand Check.
+Dieser ist notwendig, da Wi-Fi nicht immer symmetrisch ist.
+In dieser Phase sendet der Server dem Client eine Nachricht vom Typen Check und nimmt dabei eine Timestamp $t_{ss}$
+Der Client nimmt dabei zwei Timestamps, einmal beim empfangen $t_{cr}$ und einmal beim senden $t_{cs}$ und sendet diese Zeiten dem Server in einer Nachricht vom Typ Check zu.
+Beim Empfangen nimmt der Server erneut einen Timestamp $t_{sr}$.
+Somit kann der Weg von Server zu client mittel $t_{s-c} = t_{cr} - t_{ss}$ und der Rückweg mittels $t_{c-s} = t_{sr} - t_{cs}$ berechnet werden.
+Wenn die Wi-Fi Verbindung synchron ist und die Zeiten richtig synchronsisiert sind, gilt $t_{s-c} - t_{c-s} = 0$.
+In der Check Phase wird dieser Vorgang einige 1000 male wiederholt und anschließend der Median $M_{Check}$ aus der Subtraktion gebildet.
+Wenn $M_{Check} < Latency_{Req}$ gilt, wird die echtzeitfähige Berechnung gestartet, falls nicht, wird wieder zurück in den \ac{PTP}-Zustand gewechselt.
+Wi-Fi ist im Mittelwert über längere Zeit synchron, jedoch sit dies nicht für einzelne Nachrichten garantiert.
+Somit kann mittels des Medians\footnote{In diesem Fall wird der Median verwendet, da dieser weniger anfällig für Ausreiserist und somit für stabilere Ergebnisse sorgt.} bestimmt werden, ob die Zeit richtig synchronisiert sit.
+Aber natürlich gibt es auch dabei abweichungen.
+Jedoch ist unter der Annahme einer Synchronität von Wi-Fi über einen längeren Zeitraum, der maximale Fehler in der Synchronisierung zwischen Client und Server die spezifizierte Grenze $Latency_{Req}$.
+In dieser Arbeit wird dafür eine Grenze von 10 $\mu$s verwendet.
+
 \subsection{Test Automatization}
 \subsection{Access point configuration}
