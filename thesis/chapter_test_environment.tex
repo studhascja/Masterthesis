@@ -1795,23 +1795,26 @@ int trace_measure_instant(struct pt_regs *ctx) {
 \label{lst:bpf_uprobe}
 \end{listing}
 
-Da nun erklärt wurde, wie die User- Kernelspace Synchronisierung umgesetzt wurde, wird im folgenden darauf eingegangen, wie die Client - Server Synchronisierung umgesetzt wird.
-Die Synchornisierung findet in den drei Phasen \ac{NTP}, \ac{PTP} und Check statt, für welche die Vorraussetzung ist, dass auf beiden Geräten jeweils Kernel und Client bereits synchronisiert sind.
-Wie bereits erwähnt sind diese Phasen nach Zeitsynchronisierungsprotokollen benannt, jedoch wird in diesen nur deren Funktion implementiert, nicht jedoch das exakte protokoll.
-\ac{NTP} wurde bereits 1991 von Mills in \cite{103043} entwickelt.
-Dieses ist zum Zeitpunkt der Arbeit bereits seit über 30 Jahren im Einsatz.
-Dabei werden, wie von Chefrour in \cite[p. 31]{CHEFROUR202226} beschrieben, eine Genauigkeit von dutzenden Mikrosekunden bis hunderten Millisekunden erreicht, abhängig vom Netzwerk.
-Als Nachfolger und vor allem im Hinnblick auf bessere performance wurde 2002 \ac{PTP} entwickelt, wie in \cite{1048550} beschrieben.
-Dieses Protokoll wurde jedoch überwiegend für \ac{LAN} entwickelt.
-Damit werden, wie in \cite[p. 31]{CHEFROUR202226} beschrieben, Genauigkeiten zwischen 10 und 100 ns erreicht.
-Jedoch nur, wenn dieses Protokoll Hardwareseitig implementiert wurde, was wiederum spezialisierte Hardware erfordert.
-Sowohl \ac{NTP}  als auch \ac{PTP} sind wie in \cite[p. 29]{CHEFROUR202226} beschrieben bedeutente Meilensteine und Protokolle in der Netzwerksynchronisierung.
-Daher wurden diese Namen für die Phasen grobe Zeitsynchronisierung und feine Zeitsynchroniserung verwendet.
-Beide Protokolle basieren daruaf dass das Netzwerk synchron ist.
-Mit anderen Worten es wird davon augegangen, dass die Kommunikation von x zu y genau so lange dauert, wie von y zu x.
-Auf diesem Prinzip basiert die Zeitsynchronisierung ebenfalls in dieser Arbeit. 
-Das Prinzip der Synchronisierung wird in Abbildung \ref{fig:flow_chart} dargestellt.
-In dieser Abbildung ist zum Einen ein Flow chart der drei Zustände, als auch die jeweilige Wiederholung als Sequenzdiagramm zu sehen.
+Having explained how user-space and kernel-space synchronization is achieved, the following section describes how client-server synchronization is implemented.  
+This synchronization is carried out in three phases, namely \ac{NTP}, \ac{PTP} and Check.  
+As previously mentioned, these phases are named after time-synchronization protocols.
+However, only their functionality is implemented, not the full protocol specification.  
+
+\ac{NTP} was developed in 1991 by Mills, like he wrote in \cite{103043}.  
+At the time of this work, it has been in operation for more than 30 years.  
+As described by Chefrour in \cite[p.~31]{CHEFROUR202226}, \ac{NTP} achieves an accuracy ranging from tens of microseconds to several hundred milliseconds, depending on the network conditions.  
+As a successor, and particularly with a focus on improved performance, \ac{PTP} was developed in 2002, as reported in \cite{1048550}.  
+This protocol, however, was primarily designed for \ac{LAN} environments.  
+According to Chefrour \cite[p.~31]{CHEFROUR202226}, \ac{PTP} can achieve accuracies between $10$ and $100\,\text{ns}$, but only when implemented in hardware, which requires specialized network chips.  
+
+Both \ac{NTP} and \ac{PTP} are, as highlighted in \cite[p.~29]{CHEFROUR202226}, significant milestones and key protocols in network synchronization.  
+For this reason, these names are used here to denote the phases of coarse synchronization and fine synchronization, respectively.  
+Both protocols rely on the assumption of a symmetric network.  
+In other words, it is assumed that the transmission time from $x$ to $y$ equals the transmission time from $y$ to $x$.  
+The synchronization approach used in this work is based on the same principle.  
+
+The principle of synchronization is illustrated in Figure~\ref{fig:flow_chart}.  
+This figure shows both a flow chart of the three states and their respective iterations as a sequence diagram.  
 
 \begin{figure}[ht]
     \centering
@@ -1820,46 +1823,55 @@ In dieser Abbildung ist zum Einen ein Flow chart der drei Zustände, als auch di
     \label{fig:flow_chart}
 \end{figure}
 
-Die Zeitsynchronisierung beginnt mit der \ac{NTP} Phase, welche, wie in Abbildung \ref{fig:state_machine} zu sehen mit dem Zustand \ac{NTP} gekennzeichnet ist.
-Dabeir wird eine bestimmte Anzahl an wiederhoöungen durchgeführt, bis die \ac{RTT} dabei unter der spezifizierten Anforderung der $RTT_{Req}$ liegt.
-Eine \ac{NTP}-Wiederholung wird dabei in Abbilung \ref{fig:flow_chart} dargestellt. 
-Dabei synchronisiert zunächst der Server seinen Userspace mit dem Kernelspace, wie zuvor beschrieben.
-Anschließend schickt er dem Client eine Nachricht vom Typ \ac{NTP}, wie in Listing \ref{lst:msg_types} dargestellt.
-Sobald der Client eine Nachricht vom Typen \ac{NTP} erhalten hat, synchronisiert dieser ebenfalls seinen User- und Kernelspace und sendet eine Nachricht vom typen \ac{NTP} zurück.
-Der Server wartet bis er die Antwort des Clients erhält und kann somit die $\ac{RTT}_{NTP}$ bestimmten.
-Mit diesem Verfahren kann somit sichergestellt werden, dass Server und Client greob synchronisiert sind, mit einem Fehler von $\frac{\ac{RTT}_{NTP}}{2}$ 
-Dies gilt nur, wenn von einem synchronen Netzwerk ausgegangen wird, was WiFi normalerweise nicht zuverlässig bietet.
-Dennoch ist sichergestellt, dass die Zeitabweichung von Client und Server kleiner als $RTT_{NTP}$ ist.
-Daher ist es vorteilhaft, wenn die \ac{RTT} so gering wie möglich ist, weshalb die \ac{NTP} Phase einen Grenzwert $RTT_{Req}$ besitzt, wobei gelten muss, $\ac{RTT}_{NTP} < RTT_{Req}$.
-Falls dies nicht erfüllt ist wird \ac{NTP}-Repetition wiederholt und falls diese erfüllt ist wird in den Zustand \ac{PTP} gewechselt.
+The time synchronization begins with the \ac{NTP} phase, which is represented by the \ac{NTP} state in Figure~\ref{fig:state_machine}.  
+A predefined number of repetitions is executed until the \ac{RTT} falls below the specified requirement $RTT_{Req}$.  
+An \ac{NTP} repetition is illustrated in Figure~\ref{fig:flow_chart}.  
+In this process, the server first synchronizes its user space with kernel space, as described earlier.  
+It then sends a message of type \ac{NTP} to the client, as shown in Listing~\ref{lst:msg_types}.  
+Once the client receives the \ac{NTP} message, it also synchronizes its user space and kernel space and responds with a message of type \ac{NTP}.  
+The server waits for the client's response and can thus determine $\ac{RTT}_{NTP}$.  
+This ensures that the server and client are roughly synchronized, with an error bounded by $\frac{\ac{RTT}_{NTP}}{2}$.  
+This assumption holds only under symmetric network conditions, which Wi-Fi does not reliably provide.  
+Nevertheless, it guarantees that the time deviation between client and server is less than $RTT_{NTP}$.  
+Therefore, it is advantageous to minimize the \ac{RTT}, which is why the \ac{NTP} phase enforces the requirement $\ac{RTT}_{NTP} < RTT_{Req}$.  
+If this condition is not satisfied, the \ac{NTP} repetition is repeated, otherwise, the state changes to \ac{PTP}.  
 
-Die benötigte $RTT_{NTP}$ dient als Grundlage für die Feinsynhronisiserung.
-Der Ablauf der \ac{PTP}-Phase wird in Abbildung \ref{fig:flow_chart} in \ac{PTP}-Repetition veranschaulicht.
-In der \ac{PTP}-Phase sendet der Server erneut eine Nachricht an den Client, jedoch diesmal vom Typen \ac{PTP}.
-Des weiteren synchronisiert der Server die Zeit von User- und Kernelspace nicht vor dem senden sondern eine bestimmte Zeit anch dem senden.
-Nachdem er die Nachricht gesendet hat, wartet er um die Zeit $\frac{\ac{RTT}_{NTP}}{2}$, bis er user- und Kernelsapce synchronisiert.
-Der CLient verhält sich identisch wie im \ac{NTP} Zustand, mit der Außnahme, dass er dem Server ein Paket vom Typen \ac{PTP} zurücksendet.
-Der Server misst die $\ac{RTT}_{PTP}$ und prüft, ob $|\ac{RTT}_{NTP} - \ac{RTT}_{PTP}| < \ac{PTP}_{Req}$ gilt.
-Falls ja, wird den Check zustand gewechselt, falls nein, muss der Vorgang wiederholt werden.
-Mit dieser Methode wird gewartet, bis eine \ac{RTT} wie in der \ac{NTP} Phase erreicht wird, damit der Server die Ankunft des Pakets am Client vorhesagen kann, und somit die Zeitsynchronisiserung deutlich genauer ist.
-Bei einem synchronen Netzwerk ist der maximale Fehler somit $PTP_{Req}$.
-Es kann jedoch sein, dass $\ac{RTT}_{NTP}$ nicht wiederhergestellt werden kann, da diese unter sehr vortwilhafeten Umständen entstanden ist, die nicht rekonstruiert werden können.
-Daher gibt es für die \ac{PTP}-Phase eine maximale Anzahl an Wiederholungen, falls diese überschritten wird, muss  $\ac{RTT}_{NTP}$ erneut bestimmt werden und es wird somit in den Zustand \ac{NTP} zurückgewechselt.
+The resulting $\ac{RTT}_{NTP}$ serves as the basis for fine synchronization.  
+The procedure of the \ac{PTP} phase is illustrated as \ac{PTP} repetition in Figure~\ref{fig:flow_chart}.  
+In this phase, the server again sends a message to the client, this time of type \ac{PTP}.  
+Unlike in the \ac{NTP} phase, the server does not synchronize its user and kernel space before sending the message, but rather after a delay.  
+Specifically, it waits for $\frac{\ac{RTT}_{NTP}}{2}$ after sending the message before performing synchronization.  
+The client behaves identically to the \ac{NTP} phase, except that it returns a packet of type \ac{PTP} to the server.  
+The server measures $\ac{RTT}_{PTP}$ and checks whether $|\ac{RTT}_{NTP} - \ac{RTT}_{PTP}| < \ac{PTP}_{Req}$ holds.  
+If the condition is satisfied, the process transitions to the Check state, otherwise, the repetition is executed again.  
+This approach ensures that the server can predict the client's reception time of the packet, thereby improving synchronization accuracy.  
+In the case of a symmetric network, the maximum synchronization error is $PTP_{Req}$.  
+However, $\ac{RTT}_{NTP}$ may not always be reproducible, since it could have been obtained under exceptionally favorable conditions that cannot be recreated.  
+For this reason, the \ac{PTP} phase is limited to a maximum number of repetitions.  
+If this limit is exceeded, $\ac{RTT}_{NTP}$ must be redetermined, and the system transitions back to the \ac{NTP} state.  
 
-Der Letzte Zustand der Zeit-synchronisiserungphase ist der Zustand Check.
-Dieser ist notwendig, da Wi-Fi nicht immer symmetrisch ist.
-In dieser Phase sendet der Server dem Client eine Nachricht vom Typen Check und nimmt dabei eine Timestamp $t_{ss}$
-Der Client nimmt dabei zwei Timestamps, einmal beim empfangen $t_{cr}$ und einmal beim senden $t_{cs}$ und sendet diese Zeiten dem Server in einer Nachricht vom Typ Check zu.
-Beim Empfangen nimmt der Server erneut einen Timestamp $t_{sr}$.
-Somit kann der Weg von Server zu client mittel $t_{s-c} = t_{cr} - t_{ss}$ und der Rückweg mittels $t_{c-s} = t_{sr} - t_{cs}$ berechnet werden.
-Wenn die Wi-Fi Verbindung synchron ist und die Zeiten richtig synchronsisiert sind, gilt $t_{s-c} - t_{c-s} = 0$.
-In der Check Phase wird dieser Vorgang einige 1000 male wiederholt und anschließend der Median $M_{Check}$ aus der Subtraktion gebildet.
-Wenn $M_{Check} < Latency_{Req}$ gilt, wird die echtzeitfähige Berechnung gestartet, falls nicht, wird wieder zurück in den \ac{PTP}-Zustand gewechselt.
-Wi-Fi ist im Mittelwert über längere Zeit synchron, jedoch sit dies nicht für einzelne Nachrichten garantiert.
-Somit kann mittels des Medians\footnote{In diesem Fall wird der Median verwendet, da dieser weniger anfällig für Ausreiserist und somit für stabilere Ergebnisse sorgt.} bestimmt werden, ob die Zeit richtig synchronisiert sit.
-Aber natürlich gibt es auch dabei abweichungen.
-Jedoch ist unter der Annahme einer Synchronität von Wi-Fi über einen längeren Zeitraum, der maximale Fehler in der Synchronisierung zwischen Client und Server die spezifizierte Grenze $Latency_{Req}$.
-In dieser Arbeit wird dafür eine Grenze von 10 $\mu$s verwendet.
+The final phase of the time-synchronization process is the Check state.  
+This step is necessary because Wi-Fi is not always symmetric.  
+In this phase, the server sends a message of type Check to the client while recording a timestamp $t_{ss}$.  
+The client records the two timestamps $t_{cr}$ upon receiving the message and $t_{cs}$ upon sending the response.  
+It then returns these values to the server in a message of type Check.  
+Upon reception, the server records another timestamp $t_{sr}$.  
+From these values, the one-way delay from server to client is computed as $t_{s-c} = t_{cr} - t_{ss}$, and the delay from client to server as $t_{c-s} = t_{sr} - t_{cs}$.  
+If the Wi-Fi connection is symmetric and the synchronization is correct, then $t_d = t_{s-c} - t_{c-s} = 0$.  
+In the Check phase, this procedure is repeated several thousand times, after which the median $M_{Check}$ of the $t_d$ values is calculated.  
+If $M_{Check} < Latency_{Req}$, real-time computation is initiated, otherwise, the system returns to the \ac{PTP} state.  
+Although Wi-Fi tends to be symmetric on average over longer periods, this is not guaranteed for individual packets.  
+Therefore, the median\footnote{In this case, the median is used because it is less sensitive to outliers and thus provides more stable results.} is used to determine whether synchronization is sufficiently accurate.  
+While deviations still occur, under the assumption of long-term Wi-Fi symmetry, the maximum synchronization error between client and server is bounded by $Latency_{Req}$.  
+In this work, a threshold of $10\,\mu$s is applied.  
+
+Auf den Zustand Check folgt, der Zustand Calc.
+Dieser ist, wie in Abbildung \ref{fig:state_machine} dargesetllt, der einzige Zustand mit Echtzeitrequirement.
+Die Umsetzung dieses Zustandes wurde bereits in den Abbildungen \ref{fig:application} und \ref{fig:tx} erklärt. 
+Die Anzahl der Wiederholungen richtet sich, wie in Abbildung \ref{fig:application} erklärt, an die Anzahl der Punkte.
+Im Folgenden wird darauf eingegangen, wie die Daten mittels \ac{BPF} erfasst werden können und wie diese von Rust verwertet werden.
+
+
 
 \subsection{Test Automatization}
 \subsection{Access point configuration}
