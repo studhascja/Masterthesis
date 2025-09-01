@@ -1499,8 +1499,8 @@ This is necessary to reduce memory allocations and to ensure the correct layout 
 enum MessageType {
     Start = 0,
     NTP = 1,
-    NtpResult = 2,
-    PTP = 3,
+    PTP = 2,
+    Check = 3,
     Calc = 5,
 }
 \end{minted}
@@ -1865,13 +1865,149 @@ Therefore, the median\footnote{In this case, the median is used because it is le
 While deviations still occur, under the assumption of long-term Wi-Fi symmetry, the maximum synchronization error between client and server is bounded by $Latency_{Req}$.  
 In this work, a threshold of $10\,\mu$s is applied.  
 
-Auf den Zustand Check folgt, der Zustand Calc.
-Dieser ist, wie in Abbildung \ref{fig:state_machine} dargesetllt, der einzige Zustand mit Echtzeitrequirement.
-Die Umsetzung dieses Zustandes wurde bereits in den Abbildungen \ref{fig:application} und \ref{fig:tx} erklärt. 
-Die Anzahl der Wiederholungen richtet sich, wie in Abbildung \ref{fig:application} erklärt, an die Anzahl der Punkte.
-Im Folgenden wird darauf eingegangen, wie die Daten mittels \ac{BPF} erfasst werden können und wie diese von Rust verwertet werden.
+Following the Check state is the Calc state.  
+As shown in Figure~\ref{fig:state_machine}, this is the only state with a real-time requirement.  
+The implementation of this state has already been explained in Figures~\ref{fig:application} and \ref{fig:tx}.  
+The number of repetitions depends, as illustrated in Figure~\ref{fig:application}, on the number of measurement points.  
+The following section discusses how data can be collected using \ac{BPF} and how it is processed in Rust.  
 
+The code used to read a tracepoint is nearly identical for all tracepoints.  
+As an example, the procedure for the tracepoint \texttt{net\_dev\_xmit} is explained.  
+The code of the function executed when the tracepoint triggers is shown in Listing~\ref{lst:bpf_tracepoint}.  
+Similar to the \ac{uprobe}, the function is attached to the tracepoint using \texttt{SEC("tracepoint/net/net\_dev\_xmit")}.  
+As shown in lines 3–5, the \ac{PID} must first be determined using the function \texttt{bpf\_get\_current\_pid\_tgid()}, and the process name must be retrieved using \texttt{bpf\_get\_current\_comm()}.  
+Subsequently, the process name (\texttt{comm}) is verified to ensure that the message originates from the correct process.  
 
+In lines 8–13, the addresses of \texttt{head} and \texttt{mac\_header} are extracted.  
+These addresses are obtained from the \texttt{sk\_buff} struct, which, as described in \cite{sk_buff}, represents a network message.  
+To extract these fields, the function shown in Listing~\ref{lst:member_read} is used.  
+This function determines the address of a struct member using the \texttt{offsetof()} function.  
+
+\begin{listing}[H]
+    \centering
+\begin{minted}[fontsize=\small, escapeinside=||, linenos]{rust}
+
+  #define member_read(destination, source_struct, source_member)               
+  do{                                                                          
+    bpf_probe_read(                                                            
+      destination,                                                             
+      sizeof(source_struct->source_member),                                    
+      ((char*)source_struct) + offsetof(typeof(*source_struct), source_member) 
+    );                                                                         
+  } while(0)
+
+\end{minted}
+\caption{Function to read members out of a struct}
+\label{lst:member_read}
+\end{listing}
+
+Using \texttt{head} and \texttt{mac\_header}, the location of the MAC header can be determined.  
+For precise identification of the network packet, the IP header is also required.  
+This header follows directly after the MAC header and can therefore be computed as shown in line 14 of Listing~\ref{lst:bpf_tracepoint}.  
+Subsequently, it is checked whether the packet is a \ac{TCP} packet or not.
+If not, the function is aborted.  
+Additionally, lines 22–28 of Listing~\ref{lst:bpf_tracepoint} extract the last octet of the source and destination IP addresses, i.e., the \texttt{yz} part from \texttt{192.168.wx.yz}.  
+It is then verified whether the server IP ends with 1 and the client IP ends with 43.  
+If this condition is not met, the function is aborted, as the packet is either destined for the wrong recipient or sent by the wrong sender.  
+
+The \ac{TCP} header is also required to access the payload.  
+The TCP header follows immediately after the IP header, and its length must be known.  
+This length is computed in line 29.  
+For this purpose, the IP header length (\texttt{ihl}) is used and multiplied by 4.  
+This is necessary because \texttt{ihl} specifies the header length in 32-bit words, as described in the standard \cite[p.~11]{rfc791}.  
+In other words, if \texttt{ihl} returns 5, the IP header consists of $5 \times 32$ bits, i.e., $5 \times 4$ bytes.  
+
+In line 36, the offset for the payload is determined.  
+For this calculation, the TCP header length is required.  
+This length can be computed using the data offset, which again provides the size in words, as described in the standard \cite[p.~16]{rfc793}.  
+
+Finally, the message specified in Rust is loaded.  
+A check is performed again to ensure that the message type is not out of bounds.  
+If the check passes, the event is assembled and submitted to the ring buffer.  
+This procedure has already been illustrated in Listing~\ref{lst:bpf_uprobe}.  
+
+The data sent via the ring buffer are received in user space by Rust and stored as events in separate queues.  
+In other words, a dedicated queue is provided for each tracepoint event.  
+As shown in Listing~\ref{lst:bpf_uprobe}, the event also contains the \ac{PID}.  
+This identifier is used to verify whether the event in the ring buffer originates from \ac{BPF}.  
+Since the ring buffer is not exclusively assigned to \ac{BPF} but represents a system-wide resource, this verification is necessary.  
+Subsequently, the \texttt{net\_dev\_xmit} event is written into the send queue in user space.  
+The same procedure applies to the other events.  
+
+\begin{listing}[H]
+    \centering
+\begin{minted}[fontsize=\small, escapeinside=||, linenos]{rust}
+
+fn calculation_phase(){
+    let start_time = Instant::now();
+    let theta = 2.0 * PI * (i as f64) / (NUM_POINTS as f64);
+    let x = RADIUS * theta.cos();
+
+    let encoded_msg = encode_message(MessageType::Calc, i, theta, RADIUS, 0)?;
+    stream.write_all(&encoded_msg);
+
+    let queue_event = wait_for_event(queue);
+    let server_queue_time = queue_event.timestamp;
+
+    let send_event = wait_for_event(send);
+    let server_send_time = send_event.timestamp;
+
+     match stream.read(&mut buffer) {
+         let end_time = Instant::now();
+         let msg: Message = *bytemuck::from_bytes::<Message>(&buffer);
+
+         let receive_event = wait_for_event(receive);
+         let server_receive_time = receive_event.timestamp;
+         
+         calc_monitoring(
+            server_queue_time, 
+            ..., 
+            msg.client_queue_time, 
+            ...);
+         
+         if end_time.duration_since(start_time) <= TIMEOUT_NS as u128 {
+            y
+         } else {
+            y - penalty
+         };
+     }
+}
+\end{minted}
+\caption{Presentation of Pseudo-Code of the calculation function}
+\label{lst:calc}
+\end{listing}
+
+Listing~\ref{lst:calc} illustrates the flow of the \texttt{calculation} function on the server as pseudo-Rust code.  
+As previously mentioned, the start time is first recorded and the $x$-coordinate is computed, before the angle for which the $y$-coordinate is to be calculated is sent to the client.  
+This process is shown in lines 2--7.  
+Subsequently, the tracepoint events for \texttt{net\_dev\_xmit} and \texttt{net\_dev\_queue} are awaited.  
+This is realized through the function \texttt{wait\_for\_event()}, which takes as a parameter the queue in which the corresponding event is collected.  
+The function returns the event, from which the timestamp of its occurrence can be extracted via the \texttt{timestamp} attribute.  
+
+Afterward, the response from the client is awaited, and upon its arrival the end time is recorded.  
+The message contains the $y$-value and the client's timing data.  
+These, combined with the server's timing data, are used as shown in lines 22--26 to calculate the monitoring times described in Figure~\ref{fig:tx}.  
+Finally, it is checked whether the interval between start and end time exceeds the specified time limit, thereby violating the real-time requirement.  
+If this is the case, the previously mentioned penalty is applied to $y$.  
+
+After this state, only two states remain, as shown in Figure~\ref{fig:state_machine}.  
+The first is the \textit{Error} state, which is also a terminal state.  
+It can be reached from any synchronization state as well as from the \textit{Calc} state.  
+This state is entered under one of the following conditions:  
+\begin{itemize}  
+    \item \textbf{Client timeout:} If the client terminates the \ac{TCP} connection or does not respond in the case of \ac{UDP}.  
+    \item \textbf{Incomplete dataset:} If the data collected by the server\footnote{The dataset consists of the monitoring data and the circle data, i.e., the $x$ and $y$ values.} are incomplete.  
+          In other words, if not all points contain data or if certain data for specific points are missing.  
+\end{itemize}  
+
+The error state terminates both the server and the client and informs the test automation system that the test must be repeated.  
+
+The second state, which has not yet been described, is the \textit{Save} state.  
+In this state, the data collected during \textit{Calculation} are written to a file, where they can later be retrieved and visualized.  
+This state concludes in the \textit{End} state, which marks the successful completion of the test run.  
+
+This chapter has described the application, its functionality, and its implementation.  
+The following section will address how the application is embedded into a test run and how the test executions are managed.  
 
 \subsection{Test Automatization}
 \subsection{Access point configuration}
