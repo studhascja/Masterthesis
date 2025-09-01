@@ -2010,4 +2010,80 @@ This chapter has described the application, its functionality, and its implement
 The following section will address how the application is embedded into a test run and how the test executions are managed.  
 
 \subsection{Test Automatization}
-\subsection{Access point configuration}
+
+Die Organisation und Automatisierung der Testdurchläufe wird mittels einer Tesstsuite realsiiert.
+Diese sit, wie in Kapitel \ref{subsec:used_technologies} beschrieben, in python realisiert.
+Es gibt eine Test-Suite für den Client und eine für den Server.
+Diese sind jedoch im wesentlichen sehr ähnlich.
+
+In Abbildung \ref{fig:test-suite} ist der Ablauf der Test-Suite des Servers dargestellt.
+Anhand dessen wird im Folgenden der Ablauf der Test-Suite erklärt.
+Auch der Ablauf der Client-Test-Suite wird daran erklärt und explizit darauf hingewiesen, wenn sich etwas unterscheidet.
+
+\begin{figure}[ht]
+    \centering
+    \includegraphics[width=0.7\linewidth]{figures/Test-Suite.drawio.pdf}
+    \caption{Presentation of sequence diagram of the test-suite of the server}
+    \label{fig:test-suite}
+\end{figure}
+
+Die Test-Suite beginnt mit dem compilen des Rust-codes, so dass sichergestellt werden kann, dass dessen neueste Version verwendet wird.
+Anschließend wird in der Test-Suite des Servers der iperf3 Server in einem extra thread gestartet.
+Dieser Schritt existiert nicht, für die Client-Test-Suite.
+Auf dem Client wird der iperf3 client nicht von der Test-Suite, sondern von der Applikation nach einem geglückten Check Zustand ausgeführt.
+
+In beiden Test-Suits folgt daraufhin die Auswahl des Testdurchgangs.
+Dafür wird zunächst die Status File überprüft, die eine Ziffer enthält, welcher testdurchgang als nächstes ausgeführt werden soll.
+Anschließend wird die config file geöffnet, welche die verschiedenen konfigurationen enthält.
+Eine Konfiguration stellt eine Zeile in dieser File dar, welche die Werte Wi-Fi Standard, Frequenz, Bandbreite, \ac{QoS}-Status, Protokoll und \ac{AP}-Confignamen besitzt.
+Somit würde die Zeile 4 2.4 20 0 udp wifi4 sagen, dass die Wi-Fi Verbindung den Standard 4, eine Frequenz von 2,4 GHz und eine Bandbreite von 20 Mhz besitzen soll.
+Des weiteren sollen keine \ac{QoS} Parameter gesetzt sein und die Applikation soll \ac{UDP} verwenden.
+Die entsprechende hostapd config für die Wi-Fi Parameter sind in der Konfiguration wifi4 enthalten.
+Der letzte Parameter ist für die Client-test-Suite nicht relevant.
+
+Als nächster Schritt wird auf dem Server der \ac{AP} mit der jeweiligen hostapd config eröffnet.
+Die Client-Test-Suite besitzt diesen Schritt nicht, dafür wird dabei eine Verbindung mittels wpa-supplicant zum Server aufgebaut.
+Die hostapd Konfigurationen werden in Kapitel \ref{subsec:hsotapd} genauer erklärt.
+
+Als nächster Schritt wird in beiden test-Suits die \ac{QoS}-Parameter gesetzt oer bereinigt ud anschließend die Application, also der Server, bzw. der Client in einem Thread gestartet.
+Daraufhin folgen Testdurchgänge, die sich bei Server und Client unterscheiden.
+beim Server wird lediglich überprüft, ob die Applikations Priorität bei 139, also echtzeit priorität liegt, und die Iperf-Prioriät darunter.
+Dies wird umgestzt, indem der Shell Command ps -eLo comm,pri | grep server/iperf in Python ausgeführt wird und dieser anschließend überprüft wird, ob er beim server 139 und bei iperf nicht 139 enthält.
+Mit diesem Befehl, wird, wie in \cite{ps} beschrieben, alle Prozesse ausgewählt, inklusive Threads und nur der name und die Prioriät ausgegeben.
+Auf der Client seite wird auf die selbe weise überprüft, dass die Prioritäten stimmen.
+Des weiteren wird übreprüft, dass wifi-version, bandbreite und Frequenz mit denen der Konfiguration übereinstimmen.
+Mit anderen Worten, die Client-Test-Suite überprüft, dass die \ac{AP}-Konfiguration des Servers stimmt und auch nutzbar\footnote{Nur weil der \ac{AP} bestimmte Eigenschaften anbietet, wie den Wi-Fi Standard 6, bedeutet dies nicht automatisch, dass bei einer Verbindung mit einem Client dieser auch aktiev ist. Denn wenn der Client beispielsweise mit einer nicht passenden \ac{WPA}-Configuration, sich mit \ac{AP} verbindet, wird der Wi-Fi Standard herabgestuft. Somit ist es notwendig den Check auf Client-Seite zu machen, weil dann garantiert sit, dass alle konfigurationen korrekt sind.} ist.
+
+Die Bandbreite mittels iw dev IFACE info ausgegeben werden.
+Der Wert steht dabei hinter dem parameter width: und kann somit mittels der \ac{RegEx} re.search(r\'width:\\s\*(\\d+)\\s\*(?=MHz)\', output) ausgelesen werden.
+Die Frequenz und der Wi-Fi Standart können, wie in \cite{iw} beschrieben, mittels des Befehls iw dev IFACE link bestimmt werden.
+Dabei steht die Frequenz hinter dem Argument freq, und kann somit mit der \ac{RegEx} re.search(r\'freq:\\s\*(\\d+\\.\\d+)\', output) bestimmt werden.
+Für den Standard wird der volle Output verwendet.
+Der output wird dabei auf he, vht, und ht durchsucht.
+Dabei sind die Optionen \ac{HT} pflicht für wifi4, \ac{VHT} pflicht für wifi5 und \ac{HE} pflicht füt wifi6.
+Somit kann je nachdem welche Option im Output vorhanden ist, Rückschlüsse gezogen werden, welcher Standard verwendet wird.
+Sollte keine der Optionen im output vorhadne sein, ist der Standard älter, als Wi-Fi 4.
+Nachdem die Tests abgeschlossen sind, wird in eine Pipe ein ready geschrieben, welches die Applikation in rust ausliest und somit signalisiert bekommt, dasss die Tests abgeschlossen sind.
+Somit ist sichergestellt, dass die tests die echtzeitfähigkeit der Applikation nicht beeinflussen.
+Die Applikation liest, bzw. wartet in dem zustand check auf das ready in der pipe.
+Auch wenn die tests fehlschalgen, wird die Pplikation fertig ausgeführt, jedoch werden die testergebnisse geloggt, woran nachvollzogen werden kann, ob bestimmte Eigenschaften nicht erfüllt waren und falls ja, welche.
+Die tests sind mit py-unittests umgesetzt.
+Mittels der Tests kann somit sichergestellt werden, dass die erwünschten Konfigurationen auch eingehalten sind.
+
+nachdem die Applikation abgeschlossen ist, wird das status file geupdated.
+Wenn die Applikation erfolgreich war, also im zustand End returned hat, wird die ziffer im status file um eins erhöht, falls die Applikation jedoch im Zustand Error geendet ist, bleibt die ziffer die selbe. 
+Somit wird der Testdurchgang erhöht.
+Als nächster Schritt wird die gesamte Konfiguration bereinigt.
+Das heißt, \ac{QoS} wird gegebenfalls zurückgesetzt und der \ac{AP} wird beendet.
+Beim Client wird die \ac{WPA}-Config zurückgesetzt.
+
+Zum Abschluss wird der iperf3 Server Thread beendet.
+In Abbildung \ref{fig:test-suite} ist ein test-Run eingezeichnet.
+Dies ist der Bereich, welcher für jede Konfiguration in config file mindestens einmal wiederholt wird.
+Somit wird sowohl für client als auch server, das Rust projekt nur einem compiled.
+Beim Server wird der Iperf3 saerver auch nur einmal gestartet, da dieser beständig bleibt.
+Der Iperf3 client verbindet sich für jeden Test-Run neu, da dieser gegebenfalls eine andere Konfiguration benötigt, dies wird in Kapitel \ref{sec:mod} genauer beschrieben.
+
+Da nun die Organsiation der test-Runs beschrieben wurde, wird im Folgenden auf die Umsetzung der \acp{AP} mit hostapd eingegangen.
+
+\subsection{Access point configuration} \label{subsec:hostapd}
