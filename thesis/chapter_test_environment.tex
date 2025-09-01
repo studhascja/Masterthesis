@@ -2043,7 +2043,7 @@ Der letzte Parameter ist für die Client-test-Suite nicht relevant.
 
 Als nächster Schritt wird auf dem Server der \ac{AP} mit der jeweiligen hostapd config eröffnet.
 Die Client-Test-Suite besitzt diesen Schritt nicht, dafür wird dabei eine Verbindung mittels wpa-supplicant zum Server aufgebaut.
-Die hostapd Konfigurationen werden in Kapitel \ref{subsec:hsotapd} genauer erklärt.
+Die hostapd Konfigurationen werden in Kapitel \ref{subsec:hostapd} genauer erklärt.
 
 Als nächster Schritt wird in beiden test-Suits die \ac{QoS}-Parameter gesetzt oer bereinigt ud anschließend die Application, also der Server, bzw. der Client in einem Thread gestartet.
 Daraufhin folgen Testdurchgänge, die sich bei Server und Client unterscheiden.
@@ -2055,9 +2055,9 @@ Des weiteren wird übreprüft, dass wifi-version, bandbreite und Frequenz mit de
 Mit anderen Worten, die Client-Test-Suite überprüft, dass die \ac{AP}-Konfiguration des Servers stimmt und auch nutzbar\footnote{Nur weil der \ac{AP} bestimmte Eigenschaften anbietet, wie den Wi-Fi Standard 6, bedeutet dies nicht automatisch, dass bei einer Verbindung mit einem Client dieser auch aktiev ist. Denn wenn der Client beispielsweise mit einer nicht passenden \ac{WPA}-Configuration, sich mit \ac{AP} verbindet, wird der Wi-Fi Standard herabgestuft. Somit ist es notwendig den Check auf Client-Seite zu machen, weil dann garantiert sit, dass alle konfigurationen korrekt sind.} ist.
 
 Die Bandbreite mittels iw dev IFACE info ausgegeben werden.
-Der Wert steht dabei hinter dem parameter width: und kann somit mittels der \ac{RegEx} re.search(r\'width:\\s\*(\\d+)\\s\*(?=MHz)\', output) ausgelesen werden.
+Der Wert steht dabei hinter dem parameter width: und kann somit mittels der \ac{RegEx} $re.search(r'width:\backslash s*(\backslash d+)\backslash s*(?=MHz)', output)$ ausgelesen werden.
 Die Frequenz und der Wi-Fi Standart können, wie in \cite{iw} beschrieben, mittels des Befehls iw dev IFACE link bestimmt werden.
-Dabei steht die Frequenz hinter dem Argument freq, und kann somit mit der \ac{RegEx} re.search(r\'freq:\\s\*(\\d+\\.\\d+)\', output) bestimmt werden.
+Dabei steht die Frequenz hinter dem Argument freq, und kann somit mit der \ac{RegEx} $re.search(r'freq:\backslash s*(\backslash d+\backslash.\backslash d+)', output)$ bestimmt werden.
 Für den Standard wird der volle Output verwendet.
 Der output wird dabei auf he, vht, und ht durchsucht.
 Dabei sind die Optionen \ac{HT} pflicht für wifi4, \ac{VHT} pflicht für wifi5 und \ac{HE} pflicht füt wifi6.
