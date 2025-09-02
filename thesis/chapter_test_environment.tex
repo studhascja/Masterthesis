@@ -2092,3 +2092,52 @@ This process is explained in more detail in Chapter~\ref{sec:mod}.
 Having now described the organization of the test runs, the following section addresses the implementation of the \acp{AP} using hostapd.  
 
 \subsection{Access point configuration} \label{subsec:hostapd}
+As described in Chapter~\ref{subsec:impl}, the \acp{AP} must support the three configurable properties Wi-Fi standard, frequency, and bandwidth.  
+These properties can be configured using hostapd in a configuration file.  
+The following section explains which parameters must be set to achieve the desired network configuration.  
+Furthermore, it also addresses how the client’s wpa\_supplicant must be configured to connect to the network.  
+
+The configuration can be divided into several parts:  
+\begin{itemize}
+    \item \textbf{Core elements:} Core elements include parameters that are relevant in every configuration and do not change between configurations.  
+          These include the \texttt{interface}, which specifies the network interface to use and the \texttt{driver}, which specifies the network driver.
+          In this work, the \texttt{nl80211} driver is always used.  
+          Additionally, \texttt{ssid}, i.e. the network name and \texttt{wpa\_passphrase}, a password, must be specified.  
+          Certain security aspects are also relevant, such as \texttt{wpa\_key\_mgmt}, where Simultaneous Authentication of Equals (SAE) is used.  
+          Furthermore, \texttt{rsn\_pairwise=CCMP} must be set.  
+          The \texttt{rsn\_pairwise} parameter specifies the cipher suite used for the Robust Security Network (RSN) and CCMP is the encryption algorithm applied for data confidentiality and integrity.
+          
+    \item \textbf{Wi-Fi standard:} The Wi-Fi standard can be set using the \texttt{ieee80211} parameters.  
+          For standard 4, \texttt{ieee80211n=1} must be set, while for standard 5, \texttt{ieee80211ac=1} and for standard 6, \texttt{ieee80211ax=1} is necessary.  
+          Additionally, for standard 6, \texttt{ieee80211w=2} must be set, which indicates that management frame protection is required.  
+          Without this, it is not possible to create a Wi-Fi standard 6 \ac{AP}, as explained in~\cite{hostapd-config}.  
+          The parameters \texttt{ieee80211w=2} and \texttt{key\_mgmt=SAE} must also be included in the client’s wpa\_supplicant configuration.  
+          This is the only configuration on the client side that must be adjusted when Wi-Fi property, like the standard, change.
+
+    \item \textbf{Frequency:} To configure the frequency, the hostapd parameters \texttt{hw\_mode}, \texttt{channel}, and \texttt{op\_class} must be set.  
+          Frequencies of 2.4\,GHz, 5\,GHz, and 6\,GHz can be selected.  
+          For 2.4\,GHz, \texttt{hw\_mode=g} must be set.  
+          For 5\,GHz and 6\,GHz, \texttt{hw\_mode=a} must be set.  
+          The channel must be within the respective frequency band.  
+          As described in Chapter~\ref{subsec:stand}, channels 1–14 are available for 2.4\,GHz, 36–156 for 5\,GHz, and 1–233 for 6\,GHz.  
+          Since \texttt{hw\_mode} and \texttt{channel} alone cannot clearly distinguish between 5\,GHz and 6\,GHz, the \texttt{op\_class} parameter is used.  
+          According to~\cite[p.~2]{operating-class}, all values of 131 or higher correspond only to 6\,GHz.
+
+    \item \textbf{Bandwidth:} To configure the bandwidth in hostapd, the parameters \texttt{channel}, \\
+          \texttt{centr\_freq\_idx}, \texttt{oper\_chwidth} and \texttt{op\_class} are relevant.  
+          Each channel has a center frequency $f_c$, which can be calculated, like stated in \cite[p.~2829]{9363693}, as $f_c = f_{start} + 5 \times n$, where $f_{start}$ is the start frequency of the respective band and $n$ is the channel number.  
+          For 2.4\,GHz, bandwidths of 20\,MHz and 40\,MHz are available, whereas for 5\,GHz and 6\,GHz, 20\,MHz, 40\,MHz, 80\,MHz and 160\,MHz are possible.  
+          By default, if only the channel is specified, a channel bandwidth of 20\,MHz is used.  
+          For other bandwidths, \texttt{centr\_freq\_idx} and \texttt{oper\_chwidth} must be set.  
+          For \texttt{oper\_chwidth}, the value $0 \rightarrow 40\,\text{MHz}$, $1 \rightarrow 80\,\text{MHz}$ and $2 \rightarrow 160\,\text{MHz}$ applies.  
+          For \texttt{centr\_freq\_idx}, the center frequency $f_{center} = \frac{f_{c-start} + f_{c-end}}{2}$ must be calculated, and the channel containing this frequency must be selected.  
+          For example, in the 5\,GHz band with a bandwidth of 80\,MHz and a starting channel of 36, the end channel is 48 due to the 20\,MHz channel width\footnote{Like described Chapter \ref{subsec:stand}, the difference between two Channel is 5\,MHz. So to achieve 80\,MHz it is necessary to add four 20\,MHz channels. In this case these are the channel 36, 40, 44 and 48.}.  
+          Thus, $f_{center} = \frac{(5000\,\text{MHz} + 5 \times 36) + (5000\,\text{MHz} + 5 \times 48)}{2} = 5210\,\text{MHz}$.  
+          This corresponds to channel 42, which is assigned to \texttt{centr\_freq\_idx}.  
+          In the 6\,GHz band, \texttt{op\_class} must also be considered.  
+          Opclass values correspond to bandwidths as follows: 131 $\rightarrow$ 20\,MHz, 132 $\rightarrow$ 40\,MHz, 133 $\rightarrow$ 80\,MHz and 134 $\rightarrow$ 160\,MHz.
+
+\end{itemize}
+
+Having now explained how the desired settings can be applied in hostapd, the following section examines further measures regarding network characteristics and prioritization and their influence on the real-time performance of the Wi-Fi connection.
+
