@@ -57,6 +57,37 @@ What options exist to improve the real-time performance of Wi-Fi and which facto
 The following section outlines the methodology used in this work and delimits its scope.  
 
 \section{Objective} \label{subsec:objective}
+In this work, a test system is developed that can be used to verify whether Wi-Fi meets specific real-time requirements.  
+With this system, it is also evaluated which effects certain adjustments and configurations have on the real-time capability of Wi-Fi.  
+Furthermore, this work evaluates the degree of real-time capability that can be achieved with Wi-Fi.  
+In other words, it examines which temporal requirements can be fulfilled in a real-time manner using Wi-Fi.  
 
+To investigate this, the \ac{RTT} between server and client is measured.  
+In addition to real-time data, regular data must also be transmitted.  
+Thus, this work analyzes not only the real-time capability of Wi-Fi but also its ability to handle concurrent best-effort traffic.  
+The target in this work is at \ac{RTT} of 3 ms, because as is carried out in more detail in Chapter \ref{subsec:real_time_kernel}, this time is an important time in industry 4.0.
+
+This work considers only a single connection between server and client and therefore does not analyze complete \ac{WLAN} networks.  
+Moreover, no modifications to the protocol itself are performed.  
+On the one hand, such changes would deviate from the standard and potentially create yet another variant, thereby exacerbating the problem described in \cite{statista_hem}.  
+On the other hand, \cite{statista_hem} also shows that the greatest obstacle lies in the high investment costs.  
+Modifications of the IEEE 802.11 standard would further complicate usage, maintenance and compatibility.  
+To avoid these issues, only changes that are comparatively simple to implement are considered, as they introduce no significant development overhead while preserving compatibility with the standard.  
+
+As influencing factors on the real-time capability of Wi-Fi, the standards 4 through 6e are considered.  
+Within these, technologies such as \ac{MIMO}, MU-\ac{MIMO}, \ac{OFDMA} and beamforming are investigated.  
+In addition, different frequencies and bandwidths are tested regarding their impact on real-time capability.  
+
+Besides standard-dependent technologies, configuration- and implementation-related factors are also taken into account.  
+These include network prioritization via \ac{QoS} and \ac{Qdisc}, as well as the influence of different transport protocols such as \ac{UDP} and \ac{TCP}.  
+
+Furthermore, the impact of immutable factors, such as firmware at the MAC layer, on real-time capability is evaluated.  
+
+From these various factors, multiple test cases are derived.  
+These are evaluated using the test system in different environments.  
+The environments differ primarily in the density of interference sources.  
+For particularly promising test cases, long-term measurements are conducted to enable more reliable conclusions about their real-time performance.  
+
+The following section outlines how this objective is structured in this thesis.  
 
 \section{Layout of the work}
