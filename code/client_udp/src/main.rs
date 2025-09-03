@@ -74,9 +74,10 @@ struct Event {
     event_type: u8,
     _padding: [u8; 7],
     timestamp: u64,
+    pid: u32,
+    _padding_pid: [u8; 4],
     data: BpfData,
 }
-
 // Convert u8 to MessageType
 impl TryFrom<u8> for MessageType {
     type Error = std::convert::Infallible;
@@ -299,22 +300,22 @@ fn main() -> Result<()> {
         }
 
         let event = *from_bytes::<Event>(data);
-
-        match event.event_type {
-            0 => {
+        let my_pid = std::process::id() as u32;
+        match event.event_type{
+            0 if event.pid == my_pid => {
                 let diff = Instant::now().duration_since(read_user_zero()).as_nanos() as i128;
                 let timestamp = event.timestamp;
                 set_kernel_zero(timestamp);
             }
-            1 => {
+            1 if event.pid == my_pid => {
                 let mut queue = event_ref_rec.lock().unwrap();
                 queue.push_back(event);
             }
-            2 => {
+            2 if event.pid == my_pid => {
                 let mut queue = event_ref_send.lock().unwrap();
                 queue.push_back(event);
             }
-            3 => {
+            3 if event.pid == my_pid => {
                 let mut queue = queue_event_ref.lock().unwrap();
                 queue.push_back(event);
             }

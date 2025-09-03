@@ -47,6 +47,7 @@ struct BPF_Data {
 struct Event {
 	__u8 event_type;
         __u64 timestamp;
+	__u32 pid;
         struct BPF_Data data;
 };
 
@@ -67,6 +68,7 @@ int trace_measure_instant(struct pt_regs *ctx) {
 	e->event_type = 0;
         e->data.msg_type = 0;
         e->data.seq = 0;
+        e->pid = bpf_get_current_pid_tgid() >> 32;
         e->timestamp = timestamp;
 
     bpf_ringbuf_submit(e, 0);
@@ -121,6 +123,7 @@ if(d == 1){
 	event->event_type = 1;
         event->data.msg_type = msg.msg_type;
         event->data.seq = msg.seq;
+        event->pid = bpf_get_current_pid_tgid() >> 32;
         event->timestamp = bpf_ktime_get_ns();
 
         bpf_ringbuf_submit(event, 0);
@@ -189,6 +192,7 @@ if (iph.protocol != IPPROTO_UDP)
 				event->event_type = 2;
         			event->data.msg_type = msg.msg_type;
         			event->data.seq = msg.seq;
+                                event->pid = bpf_get_current_pid_tgid() >> 32;
        	 			event->timestamp = bpf_ktime_get_ns();
 
         			bpf_ringbuf_submit(event, 0);
@@ -248,6 +252,7 @@ if (msg.msg_type < 0 || msg.msg_type > 5) return 0;
         event->event_type = 3;
         event->data.msg_type = 4;
         event->data.seq = msg.seq;
+        event->pid = bpf_get_current_pid_tgid() >> 32;
         event->timestamp = bpf_ktime_get_ns();
 
         bpf_ringbuf_submit(event, 0);
