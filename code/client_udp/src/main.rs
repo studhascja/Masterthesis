@@ -7,6 +7,7 @@ use libc::{
 };
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
+use std::alloc::System;
 use std::{
     collections::VecDeque,
     convert::TryFrom,
@@ -177,8 +178,9 @@ fn set_user_zero(value: Instant) {
 fn test_user_kernel_sync() {
     let user_old = read_user_zero();
     let kernel_old = get_kernel_zero();
-
+    let start = Instant::now();
     update_user_zero();
+    let stop = Instant::now().duration_since(start).as_nanos() as i128;
     thread::sleep(Duration::from_millis(100));
 
     let user_new = read_user_zero();
@@ -187,10 +189,11 @@ fn test_user_kernel_sync() {
     let kernel_diff = (kernel_new as i128) - (kernel_old as i128);
 
     println!(
-        "User diff: {} ns, Kernel diff: {} ns, Difference: {} ns",
+        "User diff: {} ns, Kernel diff: {} ns, Difference: {} ns, Stop {}",
         user_diff,
         kernel_diff,
-        (user_diff - kernel_diff)
+        (user_diff - kernel_diff),
+        stop
     );
 
     set_kernel_zero(kernel_old);
@@ -299,6 +302,7 @@ fn main() -> Result<()> {
 
         match event.event_type {
             0 => {
+                let diff = Instant::now().duration_since(read_user_zero()).as_nanos() as i128;
                 let timestamp = event.timestamp;
                 set_kernel_zero(timestamp);
             }

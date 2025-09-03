@@ -46,6 +46,7 @@ struct SetupContext {
     calculation_result: (Vec<(f64, f64)>, Vec<CalcTimestampSet>),
     needed_time: u128,
     ptp_result: bool,
+    latency_reg: f64,
     latency_result: bool,
 }
 #[derive(Default)]
@@ -56,6 +57,7 @@ struct SetupContextOverrides {
     pub calculation_result: Option<(Vec<(f64, f64)>, Vec<CalcTimestampSet>)>,
     pub needed_time: Option<u128>,
     pub ptp_result: Option<bool>,
+    pub latency_reg: Option<f64>,
     pub latency_result: Option<bool>,
 }
 
@@ -235,6 +237,7 @@ fn update_context(base: &SetupContext, overrides: SetupContextOverrides) -> Setu
             .unwrap_or_else(|| base.calculation_result.clone()),
         needed_time: overrides.needed_time.unwrap_or(base.needed_time),
         ptp_result: overrides.ptp_result.unwrap_or(base.ptp_result),
+        latency_reg: overrides.latency_reg.unwrap_or(base.latency_reg),
         latency_result: overrides.latency_result.unwrap_or(base.latency_result),
     }
 }
@@ -282,9 +285,9 @@ fn wait_for_event(seq: u64, msg_type: MessageType, event_type: u8) -> Option<Eve
         .clone();
 
     loop {
-            if start.elapsed() > Duration::from_millis(10) {
-                return None;
-            }
+        if start.elapsed() > Duration::from_millis(10) {
+            return None;
+        }
         let mut queue_lock = queue.lock().unwrap();
         if let Some(pos) = queue_lock.iter().position(|event| {
             let Ok(t) = MessageType::try_from(event.data.msg_type);
@@ -358,6 +361,7 @@ fn setup() -> anyhow::Result<SetupContext> {
         calculation_result: (Vec::new(), Vec::new()),
         needed_time: u128::MAX,
         ptp_result: false,
+        latency_reg: 2.0,
         latency_result: false,
     })
 }
@@ -490,7 +494,9 @@ fn ptp_phase(context: &SetupContext) -> Result<SetupContext> {
         socket.send_to(&encoded_msg, &context.src_client)?;
         increment_message_count();
         let wait_time = Instant::now()
-            + Duration::from_nanos((context.needed_time as f64 / 2.0).round() as u64);
+            + Duration::from_nanos(
+                (context.needed_time as f64 / context.latency_reg).round() as u64
+            );
         wait_until(wait_time);
         update_user_zero();
 
@@ -678,15 +684,29 @@ fn latency_test_phase(context: &SetupContext) -> Result<SetupContext> {
         }
     }
     let med = median(&diff_all);
+
     if med.abs() > max_tolerance as i128 {
-        println!("Median is too high: {}", med);
-        return Ok(update_context(
-            context,
-            SetupContextOverrides {
-                latency_result: Some(false),
-                ..Default::default()
-            },
-        ));
+        if med < 0 {
+            println!("Median is too low: {}", med);
+            return Ok(update_context(
+                context,
+                SetupContextOverrides {
+                    latency_reg: Some(context.latency_reg + 0.1),
+                    latency_result: Some(false),
+                    ..Default::default()
+                },
+            ));
+        } else {
+            println!("Median is too high: {}", med);
+            return Ok(update_context(
+                context,
+                SetupContextOverrides {
+                    latency_reg: Some((context.latency_reg - 0.1).max(0.1)),
+                    latency_result: Some(false),
+                    ..Default::default()
+                },
+            ));
+        }
     }
     println!("Median of Latency Test: {}", med);
     return Ok(update_context(
@@ -971,7 +991,7 @@ fn main() -> anyhow::Result<()> {
     println!("Skelett geladen.");
 
     skel.attach()?;
-   
+
     println!("eBPF-Programm l  uft  ^` ");
     let r = context.running.clone();
     let maps = skel.maps();
@@ -986,7 +1006,7 @@ fn main() -> anyhow::Result<()> {
             );
             return 0;
         }
-	let my_pid = std::process::id() as u32;
+        let my_pid = std::process::id() as u32;
         let event = bytemuck::from_bytes::<Event>(data);
         if event.event_type == 0 && event.pid == my_pid {
             set_kernel_zero(event.timestamp);
@@ -1009,15 +1029,15 @@ fn main() -> anyhow::Result<()> {
                                 Duration::from_nanos(kernel_diff),
                 );
         } */
-        else if event.event_type == 3 && event.pid == my_pid{
+        else if event.event_type == 3 && event.pid == my_pid {
             let mut queue = queue_event_ref.lock().unwrap();
             queue.push_back(*event);
         } else if event.pid == my_pid {
             let mut queue = event_ref.lock().unwrap();
             queue.push_back(*event);
         } else {
-		println!("andere pid");
-	}
+            println!("andere pid");
+        }
         0 // R  ckgabewert: 0 bedeutet "OK"
     })?;
     let ringbuf = ringbuf_builder.build()?;

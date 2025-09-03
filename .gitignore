@@ -41,6 +41,7 @@ Thumbs.db
 latex.out
 latex.log
 latex.fls
+thesis.pre
 
 # arara
 *.run
@@ -59,3 +60,6 @@ target/
 *.pygtex
 *.pygstyle
 *.Identifier
+*.skel.*
+*.dat
+*copy.rs
