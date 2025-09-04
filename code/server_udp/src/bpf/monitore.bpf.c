@@ -232,13 +232,13 @@ bpf_probe_read(&udph, sizeof(udph), udp_header);
 char *payload = udp_header + sizeof(struct udphdr);
 struct Message msg = {};
 bpf_probe_read(&msg, sizeof(msg), payload);     
-
+        if (msg.msg_type != 5) return 0;
         struct Event *event;
         event = bpf_ringbuf_reserve(&events, sizeof(*event), 0);
         if (!event) return 0;
 
         event->event_type = 3;
-        event->data.msg_type = 4;
+        event->data.msg_type = 5;
         event->data.seq = msg.seq;
 	event->pid = bpf_get_current_pid_tgid() >> 32;
         event->timestamp = bpf_ktime_get_ns();

@@ -213,14 +213,20 @@ fn wait_for_event(seq: u64, msg_type: MessageType, event_type: u8) -> Option<Eve
             .get()
             .expect("CURRENT_EVENT not initialized")
             .clone();
-    } else {
+    } else if event_type ==2 {
         queue = CURRENT_EVENT_SEND
+            .get()
+            .expect("CURRENT_EVENT not initialized")
+            .clone();
+    } else {
+           queue = CURRENT_QUEUE_EVENT
             .get()
             .expect("CURRENT_EVENT not initialized")
             .clone();
     }
     loop {
         if start.elapsed() > Duration::from_millis(10) {
+            println!("Nix");
             return None;
         }
         let mut queue_lock = queue.lock().unwrap();
@@ -237,34 +243,6 @@ fn wait_for_event(seq: u64, msg_type: MessageType, event_type: u8) -> Option<Eve
         drop(queue_lock);
         thread::sleep(Duration::from_nanos(5));
     }
-}
-
-fn wait_for_queue_event(timestamp: u64) -> Option<Event> {
-    let queue = CURRENT_QUEUE_EVENT
-        .get()
-        .expect("CURRENT_QUEUE_EVENT not initialized")
-        .clone();
-
-    let count = *MESSAGE_COUNT.lock().unwrap() as usize;
-
-    let mut queue_lock = queue.lock().unwrap();
-    println!("Queue Queue length: {}", queue_lock.len());
- for i in 1..queue_lock.len() {
-        let idx = queue_lock.len() - i;
-        let event = &queue_lock[idx];
-        if (event.timestamp - get_kernel_zero()) < timestamp
-        {  
-            let result = Some(event.clone());
-            if queue_lock.len() > 5 {
-                queue_lock.clear();
-            }
-            return result;
-        }
-
-        thread::sleep(Duration::from_nanos(5));
-    }
-println!("No matching queue event found. {} {}", queue_lock.len(), count);
-    queue_lock.back().cloned()
 }
 
 fn main() -> Result<()> {
@@ -457,7 +435,6 @@ fn main() -> Result<()> {
                     if let Some(event) = wait_for_event(seq, MessageType::Calc, 1) {
                         client_recv = event.timestamp - get_kernel_zero();
                     }
-		    println!("Client Sent Time Calc: {}", client_sent_time_calc);
                     let encoded = encode_message(
                         MessageType::Calc,
                         seq,
@@ -482,7 +459,7 @@ fn main() -> Result<()> {
 
                     let duration_queue = start.elapsed();
 
-                    let queue_event = wait_for_queue_event(client_sent_time_calc as u64);
+                    let queue_event = wait_for_event(seq, MessageType::Calc, 3);
                     if let Some(evt) = queue_event {
                         client_queue_time_calc = (evt.timestamp - get_kernel_zero()) as u128;
                     }

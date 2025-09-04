@@ -1,5 +1,5 @@
 use anyhow::Result;
-use bytemuck::{Pod, Zeroable};
+use bytemuck::{Pod, Zeroable, from_bytes};
 use libbpf_rs::skel::{OpenSkel, Skel, SkelBuilder};
 use libbpf_rs::RingBufferBuilder;
 use libc::{pthread_self, pthread_setschedparam, sched_param, SCHED_RR};
@@ -20,7 +20,8 @@ use std::time::{Duration, Instant, SystemTime};
 
 include!("bpf/monitore.skel.rs");
 
-static CURRENT_EVENT: OnceLock<Arc<Mutex<VecDeque<Event>>>> = OnceLock::new();
+static CURRENT_EVENT_REC: OnceLock<Arc<Mutex<VecDeque<Event>>>> = OnceLock::new();
+static CURRENT_EVENT_SEND: OnceLock<Arc<Mutex<VecDeque<Event>>>> = OnceLock::new();
 static CURRENT_QUEUE_EVENT: OnceLock<Arc<Mutex<VecDeque<Event>>>> = OnceLock::new();
 
 static USER_ZERO: Lazy<Mutex<Instant>> = Lazy::new(|| Mutex::new(Instant::now()));
@@ -258,49 +259,45 @@ pub fn increment_timeout_count() -> bool {
     }
 }
 
-fn wait_for_queue_event(timestamp: u64) -> Option<Event> {
-    let queue_arc = CURRENT_QUEUE_EVENT
-        .get()
-        .expect("CURRENT_QUEUE_EVENT not initialized");
-    let count = *MESSAGE_COUNT.lock().unwrap() as usize;
-
-    let queue = queue_arc.lock().unwrap();
-    for i in 1..queue.len() {
-        if queue.len() >= count
-            && (queue[queue.len() - i].timestamp - get_kernel_zero()) < timestamp
-        {
-            return Some(queue[queue.len() - i].clone());
-        }
-        thread::sleep(Duration::from_nanos(50));
-    }
-    println!("Falsch");
-    return None;
-}
-
 fn wait_for_event(seq: u64, msg_type: MessageType, event_type: u8) -> Option<Event> {
     let start = Instant::now();
-    let queue = CURRENT_EVENT
-        .get()
-        .expect("CURRENT_EVENT not initialized")
-        .clone();
-
+    let queue;
+    if event_type == 1 {
+        queue = CURRENT_EVENT_REC
+            .get()
+            .expect("CURRENT_EVENT not initialized")
+            .clone();
+    } else if event_type ==2 {
+        queue = CURRENT_EVENT_SEND
+            .get()
+            .expect("CURRENT_EVENT not initialized")
+            .clone();
+    } else {
+           queue = CURRENT_QUEUE_EVENT
+            .get()
+            .expect("CURRENT_EVENT not initialized")
+            .clone();
+    }
     loop {
         if start.elapsed() > Duration::from_millis(10) {
+            println!("Nix");
             return None;
         }
         let mut queue_lock = queue.lock().unwrap();
+        //println!("Message Queue length: {}", queue_lock.len());
         if let Some(pos) = queue_lock.iter().position(|event| {
             let Ok(t) = MessageType::try_from(event.data.msg_type);
             t == msg_type && event.data.seq == seq && event.event_type == event_type
         }) {
-            return Some(queue_lock.remove(pos).unwrap());
+            let result = Some(queue_lock.remove(pos).unwrap());
+            queue_lock.clear();
+            return result;
         }
 
         drop(queue_lock);
         thread::sleep(Duration::from_nanos(5));
     }
 }
-
 fn median(values: &Vec<i128>) -> i128 {
     let mut sorted_values = values.clone();
     sorted_values.sort();
@@ -484,6 +481,7 @@ fn ptp_phase(context: &SetupContext) -> Result<SetupContext> {
     let socket = &context.socket;
     let interval = context.interval.clone();
     let mut ptp_diff = u128::MAX;
+    println!("PTP: {:?}", context.latency_reg);
     println!("--------------------Start PTP Mechanism---------------------");
     let mut j = 0;
     let mut ptp_regulation = 1000;
@@ -691,7 +689,7 @@ fn latency_test_phase(context: &SetupContext) -> Result<SetupContext> {
             return Ok(update_context(
                 context,
                 SetupContextOverrides {
-                    latency_reg: Some(context.latency_reg + 0.1),
+                    latency_reg: Some(context.latency_reg + 0.02),
                     latency_result: Some(false),
                     ..Default::default()
                 },
@@ -701,7 +699,7 @@ fn latency_test_phase(context: &SetupContext) -> Result<SetupContext> {
             return Ok(update_context(
                 context,
                 SetupContextOverrides {
-                    latency_reg: Some((context.latency_reg - 0.1).max(0.1)),
+                    latency_reg: Some((context.latency_reg - 0.02).max(0.1)),
                     latency_result: Some(false),
                     ..Default::default()
                 },
@@ -751,7 +749,7 @@ fn calculation_phase(context: &SetupContext) -> Result<SetupContext> {
             server_sent_kernel = event.timestamp - get_kernel_zero();
         }
 
-        let event_snapshot_queue = wait_for_queue_event(server_sent_kernel);
+        let event_snapshot_queue = wait_for_event(i, MessageType::Calc, 3);
         let server_queue = event_snapshot_queue.unwrap().timestamp - get_kernel_zero();
 
         let calc_send_duration;
@@ -973,16 +971,17 @@ fn handle_error(context: &SetupContext) -> Result<()> {
 fn main() -> anyhow::Result<()> {
     let context = setup()?;
 
-    let event_queue = Arc::new(Mutex::new(VecDeque::new()));
+    let event_queue_rec = Arc::new(Mutex::new(VecDeque::new()));
+    let event_queue_send = Arc::new(Mutex::new(VecDeque::new()));
     let queue_event_queue = Arc::new(Mutex::new(VecDeque::new()));
-
-    CURRENT_EVENT.set(event_queue.clone()).unwrap();
+    
+    CURRENT_EVENT_REC.set(event_queue_rec.clone()).unwrap();
+    CURRENT_EVENT_SEND.set(event_queue_send.clone()).unwrap();
     CURRENT_QUEUE_EVENT.set(queue_event_queue.clone()).unwrap();
 
-    let event_ref = CURRENT_EVENT.get().expect("CURRENT_EVENT not initialized");
-    let queue_event_ref = CURRENT_QUEUE_EVENT
-        .get()
-        .expect("CURRENT_EVENT not initialized");
+    let event_ref_rec = CURRENT_EVENT_REC.get().unwrap().clone();
+    let event_ref_send = CURRENT_EVENT_SEND.get().unwrap().clone();
+    let queue_event_ref = CURRENT_QUEUE_EVENT.get().unwrap().clone();
 
     let open_skel = MonitoreSkelBuilder::default().open();
     println!("Skelett ge  ffnet.");
@@ -1007,39 +1006,32 @@ fn main() -> anyhow::Result<()> {
             return 0;
         }
         let my_pid = std::process::id() as u32;
-        let event = bytemuck::from_bytes::<Event>(data);
-        if event.event_type == 0 && event.pid == my_pid {
-            set_kernel_zero(event.timestamp);
+        let event = *from_bytes::<Event>(data);
+        match event.event_type{
+            0 if event.pid == my_pid => {
+                let timestamp = event.timestamp;
+                set_kernel_zero(timestamp);
+            }
+            1 if event.pid == my_pid => {
+                let mut queue = event_ref_rec.lock().unwrap();
+                queue.push_back(event);
+            }
+            2 if event.pid == my_pid => {
+                let mut queue = event_ref_send.lock().unwrap();
+                queue.push_back(event);
+            }
+            3 if event.pid == my_pid => {
+                let mut queue = queue_event_ref.lock().unwrap();
+                queue.push_back(event);
+            }
+            _ => {
+                eprintln!("⚠️ Unknown event type: {}", event.event_type);
+            }
         }
-        /*
-                println!(
-                        "Latenz: {:?} (User: {:?} - Kernel: {:?})",
-                        diff_ns,
-                        elapsed,
-                        Duration::from_nanos(kernel_diff),
-                );
-                if let Some(val) = TEST.get(){
-                        let usersp = val.duration_since(*USER_ZERO.get().unwrap());
-                        let test_diff = usersp.as_nanos() as i128 - kernel_diff as i128;
 
-                        println!(
-                                "TEST: Latenz: {:?} (User: {:?} - Kernel: {:?})",
-                                test_diff,
-                                usersp,
-                                Duration::from_nanos(kernel_diff),
-                );
-        } */
-        else if event.event_type == 3 && event.pid == my_pid {
-            let mut queue = queue_event_ref.lock().unwrap();
-            queue.push_back(*event);
-        } else if event.pid == my_pid {
-            let mut queue = event_ref.lock().unwrap();
-            queue.push_back(*event);
-        } else {
-            println!("andere pid");
-        }
-        0 // R  ckgabewert: 0 bedeutet "OK"
+        0
     })?;
+
     let ringbuf = ringbuf_builder.build()?;
 
     // Separate Thread f  r Polling des Ringbuffers starten
