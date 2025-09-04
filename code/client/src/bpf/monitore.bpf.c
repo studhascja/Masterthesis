@@ -4,6 +4,7 @@
 #include <bpf/bpf_tracing.h>
 
 char __license[] SEC("license") = "GPL";
+__u32 my_pid = 0;
 
 #define member_read(destination, source_struct, source_member)                 \
   do{                                                                          \
@@ -35,11 +36,13 @@ struct BPF_Data {
 	__u8 msg_type;
 	__u8 _padding[7];
 	__u64 seq;
+    __u64 tcp_seq;
 };
 
 struct Event {
 	__u8 event_type;
 	__u64 timestamp;
+    __u32 pid;
 	struct BPF_Data data;
 };
 
@@ -56,9 +59,12 @@ int trace_measure_instant(struct pt_regs *ctx) {
     	if (!e) {
         return 0;
     	}
+        my_pid = bpf_get_current_pid_tgid() >> 32;
     	e->event_type = 0;
         e->data.msg_type = 0;
         e->data.seq = 0;
+        e->data.tcp_seq = 0;
+        e->pid = bpf_get_current_pid_tgid() >> 32;
         e->timestamp = timestamp;
 
     bpf_ringbuf_submit(e, 0);
@@ -85,7 +91,7 @@ bpf_probe_read(&ip_version, sizeof(u8), ip_header_address);
 ip_version = ip_version >> 4 & 0xf;
 
 
-bpf_printk("IP: %d", ip_version);
+//bpf_printk("IP: %d", ip_version);
 struct iphdr iph;
 bpf_probe_read(&iph, sizeof(iph), ip_header_address);
 if (iph.protocol != IPPROTO_TCP)
@@ -97,7 +103,7 @@ u8 b = (src_ip >> 16) & 0xff;
 u8 c = (src_ip >> 8) & 0xff;
 u8 d = src_ip & 0xff;
 
-bpf_printk("IPv4 Src: %d.%d.%d.%d", a, b, c, d);
+//bpf_printk("IPv4 Src: %d.%d.%d.%d", a, b, c, d);
 
 u8 ip_header_len = iph.ihl * 4;
 
@@ -113,8 +119,8 @@ if(d == 1){
 
 	struct Message msg = {};
 	bpf_probe_read(&msg, sizeof(msg), payload);	
-	bpf_printk("Size of eBPF Message struct: %d", sizeof(struct Message));
-	bpf_printk("TCP Payload: Type: %u Seq: %llu", msg.msg_type, msg.seq);
+	//bpf_printk("Size of eBPF Message struct: %d", sizeof(struct Message));
+	//bpf_printk("TCP Payload: Type: %u Seq: %llu", msg.msg_type, msg.seq);
 	if (msg.msg_type < 0 || msg.msg_type > 5) return 0;	
 	struct Event *event;
 	event = bpf_ringbuf_reserve(&events, sizeof(*event), 0);
@@ -122,7 +128,9 @@ if(d == 1){
 
 	event->event_type = 1;
 	event->data.msg_type = msg.msg_type;
-	event->data.seq = msg.seq;
+	event->data.seq = msg.seq; 
+    event->data.tcp_seq = 0;
+    event->pid = my_pid;
 	event->timestamp = bpf_ktime_get_ns();
 
 	bpf_ringbuf_submit(event, 0);
@@ -158,10 +166,10 @@ int handle_net_dev_xmit(struct trace_event_raw_net_dev_xmit *ctx) {
 
         char* ip_header_address = head + mac_header + MAC_HEADER_SIZE;
         struct iphdr iph;
-bpf_probe_read(&iph, sizeof(iph), ip_header_address);
-if (iph.protocol != IPPROTO_TCP)
-    return 0;
- u32 src_ip = __builtin_bswap32(iph.saddr);
+        bpf_probe_read(&iph, sizeof(iph), ip_header_address);
+        if (iph.protocol != IPPROTO_TCP)
+            return 0;
+        u32 src_ip = __builtin_bswap32(iph.saddr);
         u8 d = src_ip & 0xff;
 
         u32 dst_ip = __builtin_bswap32(iph.daddr);
@@ -176,6 +184,13 @@ if (iph.protocol != IPPROTO_TCP)
                 struct tcphdr tcph = {};
                 bpf_probe_read(&tcph, sizeof(tcph), tcp_header);
                 u8 tcp_header_len = tcph.doff * 4;
+                bpf_printk("KTCP src_port=%d dst_port=%d seq=%u ack_seq=%u flags=0x%x\n",
+                __builtin_bswap16(tcph.source),
+                __builtin_bswap16(tcph.dest),
+                __builtin_bswap32(tcph.seq),
+                __builtin_bswap32(tcph.ack_seq),
+                (tcph.fin << 0) | (tcph.syn << 1) | (tcph.rst << 2) |
+                (tcph.psh << 3) | (tcph.ack << 4) | (tcph.urg << 5));
 
                 if(d == 43 && dd == 1){
                         char *payload = tcp_header + tcp_header_len;
@@ -189,6 +204,8 @@ if (iph.protocol != IPPROTO_TCP)
                                 event->event_type = 2;
                                 event->data.msg_type = msg.msg_type;
                                 event->data.seq = msg.seq;
+                                event->data.tcp_seq = tcph.seq;
+                                event->pid = bpf_get_current_pid_tgid() >> 32;
                                 event->timestamp = bpf_ktime_get_ns();
 
                                 bpf_ringbuf_submit(event, 0);
@@ -221,33 +238,54 @@ bpf_probe_read(&iph, sizeof(iph), ip_header_address);
 if (iph.protocol != IPPROTO_TCP)
     return 0;
 
+
+if (iph.protocol != IPPROTO_TCP)
+    return 0;
 u32 src_ip = __builtin_bswap32(iph.saddr);
 u8 d = src_ip & 0xff;
 
+u32 dst_ip = __builtin_bswap32(iph.daddr);
+u8 dd = dst_ip & 0xff;
 
 u8 ip_header_len = iph.ihl * 4;
 
-// TCP-Header
-char *tcp_header = ip_header_address + ip_header_len;
 
-struct tcphdr tcph = {};
-bpf_probe_read(&tcph, sizeof(tcph), tcp_header);
+if (__builtin_strcmp(comm, "client") == 0) {
+            // TCP-Header
+    char *tcp_header = ip_header_address + ip_header_len;
 
-u8 tcp_header_len = tcph.doff * 4;
+    struct tcphdr tcph = {};
+    bpf_probe_read(&tcph, sizeof(tcph), tcp_header);
+    u8 tcp_header_len = tcph.doff * 4;
+    bpf_printk("TCP src_port=%d dst_port=%d seq=%u ack_seq=%u flags=0x%x\n",
+    __builtin_bswap16(tcph.source),
+    __builtin_bswap16(tcph.dest),
+    __builtin_bswap32(tcph.seq),
+    __builtin_bswap32(tcph.ack_seq),
+    (tcph.fin << 0) | (tcph.syn << 1) | (tcph.rst << 2) |
+    (tcph.psh << 3) | (tcph.ack << 4) | (tcph.urg << 5));
 
-char *payload = tcp_header + tcp_header_len;
-struct Message msg = {};
-        bpf_probe_read(&msg, sizeof(msg), payload);     
+
+    if(d == 43 && dd == 1){
+        char *payload = tcp_header + tcp_header_len;
+                
+        struct Message msg = {};
+        bpf_probe_read(&msg, sizeof(msg), payload);   
+        bpf_printk("msg_type=%d seq=%llu\n", msg.msg_type, msg.seq);
         struct Event *event;
         event = bpf_ringbuf_reserve(&events, sizeof(*event), 0);
         if (!event) return 0;
 
         event->event_type = 3;
-        event->data.msg_type = 4;
-        event->data.seq = msg.seq;
+        event->data.msg_type = 5;
+        event->data.seq = tcph.seq;
+        event->data.tcp_seq = 0;
+        event->pid = bpf_get_current_pid_tgid() >> 32;
         event->timestamp = bpf_ktime_get_ns();
 
         bpf_ringbuf_submit(event, 0);
 
 return 0;
 }
+        }
+    }
