@@ -4,6 +4,7 @@
 #include <bpf/bpf_tracing.h>
 
 char __license[] SEC("license") = "GPL";
+__u32 my_pid = 0;
 
 #define MAC_HEADER_SIZE 14;
 #define member_read(destination, source_struct, source_member)                 \
@@ -38,15 +39,17 @@ struct Message {
 }__attribute__((packed));
 
 struct BPF_Data {
-        __u8 msg_type;
-        __u8 _padding[7];
-        __u64 seq;
+	__u8 msg_type;
+	__u8 _padding[7];
+	__u64 seq;
+    __u64 tcp_seq;
 };
 
 struct Event {
 	__u8 event_type;
-        __u64 timestamp;
-        struct BPF_Data data;
+	__u64 timestamp;
+    __u32 pid;
+	struct BPF_Data data;
 };
 
 struct {
@@ -62,9 +65,12 @@ int trace_measure_instant(struct pt_regs *ctx) {
         if (!e) {
         return 0;
         }
-	e->event_type = 0;
+	my_pid = bpf_get_current_pid_tgid() >> 32;
+       	e->event_type = 0;
         e->data.msg_type = 0;
         e->data.seq = 0;
+        e->data.tcp_seq = 0;
+        e->pid = bpf_get_current_pid_tgid() >> 32;
         e->timestamp = timestamp;
 
     bpf_ringbuf_submit(e, 0);
@@ -121,10 +127,11 @@ if(d == 43){
         if (!event) return 0;
 	
 	event->event_type = 1;
-        event->data.msg_type = msg.msg_type;
-        event->data.seq = msg.seq;
-        event->timestamp = bpf_ktime_get_ns();
-
+	event->data.msg_type = msg.msg_type;
+	event->data.seq = msg.seq; 
+        event->data.tcp_seq = 0;
+        event->pid = my_pid;
+	event->timestamp = bpf_ktime_get_ns();
         bpf_ringbuf_submit(event, 0);
 }
 
@@ -188,10 +195,13 @@ if (iph.protocol != IPPROTO_TCP)
         			struct Event *event;
         			event = bpf_ringbuf_reserve(&events, sizeof(*event), 0);
         			if (!event) return 0;
-				event->event_type = 2;
-        			event->data.msg_type = msg.msg_type;
-        			event->data.seq = msg.seq;
-       	 			event->timestamp = bpf_ktime_get_ns();
+			        event->event_type = 2;
+                                event->data.msg_type = msg.msg_type;
+                                event->data.seq = msg.seq;
+                                event->data.tcp_seq = tcph.seq;
+                                event->pid = bpf_get_current_pid_tgid() >> 32;
+                                event->timestamp = bpf_ktime_get_ns();
+
 
         			bpf_ringbuf_submit(event, 0);
 		}
@@ -225,9 +235,13 @@ bpf_probe_read(&iph, sizeof(iph), ip_header_address);
 if (iph.protocol != IPPROTO_TCP)
     return 0;
 
+if (iph.protocol != IPPROTO_TCP)
+    return 0;
 u32 src_ip = __builtin_bswap32(iph.saddr);
 u8 d = src_ip & 0xff;
 
+u32 dst_ip = __builtin_bswap32(iph.daddr);
+u8 dd = dst_ip & 0xff;
 
 u8 ip_header_len = iph.ihl * 4;
 
@@ -239,6 +253,7 @@ bpf_probe_read(&tcph, sizeof(tcph), tcp_header);
 
 u8 tcp_header_len = tcph.doff * 4;
 
+if(d == 1 && dd == 43){
 char *payload = tcp_header + tcp_header_len;
 struct Message msg = {};
         bpf_probe_read(&msg, sizeof(msg), payload);     
@@ -248,13 +263,16 @@ struct Message msg = {};
         if (!event) return 0;
 
         event->event_type = 3;
-        event->data.msg_type = 4;
-        event->data.seq = msg.seq;
+        event->data.msg_type = 5;
+        event->data.seq = tcph.seq;
+        event->data.tcp_seq = 0;
+        event->pid = bpf_get_current_pid_tgid() >> 32;
         event->timestamp = bpf_ktime_get_ns();
 
         bpf_ringbuf_submit(event, 0);
 
 return 0;
+}
 }
 
 

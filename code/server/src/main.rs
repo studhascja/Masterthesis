@@ -1,5 +1,5 @@
 use anyhow::Result;
-use bytemuck::{Pod, Zeroable};
+use bytemuck::{Pod, Zeroable, from_bytes};
 use libbpf_rs::skel::{OpenSkel, Skel, SkelBuilder};
 use libbpf_rs::RingBufferBuilder;
 use libc::{pthread_self, pthread_setschedparam, sched_param, SCHED_RR};
@@ -20,7 +20,8 @@ use std::time::{Duration, Instant, SystemTime};
 
 include!("bpf/monitore.skel.rs");
 
-static CURRENT_EVENT: OnceLock<Arc<Mutex<VecDeque<Event>>>> = OnceLock::new();
+static CURRENT_EVENT_REC: OnceLock<Arc<Mutex<VecDeque<Event>>>> = OnceLock::new();
+static CURRENT_EVENT_SEND: OnceLock<Arc<Mutex<VecDeque<Event>>>> = OnceLock::new();
 static CURRENT_QUEUE_EVENT: OnceLock<Arc<Mutex<VecDeque<Event>>>> = OnceLock::new();
 
 static USER_ZERO: Lazy<Mutex<Instant>> = Lazy::new(|| Mutex::new(Instant::now()));
@@ -51,6 +52,7 @@ struct SetupContext {
     calculation_result: (Vec<(f64, f64)>, Vec<CalcTimestampSet>),
     needed_time: u128,
     ptp_result: bool,
+    latency_reg: f64,
     latency_result: bool,
 }
 
@@ -61,6 +63,7 @@ struct SetupContextOverrides {
     pub calculation_result: Option<(Vec<(f64, f64)>, Vec<CalcTimestampSet>)>,
     pub needed_time: Option<u128>,
     pub ptp_result: Option<bool>,
+    pub latency_reg: Option<f64>,
     pub latency_result: Option<bool>,
 }
 
@@ -114,6 +117,7 @@ fn update_context(base: &SetupContext, overrides: SetupContextOverrides) -> Setu
             .unwrap_or_else(|| base.calculation_result.clone()),
         needed_time: overrides.needed_time.unwrap_or(base.needed_time),
         ptp_result: overrides.ptp_result.unwrap_or(base.ptp_result),
+        latency_reg: overrides.latency_reg.unwrap_or(base.latency_reg),
         latency_result: overrides.latency_result.unwrap_or(base.latency_result),
     }
 }
@@ -150,6 +154,7 @@ struct BpfData {
     msg_type: u8,
     _padding: [u8; 7],
     seq: u64,
+    tcp_seq: u64,
 }
 
 #[repr(C, packed)]
@@ -158,8 +163,11 @@ struct Event {
     event_type: u8,
     _padding: [u8; 7],
     timestamp: u64,
+    pid: u32,
+    _padding_pid: [u8; 4],
     data: BpfData,
 }
+
 
 #[derive(Default, Clone)]
 struct PTPTimestampSet {
@@ -249,51 +257,43 @@ pub fn increment_message_count() -> u64 {
     *count
 }
 
-fn wait_for_queue_event(timestamp: u64) -> Option<Event> {
-    let queue_arc = CURRENT_QUEUE_EVENT
-        .get()
-        .expect("CURRENT_QUEUE_EVENT not initialized");
-    let count = *MESSAGE_COUNT.lock().unwrap() as usize;
-
-    let queue = queue_arc.lock().unwrap();
-    //println!("Queue count: {} Msg count: {}", queue.len(), count);
-    for i in 1..queue.len() {
-        //let actual_timestamp = queue[queue.len() -i].timestamp;
-        //println!("{:?} {:?}", actual_timestamp, timestamp);
-        //        println!("Queue: {} Count: {}", queue.len(), count);
-        if queue.len() >= count
-            && (queue[queue.len() - i].timestamp - get_kernel_zero()) < timestamp
-        {
-            return Some(queue[queue.len() - i].clone());
-        }
-        thread::sleep(Duration::from_nanos(50));
-    }
-    println!("Falsch");
-    return None;
-}
-
-fn wait_for_event(number: u64, msg_t: MessageType, event_t: u8) -> Option<Event> {
+fn wait_for_event(seq: u64, msg_type: MessageType, event_type: u8) -> Option<Event> {
     let start = Instant::now();
-    let queue_arc = CURRENT_EVENT.get().expect("CURRENT_EVENT not initialized");
+    let queue;
+    if event_type == 1 {
+        queue = CURRENT_EVENT_REC
+            .get()
+            .expect("CURRENT_EVENT not initialized")
+            .clone();
+    } else if event_type ==2 {
+        queue = CURRENT_EVENT_SEND
+            .get()
+            .expect("CURRENT_EVENT not initialized")
+            .clone();
+    } else {
+           queue = CURRENT_QUEUE_EVENT
+            .get()
+            .expect("CURRENT_EVENT not initialized")
+            .clone();
+    }
     loop {
-        {
-            if start.elapsed() > Duration::from_millis(2) {
-                return None;
-            }
-            let mut queue = queue_arc.lock().unwrap();
-            while let Some(evt) = queue.pop_front() {
-                let msg_type = MessageType::try_from(evt.data.msg_type).unwrap();
-                //		    println!("MSG-Type: {:?}", msg_type);
-                //		    let seq = evt.data.seq;
-                //		    let even = evt.event_type;
-                //		    println!("Number: {}, Actual: {}", number, seq);
-                //		    println!("Event: {}, Actual: {}", event_t, even);
-                if msg_type == msg_t && evt.data.seq == number && evt.event_type == event_t {
-                    return Some(evt);
-                }
-            }
+        if start.elapsed() > Duration::from_millis(10) {
+            println!("Nix {}", event_type);
+            return None;
         }
-        thread::sleep(Duration::from_nanos(50));
+        let mut queue_lock = queue.lock().unwrap();
+        //println!("Message Queue length: {}", queue_lock.len());
+        if let Some(pos) = queue_lock.iter().position(|event| {
+            let Ok(t) = MessageType::try_from(event.data.msg_type);
+            t == msg_type && event.data.seq == seq && event.event_type == event_type
+        }) {
+            let result = Some(queue_lock.remove(pos).unwrap());
+            queue_lock.clear();
+            return result;
+        }
+
+        drop(queue_lock);
+        thread::sleep(Duration::from_nanos(5));
     }
 }
 
@@ -414,6 +414,7 @@ fn ptp_phase(context: &SetupContext) -> Result<SetupContext> {
     let mut ptp_diff = u128::MAX;
     let needed_time = context.needed_time.clone();
     let interval = context.interval.clone();
+    println!("PTP: {:?}", context.latency_reg);
     if let Ok(mut stream) = context.stream.try_clone() {
         println!("--------------------Start PTP Mechanism---------------------");
         let mut j = 0;
@@ -434,7 +435,7 @@ fn ptp_phase(context: &SetupContext) -> Result<SetupContext> {
             }
             increment_message_count();
             let wait_time =
-                Instant::now() + Duration::from_nanos((needed_time as f64 / 2.0).round() as u64);
+                Instant::now() + Duration::from_nanos((needed_time as f64 / context.latency_reg).round() as u64);
             wait_until(wait_time);
             update_user_zero();
 
@@ -593,14 +594,27 @@ fn latency_test_phase(context: &SetupContext) -> Result<SetupContext> {
         }
         let med = median(&diff_all);
         if med.abs() > max_tolerance as i128 {
-            println!("Median is too high: {}", med);
+                   if med < 0 {
+            println!("Median is too low: {}", med);
             return Ok(update_context(
                 context,
                 SetupContextOverrides {
+                    latency_reg: Some(context.latency_reg + 0.02),
                     latency_result: Some(false),
                     ..Default::default()
                 },
             ));
+        } else {
+            println!("Median is too high: {}", med);
+            return Ok(update_context(
+                context,
+                SetupContextOverrides {
+                    latency_reg: Some((context.latency_reg - 0.02).max(0.1)),
+                    latency_result: Some(false),
+                    ..Default::default()
+                },
+            ));
+        }
         }
         println!("Median of Latency Test: {}", med);
         return Ok(update_context(
@@ -657,12 +671,13 @@ fn calculation_phase(context: &SetupContext) -> Result<SetupContext> {
 
             let mut server_sent_kernel =
                 Instant::now().duration_since(read_user_zero()).as_nanos() as u64;
-
+            let mut tcp_sec = 0;
             if let Some(event) = wait_for_event(i, MessageType::Calc, 2) {
                 server_sent_kernel = event.timestamp - get_kernel_zero();
+                tcp_sec = event.data.tcp_seq;
             }
 
-            let event_snapshot_queue = wait_for_queue_event(server_sent_kernel);
+            let event_snapshot_queue = wait_for_event(tcp_sec, MessageType::Calc, 3);
             let server_queue = event_snapshot_queue.unwrap().timestamp - get_kernel_zero();
 
             let calc_send_duration;
@@ -865,16 +880,17 @@ fn handle_error(context: &SetupContext) -> Result<()> {
 
 fn main() -> Result<(), libbpf_rs::Error> {
     set_rt_priority(99);
-    let event_queue = Arc::new(Mutex::new(VecDeque::new()));
+    let event_queue_rec = Arc::new(Mutex::new(VecDeque::new()));
+    let event_queue_send = Arc::new(Mutex::new(VecDeque::new()));
     let queue_event_queue = Arc::new(Mutex::new(VecDeque::new()));
-
-    CURRENT_EVENT.set(event_queue.clone()).unwrap();
+    
+    CURRENT_EVENT_REC.set(event_queue_rec.clone()).unwrap();
+    CURRENT_EVENT_SEND.set(event_queue_send.clone()).unwrap();
     CURRENT_QUEUE_EVENT.set(queue_event_queue.clone()).unwrap();
 
-    let event_ref = CURRENT_EVENT.get().expect("CURRENT_EVENT not initialized");
-    let queue_event_ref = CURRENT_QUEUE_EVENT
-        .get()
-        .expect("CURRENT_EVENT not initialized");
+    let event_ref_rec = CURRENT_EVENT_REC.get().unwrap().clone();
+    let event_ref_send = CURRENT_EVENT_SEND.get().unwrap().clone();
+    let queue_event_ref = CURRENT_QUEUE_EVENT.get().unwrap().clone();
 
     let open_skel = MonitoreSkelBuilder::default().open();
     println!("Skelett geöffnet.");
@@ -900,36 +916,31 @@ fn main() -> Result<(), libbpf_rs::Error> {
             return 0;
         }
 
-        let event = bytemuck::from_bytes::<Event>(data);
-        if event.event_type == 0 {
-            set_kernel_zero(event.timestamp);
+        let my_pid = std::process::id() as u32;
+        let event = *from_bytes::<Event>(data);
+        match event.event_type{
+            0 if event.pid == my_pid => {
+                let timestamp = event.timestamp;
+                set_kernel_zero(timestamp);
+            }
+            1 if event.pid == my_pid => {
+                let mut queue = event_ref_rec.lock().unwrap();
+                queue.push_back(event);
+            }
+            2 if event.pid == my_pid => {
+                let mut queue = event_ref_send.lock().unwrap();
+                queue.push_back(event);
+            }
+            3 if event.pid == my_pid => {
+                let mut queue = queue_event_ref.lock().unwrap();
+                queue.push_back(event);
+            }
+            _ => {
+                eprintln!("⚠️ Unknown event type: {}", event.event_type);
+            }
         }
-        /*
-            println!(
-                    "Latenz: {:?} (User: {:?} - Kernel: {:?})",
-                    diff_ns,
-                    elapsed,
-                    Duration::from_nanos(kernel_diff),
-            );
-            if let Some(val) = TEST.get(){
-                    let usersp = val.duration_since(*USER_ZERO.get().unwrap());
-                    let test_diff = usersp.as_nanos() as i128 - kernel_diff as i128;
 
-                    println!(
-                            "TEST: Latenz: {:?} (User: {:?} - Kernel: {:?})",
-                            test_diff,
-                            usersp,
-                            Duration::from_nanos(kernel_diff),
-            );
-        } */
-        else if event.event_type == 3 {
-            let mut queue = queue_event_ref.lock().unwrap();
-            queue.push_back(*event);
-        } else {
-            let mut queue = event_ref.lock().unwrap();
-            queue.push_back(*event);
-        }
-        0 // Rückgabewert: 0 bedeutet "OK"
+        0
     })?;
     let ringbuf = ringbuf_builder.build()?;
 
@@ -975,6 +986,7 @@ fn main() -> Result<(), libbpf_rs::Error> {
                         calculation_result: (Vec::new(), Vec::new()),
                         needed_time: u128::MAX,
                         ptp_result: false,
+                        latency_reg: 2.0,
                         latency_result: false,
                     };
                     _ = run_state_machine(context);
