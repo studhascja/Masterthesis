@@ -1,17 +1,70 @@
 \chapter{Basics} \label{sec:basics}
+In this chapter, the necessary fundamentals are established in order to provide the basis for the following chapters.  
+First, Chapter \ref{sec:used_hardware} describes and justifies the hardware used in this work.  
+Subsequently, Chapters \ref{subsec:yocto} and \ref{subsec:linux_stack} introduce the basics of Yocto Linux and explain how \ac{WLAN} is implemented in Linux.  
+Chapters \ref{subsec:qos} through \ref{subsec:mac} then cover \ac{QoS}, the characteristics of Wi-Fi 4 to 7 and the different types and functionalities of \ac{MAC}.  
+Finally, the fundamentals of real-time are presented in Chapter \ref{sec:real_time}.  
+As mentioned above, the next section focuses on the selected hardware.  
+
 \section{Used Hardware} \label{sec:used_hardware}
+First, the requirements for the hardware, particularly for the Wi-Fi cards, are discussed in order to provide the basis for the subsequent explanation of the hardware selection.  
+The requirements apply especially to the Wi-Fi card.  
+As mentioned in Chapter \ref{subsec:objective}, the Wi-Fi standards 4 through 6e and the frequency bands from 2.4 GHz to 6 GHz are relevant for the tests.  
+Therefore, the Wi-Fi card must at least support Wi-Fi 6e.  
+In addition, the drivers and firmware of the card should be open, as this ensures greater transparency for time analysis and allows for modifications to investigate their influence.  
+Moreover, different Wi-Fi cards with different drivers and firmware are required.  
+This makes it possible to compare the impact of components that cannot be replaced or are largely vendor-dependent.  
+For the underlying computing unit, compatibility with the Wi-Fi card and affordability are the most relevant criteria.  
+Specialized real-time hardware is deliberately avoided, since \ac{WLAN} is not a real-time standard and is more commonly used in mixed systems\footnote{In this context, mixed systems refer to systems that include both real-time and non-real-time requirements or processes. In other words, a system that is not purely designed for real-time but still needs to fulfill such properties, albeit to a lesser extent.}.  
+
+\begin{figure}[ht]
+    \centering
+    \includegraphics[width=0.8\linewidth]{figures/raspy.drawio.pdf}
+    \caption{Presentation of the used hardware}
+    \label{fig:hardware}
+\end{figure}
+
+Figure \ref{fig:hardware} shows the individual components of the hardware setup.  
+As the computing unit, a Raspberry Pi 5B is used.  
+This model is widely available and used.  
+Earlier models, such as the Raspberry Pi 3, are, as described in \cite{raspy}, the third most sold computer of all time.  
+
+For the Wi-Fi cards, the MT7925B22M from Mediatek was used.  
+As stated in \cite{mt7925}, it supports Wi-Fi 7 and thus covers frequencies from 2.4 GHz to 6 GHz and Wi-Fi standards 4 through 6e.  
+The card was released at the end of 2024, which is why the Wi-Fi 7 standard was not yet implemented in the driver at the time of this work, as indicated in \cite{mt76}.  
+Nevertheless, the drivers are open source, although the firmware remains closed source.  
+While changes are still being made to the driver, all standards up to Wi-Fi 6e can be used without errors.  
+
+The most recent Wi-Fi cards with both open drivers and open firmware are those that use the ath9k driver, as shown in \cite{ath9k}.  
+To include different drivers and firmware in the evaluation and to have access to fully open firmware, the AR5BXB92 from Qualcomm Atheros is used as additional card.  
+This card was released in 2008 and only supports Wi-Fi 4 with 2.4 GHz and 5 GHz, as noted in \cite{ar5b}.  
+Thus, it provides a strong contrast to the Mediatek card.  
+
+As illustrated in Figure \ref{fig:hardware}, antennas must also be attached to the Wi-Fi cards.  
+For the Mediatek card, a triband antenna is required, supporting 2.4 GHz, 5 GHz, and 6 GHz.  
+For the Atheros card, a dual-band antenna is sufficient.  
+Therefore, the ANT-W63-FPC2-ccc-100 \cite{te} is used for the Mediatek card, while the Molex 1461870050 \cite{molex} is used for the Atheros card.  
+
+The Raspberry Pi 5 has a PCIe interface to which a PCIe HAT is attached, as shown in Figure \ref{fig:hardware}.  
+This HAT provides a mini PCIe slot.  
+For the Atheros card, this is sufficient, as it uses a mini PCIe connector.  
+The Mediatek card, however, requires an M.2 Key E connector.  
+Therefore, as also shown in Figure \ref{fig:hardware}, a mini PCIe to M.2 Key E adapter is installed.  
+It must be ensured that the adapter supports M.2 Key E, since, as described in \cite[p. 24]{pcie}, Wi-Fi cards can use Key A, Key E, or Key A+E.  
+
+Since this section has described the hardware used, the following section introduces the fundamentals of Yocto Linux.  
+These are necessary to understand the configuration of the operating system, which is described in Chapter \ref{sec:os}.  
+
 \section{Yocto Linux} \label{subsec:yocto}
 \section{Linux Wi-Fi Stack} \label{subsec:linux_stack}
 \section{Wi-Fi standards} \label{subsec:stand}
 2,4 \cite[p. 2790]{9363693} 
-\subsection{Quality of Service}
-\subsection{Scheduling}
+\subsection{Quality of Service} \label{subsec:qos}
 \subsection{IEEE 802.11n}
 \subsection{IEEE 802.11ac}
 \subsection{IEEE 802.11ax}
 \subsection{IEEE 802.11be}
-\section{Medium Access Mechanisms}
-\section{Disruptive factors in Wi-Fis}
+\section{Medium Access Mechanisms} \label{subsec:mac}
 \section{Real Time} \label{sec:real_time}
 \subsection{Real Time in general}
 \subsection{Real Time Kernel} \label{subsec:real_time_kernel}
