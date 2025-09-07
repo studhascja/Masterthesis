@@ -66,6 +66,112 @@ These are necessary to understand the configuration of the operating system, whi
 \subsection{IEEE 802.11be}
 \section{Medium Access Mechanisms} \label{subsec:mac}
 \section{Real Time} \label{sec:real_time}
-\subsection{Real Time in general}
+In this chapter, the fundamentals of real-time systems are explained.  
+First, Chapter \ref{subsec:rts} introduces the foundations of real-time capability and provides definitions of key terms.  
+Afterwards, Chapter \ref{subsec:real_time_kernel} discusses how real-time capability can be ensured or improved in Linux.  
+
+\subsection{Real Time Systems} \label{subsec:rts}
+As Mächtel and Quade describe in \cite[Chap. 1]{Quade_Maechtel_2012}, the result of a real-time system depends not only on correctness but also on a temporal component.  
+A real-time task has a time window in which the result must be delivered.  
+Otherwise, the result loses its value.  
+This time window is defined in Figure \ref{fig:utility} by a minimum threshold $T_{Dmin}$ and a maximum threshold $T_{Dmax}$.  
+A good example is a pacemaker.  
+It is not sufficient that the pacemaker is able to deliver an electric pulse, it must do so at the correct time.  
+If the pulse is delivered too early or too late, the patient will most likely suffer harm rather than being stabilized.  
+
+As Quade and Mächtel explain in \cite[p. 24]{Quade_Maechtel_2012}, different types of real-time systems are distinguished.  
+Figure \ref{fig:utility} illustrates the three types soft, firm, and hard real-time systems.  
+In a soft real-time system, shown in Figure \ref{subfig:soft}, the value of the result decreases the further it deviates from the deadlines.  
+In a firm real-time system, shown in Figure \ref{subfig:firm}, the value of the result drops immediately to zero if the boundaries are violated.  
+In a hard real-time system, as shown in Figure \ref{subfig:hard}, the value of the result even becomes negative as soon as the boundaries are violated.  
+Strictly speaking, there are no negative percentages, but the figure illustrates that in hard real-time systems, failing to meet the deadline does not merely render the result useless, but even it may cause harm.  
+This is the case, for example, with a pacemaker.  
+
+\begin{figure}[h!]
+    \centering
+    \begin{subfigure}[b]{0.3\textwidth}
+        \includegraphics[width=\textwidth]{figures/real time.drawio.pdf}
+        \caption{Presentation of the soft real time utility function}
+        \label{subfig:soft}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[b]{0.3\textwidth}
+        \includegraphics[width=\textwidth]{figures/firm-real-time.drawio.pdf}
+        \caption{Presentation of the firm real time utility function}
+         \label{subfig:firm}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[b]{0.3\textwidth}
+        \includegraphics[width=\textwidth]{figures/hard-real-time.drawio.pdf}
+        \caption{Presentation of the hard real time utility function}
+         \label{subfig:hard}
+    \end{subfigure}
+    \caption{Presentation of the utility functions for soft, firm and hard real time}
+     \label{fig:utility}
+\end{figure}
+
+To guarantee that a specific task delivers its result within these boundaries, both the task and the system must be fully predictable.  
+This predictability is referred to as \textbf{determinism}.  
+A task with real-time constraints usually occurs repeatedly, in other words, periodically.  
+This does not necessarily mean in a fixed cycle.  
+Thus, a minimum period $T_{Pmin}$ and a maximum period $T_{Pmax}$ exist, which separate two task executions.  
+
+To ensure that a task always terminates within its real-time boundaries, this would ideally be proven mathematically.  
+However, in systems with sporadic events this is difficult to achieve, which is why probabilistic approaches are often used.  
+In other words, the \ac{WCET} of a task is determined, either mathematically or through repeated measurements.  
+Using this, the maximum utilization $U_{max}$ can then be calculated.  
+It is defined as $U_{max} = \frac{T_{WCET}}{T_{Pmin}}$, i.e. the longest execution time divided by the shortest distance between two events.  
+If this value is below 1, the system should function correctly.  
+According to Liu and Layland \cite[p. 9]{10.1145/321738.321743}, $U_{max}$ for many processes converges to $\ln(2)$, corresponding to $U_{max} = 0.69$.  
+In practice, however, a more conservative threshold of $U_{max} < 0.5$ has proven effective, providing sufficient buffer.  
+If a system is able to meet its real-time requirements, this property is referred to as \textbf{timeliness}.  
+
+In addition to execution time and the number of deadline misses, jitter is frequently used as a quality metric for real-time systems, as described in \cite[p. 38]{real_time_systems}.  
+Jitter refers to the temporal deviation from an expected event.  
+For example, if the period $t$ is 3 ms and the start time is $t_0$, the following event is expected at $t_0 + 3$ ms.  
+On a real system, however, it may occur at $t_0 + (3-x)$ ms, where $x \in [0, 3]$.  
+This deviation $x$, i.e., the difference from the expected occurrence, is referred to as jitter and serves as a measure of the real-time capability of the system.  
+The lower the jitter, the more deterministic the system is and thus the higher its real-time quality.  
+
+The following section discusses how Linux can be made more real-time capable and which properties are most relevant in this regard.  
+
 \subsection{Real Time Kernel} \label{subsec:real_time_kernel}
-\subsection{Real Time Capability of Wi-Fi}
+As described in Chapter \ref{subsec:yocto}, this work relies on Linux as the operating system.  
+However, as noted in \cite{not_rt}, Linux does not inherently provide real-time capabilities.  
+Additional functionalities not included in the standard Linux kernel can be introduced through extensions and modifications.
+Theses are called patches.  
+With the Preempt-RT patch, hereafter referred to as the RT-patch, Linux can be extended to meet the requirements of a real-time operating system\footnote{It is important to note that even with the RT-patch, Linux is not fully real-time capable, as demonstrated by a NASA study \cite{nasa}. Nevertheless, it is widely adopted in real-time applications, including by NASA and SpaceX, since it offers strong real-time capabilities while preserving the functionality of Linux.}.  
+
+As discussed in Chapter \ref{subsec:rts}, a real-time system must be deterministic, i.e., predictable.  
+It must be possible to determine the \ac{WCET} of a process and no spontaneous events may disrupt its execution.  
+
+The RT-patch was initiated in 2005 by Steven Rostedt and others.  
+As Rostedt explains in \cite{rt_patch}, one of the main causes of such unpredictable interruptions are hardware-generated interrupts.  
+These signals, used by devices to communicate with the \ac{CPU}, are handled in \acp{ISR}.  
+In conventional Linux systems, \acp{ISR} preempt processes, preventing the reliable determination of \ac{WCET}.  
+
+In Linux, including with the RT-patch, processes are scheduled based on priority.  
+Priorities range from $-100$ to $39$, whereas the lower number is the higher priority.  
+For non-real-time processes, the priority $P$ is calculated as $P = 20 + NV$, where $NV$ is the nice value in the range $[-20, 19]$.
+The default of the niche value is $0$.  
+Thus, normal processes have priorities in the range $[0, 39]$.  
+For real-time processes, $P = -1 - rt\_Prior$, where $rt\_Prior$ ranges from $[0, 99]$  yielding a priority range of $[-100, -1]$.  
+As before $rt\_Prior$ has a default value of $0$.
+Consequently, real-time processes are always preferred over non-real-time processes.  
+Depending on the model of priorites they have different ranges.
+In Linux the priorities often have a range of $[0, 139]$, where $139$ the highest priority is.
+But for calculation of the priorities the model described before is used.
+
+Interrupt handling is also adapted by the RT-patch.  
+As described in \cite[p. 162]{rt_patch}, almost all\footnote{Exceptions exist, as noted in \cite[p. 163]{rt_patch}. Essential interrupts such as the timer interrupt are not threaded.} \acp{ISR} are moved into kernel threads.  
+A distinction is made between hard \acp{IRQ} and soft \acp{IRQ}.  
+Both are threaded, but while hard \acp{IRQ} remain non-preemptible, their execution becomes schedulable once threaded.  
+Soft \acp{IRQ}, in contrast, are both schedulable and preemptible.  
+
+Furthermore, the RT-patch introduces full kernel preemption.  
+This means that user processes with sufficiently high priority can preempt kernel activities.  
+Additionally, spinlocks and other blocking mechanisms have been replaced by mutexes to mitigate issues such as deadlocks and priority inversion.  
+These modifications significantly improve the determinism of Linux under the RT-patch.  
+
+This chapter has outlined the key concepts relevant for this thesis.  
+The following section reviews related work and situates the objectives of this study within the broader research context.  
