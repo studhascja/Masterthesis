@@ -181,10 +181,24 @@ def main():
 
     subprocess.run(["iw", "reg", "set", "DE"])
     all_results = []
+        
     with open("test_configuration", "r") as config:
         lines = config.readlines()
 
-    for i, line in enumerate(lines):
+    with open("status", "r") as status_file:
+        n = int(status_file.read().strip())
+        if n > len(lines):
+            with open(output_file, "w", encoding="utf-8") as f:
+                        f.write(str(1))
+        with open("status", "r") as status_file:
+            n = int(status_file.read().strip())
+            
+    while n <= len(lines):
+        with open("status", "r") as status_file:
+            n = int(status_file.read().strip())
+        
+
+        line = lines[n-1].strip()
         parts = line.strip().split()
         if len(parts) < 6:
             continue
@@ -193,7 +207,7 @@ def main():
         freq = float(parts[1])
         bw = int(parts[2])
 
-        print(f"\n🔁 Test {i+1}: SSID={SSID}, Standard=WiFi {wifi_version}, Freq={freq} GHz, Bandbreite={bw} MHz")
+        print(f"\n🔁 Test {n}: SSID={SSID}, Standard=WiFi {wifi_version}, Freq={freq} GHz, Bandbreite={bw} MHz")
 	
         if wifi_version == 6:
                 connect_to_wifi(1)
@@ -236,12 +250,17 @@ def main():
                     suite.addTest(test_prio)
                     result = unittest.TestResult()
                     suite.run(result)
-                    all_results.append((i + 1, result))
+                    all_results.append((n, result))
 
                     rust_thread.join()
-                    disconnect_wifi()
-                    break
+                    with open(output_file, "w", encoding="utf-8") as f:
+                        f.write(str(n + 1))
 
+                    disconnect_wifi()
+
+                    break
+        if n+1 > len(lines):
+            break
 
     output_file = "test_results"
 
