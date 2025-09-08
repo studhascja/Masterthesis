@@ -5,6 +5,7 @@ use libbpf_rs::RingBufferBuilder;
 use libc::{
     pthread_self, pthread_setschedparam, sched_param, sched_setscheduler, SCHED_OTHER, SCHED_RR,
 };
+use std::env;
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
 use std::{
@@ -291,6 +292,10 @@ fn main() -> Result<()> {
         }
     });
 
+    let args: Vec<String> = env::args().collect();
+    let iperf_o= Arc::new(args[1].clone());
+    let time_c_o= Arc::new(args[2].clone());
+
     // Connect to server
     let server_addr = "192.168.1.1:8080";
     let mut _difference = 0;
@@ -313,8 +318,11 @@ fn main() -> Result<()> {
                 if size == 0 {
                     break;
                 }
+		
+                let iperf = Arc::clone(&iperf_o);
+    		let time_c = Arc::clone(&time_c_o);
 
-                // Deserialize incoming message
+		// Deserialize incoming message
                 let mut raw = MaybeUninit::<Message>::uninit();
                 unsafe {
                     std::ptr::copy_nonoverlapping(
@@ -384,7 +392,7 @@ fn main() -> Result<()> {
 
                             // Launch iperf3 in background
                             if seq == 0 {
-                                thread::spawn(|| {
+                                thread::spawn(move || {
                                     let mut command = Command::new("iperf3");
                                     let _ = command
                                         .args([
@@ -392,9 +400,9 @@ fn main() -> Result<()> {
                                             "192.168.1.1",
                                             "-u",
                                             "-b",
-                                            "15M",
+                                            &iperf,
                                             "-t",
-                                            "12",
+                                            &time_c,
                                             "-p",
                                             "5202",
                                         ])

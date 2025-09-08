@@ -152,23 +152,28 @@ def main():
 
     iperf_thread.join()
 
-    print("\n 📋 Gesamtergebnis der Testl  ufe:")
+output_file = "test_results"
+
+with open(output_file, "w", encoding="utf-8") as f:
+    f.write("\n📋 Gesamtergebnis der Testläufe:\n")
+    
     for i, result in all_results:
-        print(f"\n ^=   Testdurchlauf {i}:")
+        f.write(f"\n^= Testdurchlauf {i}:\n")
         total_tests = result.testsRun
         failed = len(result.failures)
         errored = len(result.errors)
         successful = total_tests - failed - errored
 
-        print(f"   ✅ Erfolgreich: {successful}")
-        print(f"   ❌ Fehler: {len(result.failures)}")
+        f.write(f"  ✅ Erfolgreich: {successful}\n")
+        f.write(f"  ❌ Fehler: {failed}\n")
         for test, traceback in result.failures:
-            print(f"    - Fehler in {test.id()}:")
-            print(traceback)
-        print(f"   💥  Fehlerhafte Ausf  hrung: {len(result.errors)}")
+            f.write(f"    - Fehler in {test.id()}:\n")
+            f.write(f"{traceback}\n")
+        
+        f.write(f"  💥 Fehlerhafte Ausführung: {errored}\n")
         for test, traceback in result.errors:
-            print(f"    - Fehler in {test.id()}:")
-            print(traceback)
+            f.write(f"    - Fehler in {test.id()}:\n")
+            f.write(f"{traceback}\n")
 
 
 if __name__ == '__main__':

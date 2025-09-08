@@ -160,13 +160,13 @@ class WifiTest(unittest.TestCase):
         self.assertTrue(iperf_prio)
 
 def run_rust_udp(process_container):
-        rust_result = ['./client_udp/target/debug/client_udp']
+        rust_result = ["./client_udp/target/debug/client_udp", "15M", "12"]
         process = subprocess.Popen(rust_result)
         process_container.append(process)
         process.wait()
 
 def run_rust_tcp(process_container):
-        rust_result = ['./client/target/debug/client']
+        rust_result = ["./client/target/debug/client", "15M", "12"]
         process = subprocess.Popen(rust_result)
         process_container.append(process)
         process.wait()
@@ -242,23 +242,30 @@ def main():
                     disconnect_wifi()
                     break
 
-    print("\n📋 Gesamtergebnis der Testläufe:")
-    for i, result in all_results:
-        print(f"\n🧪 Testdurchlauf {i}:")
-        total_tests = result.testsRun
-        failed = len(result.failures)
-        errored = len(result.errors)
-        successful = total_tests - failed - errored
 
-        print(f"  ✅ Erfolgreich: {successful}")
-        print(f"  ❌ Fehler: {len(result.failures)}")
-        for test, traceback in result.failures:
-            print(f"    - Fehler in {test.id()}:")
-            print(traceback)
-        print(f"  💥 Fehlerhafte Ausführung: {len(result.errors)}")
-        for test, traceback in result.errors:
-            print(f"    - Fehler in {test.id()}:")
-            print(traceback)
+    output_file = "test_results"
+
+    with open(output_file, "w", encoding="utf-8") as f:
+        f.write("\n📋 Gesamtergebnis der Testläufe:\n")
+    
+        for i, result in all_results:
+            f.write(f"\n^= Testdurchlauf {i}:\n")
+            total_tests = result.testsRun
+            failed = len(result.failures)
+            errored = len(result.errors)
+            successful = total_tests - failed - errored
+
+            f.write(f"  ✅ Erfolgreich: {successful}\n")
+            f.write(f"  ❌ Fehler: {failed}\n")
+            for test, traceback in result.failures:
+                f.write(f"    - Fehler in {test.id()}:\n")
+                f.write(f"{traceback}\n")
+        
+            f.write(f"  💥 Fehlerhafte Ausführung: {errored}\n")
+            for test, traceback in result.errors:
+                f.write(f"    - Fehler in {test.id()}:\n")
+                f.write(f"{traceback}\n")
+
 
 if __name__ == "__main__":
     main()
