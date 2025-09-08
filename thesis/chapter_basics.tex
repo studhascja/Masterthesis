@@ -56,18 +56,72 @@ Since this section has described the hardware used, the following section introd
 These are necessary to understand the configuration of the operating system, which is described in Chapter \ref{sec:os}.  
 
 \section{Yocto Project} \label{subsec:yocto}
-Das Yocto Project wurde 2010 von der Linux Foundation ins Leben gerufen, wie sie in \cite{The_Linux_Foundation_2011} berichtet.
-Wie Salvador in Kapitel \cite[Chap. 1]{10251255} schreibt, ist das Yocto Projekt open source und in einem Zusammenschluss aus vielen Firmen, die das gemeinsame Ziel haben, Linux basierte eingebettete systeme zu bauen, entstanden.
-Dabei war das primäre Ziel die duplicated Arbeit zu minimieren.
+The Yocto Project was initiated by the Linux Foundation in 2010, as reported in \cite{The_Linux_Foundation_2011}.  
+As Salvador notes in \cite[Chap. 1]{10251255}, the Yocto Project is open source and emerged as a collaboration among multiple companies with the common goal of developing Linux-based embedded systems.  
+Its primary objective was to minimize duplicated work.  
 
-Das Yocto Project dient dazu eine Embedded Linux distribution zu bauen, wie Gonzales in \cite[Chap. 1]{Gonzalez_2018} beschreibt.
-Dabei sollte diese so minimal wie möglich sein und modluar erweitert werden können.
-Aus diesem Usecase leitet sich auch der Name des Projekts ab.
-Wie in \cite[p. 29]{units} zu erkennen, ist Yocto eine sehr kleien Zahl, um genau zu sein $10^{-24}$.
-Dies ist eine Metapher, dafür, dass mit dem Yocto Project eine sehr kleine Linux Distribution geabut werden kann.
+As described by Gonzales in \cite[Chap. 1]{Gonzalez_2018}, the Yocto Project provides a framework for building embedded Linux distributions.  
+These distributions are designed to be as minimal as possible, while remaining modular and extensible.  
+The name of the project reflects its idea.
+As noted in \cite[p. 29]{units}, “yocto” denotes the very small factor $10^{-24}$, symbolizing the creation of very small Linux distributions.  
 
-Layer, Rezept, meta-openembedded
-Phasen Rezept
+\begin{figure}[ht]
+    \centering
+    \includegraphics[width=\linewidth]{figures/yocto.drawio.pdf}
+    \caption{Overview of the Yocto workflow, based on \cite[p. 56]{layer} and \cite{yocto_pic}}
+    \label{fig:yocto}
+\end{figure}
+
+According to Salvador \cite[Chap. 1]{10251255}, the Yocto Project evolved from the OpenEmbedded Project, which pursued similar goals of creating a flexible and reusable build system for different architectures.  
+In this context, BitBake emerged as the build tool, comparable to \texttt{make} or \texttt{cmake}, but significantly more powerful.  
+
+One of OpenEmbedded’s main challenges was that its codebase quickly became unstable due to a lack of structure.  
+As a result, Poky was introduced.
+Poky is a minimal Linux distribution that now serves as the default reference distribution within the Yocto Project.  
+As Salvador explains, Poky consists of a collection of tools, configurations, and metadata provided through recipes.  
+
+Figure \ref{fig:yocto} illustrates part of Yocto’s structure and workflow.  
+To build a Linux distribution, several essential types of information are required:
+
+\begin{itemize}
+    \item \textbf{Metadata}: Provided through recipes, which are organized into layers.  
+          As shown in Figure \ref{fig:yocto}, layers include OE-Core and meta-yocto, which are the OpenEmbedded core metadata and Yocto-specific layer, both included in Poky.  
+          Additional layers such as \texttt{meta-raspberrypi} provide \ac{BSP} support, while other layers may cover tools or custom extensions.  
+          Each layer contains a \texttt{/conf/layer.conf} file specifying metadata and structure.  
+
+    \item \textbf{\ac{BSP} Configuration}: Hardware descriptions are provided through \ac{BSP} layers.  
+          Poky includes a default \ac{BSP} for QEMU.  
+
+    \item \textbf{User and Policy Configuration}: User configurations are typically defined in \texttt{local.conf}, e.g., selecting the target machine.  
+          For instance, with the \texttt{meta-raspberrypi} layer, the specific Raspberry Pi model must be declared.  
+          The file \texttt{bblayers.conf} specifies which layers are included in the build, with priorities determining the order in which recipes are searched.  
+          Policy configuration defines choices such as the package manager or init system.  
+
+    \item \textbf{Source Mirrors}: These provide the actual source code for the distribution, usually consisting of upstream project releases and local projects.  
+\end{itemize}
+
+In addition to build inputs, Figure \ref{fig:yocto} outlines the sequence of tasks executed during the build process, simplified into recipe phases.  
+As described in \cite{yocto_style_guide}, the recipe usually starts with the \texttt{do\_fetch} task.  
+This task retrieves all resources specified in the \texttt{SRC\_URI} variable, as outlined in \cite{yocto_Tasks}.  
+
+Subsequently, the source code is unpacked into the working directory by the \texttt{do\_unpack} task.  
+After that, the \texttt{do\_patch} task searches for patches applicable to the unpacked source code and applies them.  
+These patches, however, must be provided in the recipe's \texttt{SRC\_URI} variable.  
+
+Next, the \texttt{do\_prepare\_recipe\_sysroot} task installs the required files into the recipe-specific sysroot.  
+In the \texttt{do\_configure} task, \texttt{oe\_runmake clean} is executed, which corresponds to a \texttt{make clean} when using \texttt{make}.  
+
+In the following step, the source code is compiled by the \texttt{do\_compile} task.  
+Then, the \texttt{do\_install} task copies all packaged files into the holding area, which contains all files which will be installed into the file system later.  
+The \texttt{do\_populate\_sysroot} task subsequently copies some of the files installed by \texttt{do\_install} into the respective sysroot.  
+
+Finally, the \texttt{do\_package} task splits the content of the holding area into available packages.  
+Thus, the packages highlighted in yellow in Figure~\ref{fig:yocto} are generated.  
+These packages are then integrated into an image during the image generation process\footnote{The image generation shown in Figure~\ref{fig:yocto} is strongly simplified.  
+Additional intermediate steps exist but are not presented or further discussed, as they are not relevant for this work.}.  
+
+Having now explained the basics of how the Linux system in this work is generated, the following section addresses how Wi-Fi is generally implemented in Linux.  
+
 \section{Linux Wi-Fi Stack} \label{subsec:linux_stack}
 \section{Wi-Fi standards} \label{subsec:stand}
 2,4 \cite[p. 2790]{9363693} 
