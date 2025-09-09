@@ -30,7 +30,7 @@ static MESSAGE_COUNT: Lazy<Mutex<u64>> = Lazy::new(|| Mutex::new(0));
 static TIMEOUT_COUNT: Lazy<Mutex<u64>> = Lazy::new(|| Mutex::new(0));
 
 const TIMEOUT_NS: u64 = 3000000;
-const NUM_POINTS: usize = 4000;
+const NUM_POINTS: usize = 40000;
 const RADIUS: f64 = 10.0;
 const TIMEOUT_DURATION: Duration = Duration::from_millis(300);
 
@@ -41,6 +41,7 @@ struct SetupContext {
     frequency: Arc<String>,
     bandwith: Arc<String>,
     qos: Arc<String>,
+    time: Arc<String>,
     running: Arc<AtomicBool>,
     interval: Duration,
     counter: u64,
@@ -230,6 +231,7 @@ fn update_context(base: &SetupContext, overrides: SetupContextOverrides) -> Setu
         frequency: base.frequency.clone(),
         bandwith: base.bandwith.clone(),
         qos: base.qos.clone(),
+        time: base.time.clone(),
         running: overrides.running.unwrap_or_else(|| base.running.clone()),
         interval: base.interval,
         counter: overrides.counter.unwrap_or_else(|| base.counter.clone()),
@@ -336,6 +338,7 @@ fn setup() -> anyhow::Result<SetupContext> {
     let frequency = Arc::new(args[2].clone());
     let bandwith = Arc::new(args[3].clone());
     let qos = Arc::new(args[4].clone());
+    let time = Arc::new(args[5].clone());
 
     let socket = UdpSocket::bind("192.168.1.1:8080")?;
     socket.set_nonblocking(true)?;
@@ -352,6 +355,7 @@ fn setup() -> anyhow::Result<SetupContext> {
         frequency,
         bandwith,
         qos,
+        time,
         running,
         interval: Duration::from_nanos(TIMEOUT_NS),
         counter: 0,
@@ -729,8 +733,9 @@ fn calculation_phase(context: &SetupContext) -> Result<SetupContext> {
     let calc_time = SystemTime::now();
     let mut next_tick = Instant::now() + interval;
     let mut i = 0;
+    let context_time: u64 = context.time.as_str().parse().expect("Invalid number in time");
 
-    while calc_time.elapsed()?.as_secs() < 12 {
+    while calc_time.elapsed()?.as_secs() < context_time {
         let index = i as usize;
         //let calc_start_time = Instant::now();
         let theta = 2.0 * PI * (i as f64) / (NUM_POINTS as f64);

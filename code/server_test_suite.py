@@ -31,14 +31,14 @@ def run_config_script(param, process_container):
     process = subprocess.Popen(hostapd_cmd)
     process_container.append(process)
 
-def run_rust_udp(process_container, val1, val2, val3, val4):
-    rust_result = ['./server_udp/target/debug/server_udp', str(val1), str(val2), str(val3), str(val4)]
+def run_rust_udp(process_container, val1, val2, val3, val4, val5):
+    rust_result = ['./server_udp/target/debug/server_udp', str(val1), str(val2), str(val3), str(val4), val5]
     process = subprocess.Popen(rust_result)
     process_container.append(process)
     process.wait()
 
-def run_rust_tcp(process_container, val1, val2, val3, val4):
-    rust_result = ['./server/target/debug/server', str(val1), str(val2), str(val3), str(val4)]
+def run_rust_tcp(process_container, val1, val2, val3, val4, val5):
+    rust_result = ['./server/target/debug/server', str(val1), str(val2), str(val3), str(val4), val5]
     process = subprocess.Popen(rust_result)
     process_container.append(process)
     process.wait()
@@ -68,10 +68,10 @@ def process_line(line, index):
     rust_process_container = []
 
     if val5 == "udp":
-        rust_thread = threading.Thread(target=run_rust_udp, args=(rust_process_container, val1, val2, val3, val4))
+        rust_thread = threading.Thread(target=run_rust_udp, args=(rust_process_container, val1, val2, val3, val4, "120"))
         rust_thread.start()
     else:
-        rust_thread = threading.Thread(target=run_rust_tcp, args=(rust_process_container, val1, val2, val3, val4))
+        rust_thread = threading.Thread(target=run_rust_tcp, args=(rust_process_container, val1, val2, val3, val4, "120"))
         rust_thread.start()
 
     suite = unittest.TestSuite()

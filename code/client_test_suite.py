@@ -160,13 +160,13 @@ class WifiTest(unittest.TestCase):
         self.assertTrue(iperf_prio)
 
 def run_rust_udp(process_container):
-        rust_result = ["./client_udp/target/debug/client_udp", "15M", "12"]
+        rust_result = ["./client_udp/target/debug/client_udp", "15M", "120"]
         process = subprocess.Popen(rust_result)
         process_container.append(process)
         process.wait()
 
 def run_rust_tcp(process_container):
-        rust_result = ["./client/target/debug/client", "15M", "12"]
+        rust_result = ["./client/target/debug/client", "15M", "120"]
         process = subprocess.Popen(rust_result)
         process_container.append(process)
         process.wait()
@@ -253,7 +253,7 @@ def main():
                     all_results.append((n, result))
 
                     rust_thread.join()
-                    with open(output_file, "w", encoding="utf-8") as f:
+                    with open("status", "w", encoding="utf-8") as f:
                         f.write(str(n + 1))
 
                     disconnect_wifi()
