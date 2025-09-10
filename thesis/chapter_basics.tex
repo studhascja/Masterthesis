@@ -251,6 +251,99 @@ Unlike the 5 GHz band, no \ac{DFS} channels exist in the 6 GHz band.
 Having now described the fundamentals of Wi-Fi frequency bands, the following section addresses the major innovations introduced in standards 4 through 7.
 
 \subsection{IEEE 802.11n}
+Before addressing the specific characteristics of Wi-Fi 4, also known as IEEE 802.11n, a fundamental technology must first be introduced.
+As described in \cite[p. 20]{ofdm}, one of the essential components of IEEE 802.11 is the modulation and multiplexing scheme \ac{OFDM}.
+This principle is illustrated in Figure \ref{fig:ofdm}.
+
+\begin{figure}[ht]
+    \centering
+    \includegraphics[width=\linewidth]{figures/OFDM.drawio.pdf}
+    \caption{Presentation of OFDM with 64 QAM modulation, adapted from \cite{ofdm_pic}}
+    \label{fig:ofdm}
+\end{figure}
+
+As previously described, Wi-Fi connections use channels with a bandwidth of 20 MHz.
+In Wi-Fi 4, these channels are divided into 64 so-called orthogonal subcarriers.
+Each subcarrier consists of a sinusoidal wave with its own frequency and amplitude and thus represents a subset of the 20 MHz channel.
+The subcarriers must be orthogonal to one another, which requires that equation \ref{eq:skalar} holds true.
+
+\begin{equation} \label{eq:skalar}
+\int_{0}^{T} s_1(t) \, s_2(t) \, dt = 0
+\end{equation}
+
+In other words, if the scalar product of the sinusoidal functions of two subcarriers $s_1$ and $s_2$ equals zero, they are perpendicular to each other and therefore do not interfere.
+In \ac{OFDM}, this condition means that for the frequency spacing $\Delta f$ between two subcarriers, as indicated in Figure \ref{fig:ofdm}, the relation shown in equation \ref{eq:delta} must hold.
+
+\begin{equation} \label{eq:delta}
+\Delta f = \frac{1}{T_u}
+\end{equation}
+
+Here, $T_u$ denotes the useful symbol duration, i.e., the time interval during which a \ac{QAM} symbol is transmitted.
+
+Figure \ref{fig:ofdm} shows that three types of subcarriers exist: guard subcarriers, pilot subcarriers and data subcarriers.
+In Wi-Fi 4, the 20 MHz channel is divided into 64 subcarriers, which results from the use of a 64-point Fast Fourier Transform (FFT).
+Each FFT point represents a discrete frequency bin in the spectrum and determines the resolution of the subcarrier allocation.
+For simplicity, the subcarriers are depicted schematically in Figure \ref{fig:ofdm}.
+In practice, the channel consists of four pilot subcarriers, 48 data subcarriers, and 12 unused subcarriers, which, as described in \cite[p. 20]{ofdm}, are referred to as guard subcarriers.
+
+Guard subcarriers are located at the edges of the spectrum and serve to reduce interference between adjacent channels.
+As can be seen in Figure \ref{fig:ofdm} there is also one guard subcarrier in the middle.
+This one is called DC-subcarrier (direct conversion subcarrier) and isn't used because it is exactly on the center frequncy of the channel frequency.
+Pilot subcarriers are inserted at predefined positions within the band and are used for channel estimation, synchronization and phase tracking.
+Pilot subcarriers carry known signals, so the receiver can determine the error caused by the transmission.
+Data subcarriers carry the actual data.
+
+The spacing between two subcarriers in Wi-Fi 4 can be calculated as $\Delta f = \frac{20 MHz}{64} = 312.5 kHz$.
+From this, an effective symbol duration $T_u$ of 3.2 $\mu s$ is obtained, as shown in Equation \ref{eq:tu}.
+
+\begin{equation} \label{eq:tu}
+T_u = \frac{1}{\Delta f} = \frac{1}{312.5 \, \text{kHz}} = 3.2 \, \mu s
+\end{equation}
+
+After each modulation symbol duration $T_u$, a guard interval is added, to avoid inter-symbol inteference caused by multipath propagation.
+In Wi-Fi 4, this guard period has a length of 0.8 $\mu s$.
+This results in a total symbol duration $T_s$ of 4 $\mu s$.
+
+Figure \ref{fig:ofdm} distinguishes between the two types modulation and \ac{OFDM} symbol.
+The \ac{OFDM} symbol is computed as shown in Equation \ref{eq:forier}.
+Here, $N$ denotes the number of FFT points, and $k$ represents the respective subcarrier index.
+$X[k]$ is the modulation symbol of the corresponding subcarrier.
+Each modulation symbol is multiplied by the Fourier basis vector $e^{j2\pi kn/N}$ and summed across all subcarriers to construct the \ac{OFDM} symbol.
+Finally, the result is normalized by $\frac{1}{N}$ to average across all subcarriers.
+
+\begin{equation} \label{eq:forier}
+x[n] = \frac{1}{N} \sum_{k=0}^{N-1} X[k] e^{j 2 \pi kn / N}, 
+\quad N = 64, \quad X \in \mathbb{C}
+\end{equation}
+
+Figure \ref{fig:ofdm} also illustrates how a modulation symbol is determined.
+The modulation symbol depends strongly on the chosen modulation scheme.
+In the case of Wi-Fi 4, this scheme is \ac{QAM}-64.
+
+The modulated signal, as described in \cite[p. 2,3]{CHEN20181}, is a sinusoidal wave with a distinct amplitude, phase, and frequency.
+This waveform can be expressed as a combination of sine and cosine functions and is represented on a constellation diagram, as depicted in Figure \ref{fig:ofdm}.
+The constellation diagram has a limited range, since the lengths of the X- and Y-axes depend on the signal power, which is constrained by the standard.
+For \ac{QAM}-64, the diagram is subdivided into 64 discrete regions.
+Consequently, the signal can be encoded with a precision of $\log_2(64) = 6$, meaning that each symbol represents 6 bits.
+During reception, the received point is projected back onto the constellation diagram and its corresponding bit value is determined.
+Since each of the 64 regions represents an area rather than a single point, the signal does not need to be transmitted perfectly.
+As long as the received point lies within the correct decision region, the corresponding bits can be correctly decoded.
+The transmitted point is a complex number.
+
+Higher-order modulation schemes such as \ac{QAM}-1024 also exist.
+In this case, the constellation diagram is divided into 1024 regions, which allows encoding of 10 bits per symbol.
+While this increases the information density, it also makes the transmission more error-prone, since the decision regions become narrower.
+
+For Wi-Fi 4, these techniques result in a data rate of 72 Mbit/s, as shown in Equation \ref{eq:through}.
+
+
+\begin{equation} \label{eq:through}
+\frac{48 Datasubacarries \times 6 Bits}{4 \mu s} = 72 Mbit/s
+\end{equation}
+
+HT-Mode
+MIMO
+Spatial stream
 \subsection{IEEE 802.11ac}
 \subsection{IEEE 802.11ax}
 \subsection{IEEE 802.11be}
