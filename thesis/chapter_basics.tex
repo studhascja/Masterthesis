@@ -201,50 +201,55 @@ In the final step, \circnum{11}, a system call transfers the data from the kerne
 Having described the packet path within the Linux networking stack, the following section addresses fundamental characteristics of \ac{WLAN} and characteristics of the standards 4 through 7.
 
 \section{Wi-Fi standards} \label{subsec:stand}
-Bevor auf die genauen Standards und ihre Besonderheiten eingegangen wird, müssen zunächst die Frequenz-Eigenschaften von Wi-Fi erklärt werden.
-Diese sind in Abbildung \ref{fig:channel} dargestellt.
-Dabei ist zu erkennen, das Wi-Fi auf den drei Frequenzbänder 2.4 GHz, 5 Ghz und 6 Ghz operiert.
-Auf jedem Frequenzband gibt es Channel, welch in einem Abstand von 5 Mhz aneinandergerit sind.
-So existieren für das 2.4 GHz Band, wie in \cite[p. 2790]{9363693} beschrieben 13 Kanäle, die von 2412 MHz bis 2472 MHz reichen.
-Ein Kanal hat eine Breite von mindestens 20 MHz, da diese jedoch im 5 MHz Takt aneinander gereit sind, überlappen sie sich, wie in Abbildung \ref{fig:channel} zu sehen.
-Li et al. schreibt in \cite[p.888]{li_pan}, dass die Kanalbreite 22 MHz beträgt, dies ist jedoch, wie Nicolade et al. in \cite[p. 1]{8088188} beschreibt, darauf zurückzuführen, dass dies nur für den veralteten Standard 802.11 gilt.
-Dieser nutzt DSSS welches eine Channelbreite von 22 MHz besitzt.
-Mit dem Standart 802.11b, welcher ebenfalls in dieser Arbeit verwendet wird, wird mindestens OFDM benutzt, welches eine Kanalbreite von 20 MHz besitzt.
+Before discussing the specific standards and their characteristics, the frequency properties of Wi-Fi must first be explained.
+These are illustrated in Figure \ref{fig:channel}.
+It can be observed that Wi-Fi operates on the three frequency bands 2.4 GHz, 5 GHz and 6 GHz.
+Each frequency band is divided into channels, which are spaced at intervals of 5 MHz.
+For the 2.4 GHz band, as described in \cite[p. 2790]{9363693}, 13 channels exist, ranging from 2.412 GHz to 2.472 GHz.
+Each channel has a minimum bandwidth of 20 MHz.
+Since the channels are arranged in 5 MHz steps, they overlap, as shown in Figure \ref{fig:channel}.
+Li et al. state in \cite[p.888]{li_pan} that the channel width is 22 MHz.
+However, Nicolade et al. clarify in \cite[p. 1]{8088188} that this applies only to the legacy 802.11 standard.
+This standard employs DSSS (Direct Sequence Spread Spectrum), which uses a channel width of 22 MHz.
+With 802.11b, which is also considered in this work, \ac{OFDM} is used, which has a minimum channel width of 20 MHz.
 
-Die Ziffer eines Kanals gibt immer nur die mittlere Frequenz an.
-So reicht der Kanal 1, welcher bei 2412 MHz liegt von 2402 MHz bis 2422 MHz.
-Somit gibt es in dem 2.4 GHz Band nur vier überlappungsfreie Kanäle, nämlich 1, 5, 9 und 13, welche in Abbildung \ref{fig:channel} grün gekennzeichnet sind.
-Die Auswahl der Channel ist abhängig vom Land, so ist in den USA nur Kanäle 1-11 erlaubt, wohingegen in Japan ebenfalls Kanal 14 existiert.
-In dieser Arbeit und somit auch in Abbildung \ref{fig:channel} wird sich an die Richtlinien der EU gehalten.
+The channel number always indicates only the center frequency.
+For example, channel 1, located at 2.412 GHz, spans from 2.402 GHz to 2.422 GHz.
+Thus, in the 2.4 GHz band, there are only the four non-overlapping channels 1, 5, 9 and 13, which are highlighted in green in Figure \ref{fig:channel}.
+The availability of channels depends on the country.
+In the United States, only channels 1 to 11 are permitted, while in Japan channel 14 also exists.
+In this work and therefore also in Figure \ref{fig:channel}, the regulations of the European Union are followed.
 
 \begin{figure}[ht]
     \centering
     \includegraphics[width=\linewidth]{figures/channel.drawio.pdf}
-    \caption{Presentation of the channels of 2.4 GHz, 5 GHz and 6 GHz Channel Allocations, leaned on \cite{channel_palnning,data_alliance}}
+    \caption{Presentation of the channels of 2.4 GHz, 5 GHz and 6 GHz channel allocations, based on \cite{channel_palnning,data_alliance}}
     \label{fig:channel}
 \end{figure}
 
-Das 5 GHz Band ist unterteilt in 3, bzw. 4 Abschnitte.
-Diese werden, wie in \cite{5ghz} beschrieben U-NII-1, U-NII-2, U-NII2-Extended und U-NII-3 genannt.
-Dabei ist das letzte Band nicht in der Eu verfügbar und somit auch nicht in Abbildung \ref{fig:channel} vollständig abgebildet.
-In diesem Band sind jeweils nur nicht überlappende Kanäle dargestellt.
-Das 5 GHz Band beginnt mit Kanal 36 und endet mit Kanal 144, bzw. 165 in den USA.
-Dabei gibt es eine Lücke, da zwischen Kanal 64 und 100 keine Kanäle existieren, da diese bis jetzt noch nciht genutzt werden.
-Des weiteren sind die Kanäle in den Bandbreiten 20, 40, 80 und 160 MHz dargestellt, dabei sind immer die mittleren Kanäle angegeben.
-Somit ist beim 40 MHz Band die Mitte zwischen Kanal 36 und 40, Kanal 38.
+The 5 GHz band is divided into three or four sections.
+As described in \cite{5ghz}, these are referred to as U-NII-1, U-NII-2, U-NII-2-Extended and U-NII-3.
+The last band is not available in the European Union and is therefore not fully represented in Figure \ref{fig:channel}.
+In this frequency band, only non-overlapping channels are shown.
+The 5 GHz band starts with channel 36 and ends with channel 144, or channel 165 in the United States.
+A gap exists between channel 64 and channel 100, since no channels are allocated in this range.
+Furthermore, the channels are shown with bandwidths of 20, 40, 80 and 160 MHz, always referencing the center channel.
+For instance, in the 40 MHz band, the center between channel 36 and 40 is channel 38.
 
-Es ist auserdem zu erkennen dass das Band U-NII-2 als DFS-Channel gekennzeichnet sind.
-\ac{DFS} ist auf den Frequenzen 5.25 GHz - 5.35 GHz und 5.47 GHz - 5.725 GHZ verpflcihtend, da auf diesen Frequenzen ebenfalls Luftfahrt und Militär-Radarsysteme laufen, wie in \cite{dfs} beschrieben.
-Somit muss die Verbindung dauerhaft auf radarspezifische Impulsmuster gescannt werden und beim Erkennen, auf eine andere Frequen gewechselt werden.
-Unter \ac{DFS} zählt auch das Wetterradar, was, wie in \cite[p. 4]{weather} beschrieben zwischen 5.6 GHz und 5.65 GHz sendet.
+It can also be seen that the U-NII-2 band is marked as containing DFS channels.
+\ac{DFS} is mandatory in the ranges 5.25-5.35 GHz and 5.47-5.725 GHz, since these frequencies are also used by aviation and military radar systems, as described in \cite{dfs}.
+As a consequence, the connection must continuously scan for radar-specific pulse patterns and upon detection, switch to another frequency.
+\ac{DFS} also includes weather radar, which, as explained in \cite[p. 4]{weather}, operates between 5.6 GHz and 5.65 GHz.
 
-Das 6 GHz Band ist in die Radio Bänder U-NII-5 bis U-NII-8 unterteilt, wobei in der EU nur U-NII-5 erlaubt ist, wie in \cite{6ghz} beschrieben wird.
-Die darstellung ist identisch zu der des 5 GHz Bandes,
-Die Channel beginnen in diesem Band erneut bei 1 und enden bie 93, bzw. 233 in den USA.
-In der EU sind somit 500 MHz, mit anderen Worten die Frequenzen 5.925 Ghz bis 6.425 GHz nutzbar, wohingegen in den USA Kanaäle bis zu der Frequenz 7.125 Ghz genutzt werden können.
-Im 6 GHz Band existieren keine \ac{DFS} Kanäle.
+The 6 GHz band is divided into the radio bands U-NII-5 through U-NII-8, although in the European Union only U-NII-5 is permitted, as described in \cite{6ghz}.
+The representation of this band is identical to that of the 5 GHz band.
+In this band, channels start again at channel 1 and end at channel 93, or at channel 233 in the United States.
+Thus, in the European Union, 500 MHz—corresponding to the frequencies 5.925-6.425 GHz—are available.
+In contrast, in the United States, channels up to 7.125 GHz can be used.
+Unlike the 5 GHz band, no \ac{DFS} channels exist in the 6 GHz band.
 
-Nachdem nun die Grundlagen der Frequenzen von Wi-Fi beschrieben wurden, wird im FOlgenden auf die besonderen Neuerungen in den Standards 4 - eingegnagen.
+Having now described the fundamentals of Wi-Fi frequency bands, the following section addresses the major innovations introduced in standards 4 through 7.
+
 \subsection{IEEE 802.11n}
 \subsection{IEEE 802.11ac}
 \subsection{IEEE 802.11ax}
