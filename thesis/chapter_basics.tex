@@ -336,14 +336,43 @@ While this increases the information density, it also makes the transmission mor
 
 For Wi-Fi 4, these techniques result in a data rate of 72 Mbit/s, as shown in Equation \ref{eq:through}.
 
-
 \begin{equation} \label{eq:through}
 \frac{48 Datasubacarries \times 6 Bits}{4 \mu s} = 72 Mbit/s
 \end{equation}
 
-HT-Mode
-MIMO
-Spatial stream
+New to Wi-Fi 4, which was released in 2009, is primarily the introduction of \ac{MIMO} technology.
+In addition to this technology, Wi-Fi 4 also allowed the use of the 5 GHz frequency band for the first time.
+Moreover, channel bandwidths of up to 40 MHz were supported.
+
+The fundamental concept of \ac{MIMO} was already described by Telatar in 1999 \cite{telatar1999capacity}, ten years before its practical implementation.
+\ac{MIMO} is based on the simultaneous use of multiple antennas.
+Consequently, Wi-Fi 4-compatible devices are equipped with multiple transmit antennas (Tx) and multiple receive antennas (Rx).
+The principle of \ac{MIMO} is illustrated in Figure \ref{fig:mimo}.
+As described in \cite[p. 2]{4699969}, a so-called spatial stream is transmitted per antenna.
+The most common \ac{MIMO} configurations are 2x2, with two Tx and two Rx antennas, and 4x4, with four Tx and four Rx antennas per device.
+
+\begin{figure}[ht]
+    \centering
+    \includegraphics[width=\linewidth]{figures/MIMO.drawio.pdf}
+    \caption{Presentation of the \ac{MIMO} mechanism}
+    \label{fig:mimo}
+\end{figure}
+
+A spatial stream is illustrated in Figure \ref{fig:ofdm}.
+It represents the transmission of data in a 20 MHz or 40 MHz channel using \ac{OFDM}.
+With \ac{MIMO}, multiple spatial streams are transmitted simultaneously, one per Tx antenna.
+These streams consist of the 64 subcarriers described in Figure \ref{fig:ofdm}, as illustrated in Figure \ref{fig:mimo}.
+The streams are transmitted in different spatial directions and are decoded again at the receiver.
+
+Thus, the throughput increases proportionally with the number of streams.
+Specifically, for Wi-Fi 4, a 2x2 \ac{MIMO} configuration achieves a maximum data rate of 144 Mbit/s, while a 4x4 configuration achieves 388 Mbit/s.
+For 40 MHz channels, the maximum data rate reaches 600 Mbit/s in Wi-Fi 4.
+
+In Linux, the HT mode (High Throughput) enables Wi-Fi 4-specific features.
+These include \ac{MIMO}, \ac{OFDM} optimizations\footnote{For 40 MHz channels, 56 instead of 52 data subcarriers are used.}, and shorter guard intervals, allowing \ac{OFDM} symbols to be transmitted at a higher frequency.
+
+The following section discusses the innovations introduced in Wi-Fi 5.
+
 \subsection{IEEE 802.11ac}
 \subsection{IEEE 802.11ax}
 \subsection{IEEE 802.11be}
