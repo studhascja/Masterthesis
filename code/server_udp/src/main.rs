@@ -30,7 +30,7 @@ static MESSAGE_COUNT: Lazy<Mutex<u64>> = Lazy::new(|| Mutex::new(0));
 static TIMEOUT_COUNT: Lazy<Mutex<u64>> = Lazy::new(|| Mutex::new(0));
 
 const TIMEOUT_NS: u64 = 3000000;
-const NUM_POINTS: usize = 40000;
+
 const RADIUS: f64 = 10.0;
 const TIMEOUT_DURATION: Duration = Duration::from_millis(300);
 
@@ -42,6 +42,7 @@ struct SetupContext {
     bandwith: Arc<String>,
     qos: Arc<String>,
     time: Arc<String>,
+    config: Arc<String>,
     running: Arc<AtomicBool>,
     interval: Duration,
     counter: u64,
@@ -232,6 +233,7 @@ fn update_context(base: &SetupContext, overrides: SetupContextOverrides) -> Setu
         bandwith: base.bandwith.clone(),
         qos: base.qos.clone(),
         time: base.time.clone(),
+        config: base.config.clone(),
         running: overrides.running.unwrap_or_else(|| base.running.clone()),
         interval: base.interval,
         counter: overrides.counter.unwrap_or_else(|| base.counter.clone()),
@@ -334,11 +336,12 @@ fn setup() -> anyhow::Result<SetupContext> {
     set_rt_priority(99);
 
     let args: Vec<String> = env::args().collect();
-    let standard = Arc::new(args[1].clone());
-    let frequency = Arc::new(args[2].clone());
-    let bandwith = Arc::new(args[3].clone());
-    let qos = Arc::new(args[4].clone());
-    let time = Arc::new(args[5].clone());
+    let config = Arc::new(args[1].clone());
+    let standard = Arc::new(args[2].clone());
+    let frequency = Arc::new(args[3].clone());
+    let bandwith = Arc::new(args[4].clone());
+    let qos = Arc::new(args[5].clone());
+    let time = Arc::new(args[6].clone());
 
     let socket = UdpSocket::bind("192.168.1.1:8080")?;
     socket.set_nonblocking(true)?;
@@ -356,6 +359,7 @@ fn setup() -> anyhow::Result<SetupContext> {
         bandwith,
         qos,
         time,
+        config,
         running,
         interval: Duration::from_nanos(TIMEOUT_NS),
         counter: 0,
@@ -725,20 +729,22 @@ fn calculation_phase(context: &SetupContext) -> Result<SetupContext> {
     let socket = &context.socket;
     let interval = context.interval.clone();
     println!("Start Calculation");
+    let context_time: u64 = context.time.as_str().parse().expect("Invalid number in time");
+    let num_points =  (context_time * 1000000000) / TIMEOUT_NS; 
 
-    let mut points = Vec::with_capacity(NUM_POINTS);
-    let mut latency: Vec<CalcTimestampSet> = vec![CalcTimestampSet::default(); NUM_POINTS];
+    let mut points = Vec::with_capacity(num_points as usize);
+    let mut latency: Vec<CalcTimestampSet> = vec![CalcTimestampSet::default(); num_points as usize];
 
     let mut last_y = 0.0;
     let calc_time = SystemTime::now();
     let mut next_tick = Instant::now() + interval;
     let mut i = 0;
-    let context_time: u64 = context.time.as_str().parse().expect("Invalid number in time");
+    
 
     while calc_time.elapsed()?.as_secs() < context_time {
         let index = i as usize;
         //let calc_start_time = Instant::now();
-        let theta = 2.0 * PI * (i as f64) / (NUM_POINTS as f64);
+        let theta = 2.0 * PI * (i as f64) / (num_points as f64);
         let x = RADIUS * theta.cos();
         let calc_send_time = Instant::now();
         let calc_send_elapsed = calc_send_time.duration_since(read_user_zero());
@@ -857,8 +863,8 @@ fn calculation_phase(context: &SetupContext) -> Result<SetupContext> {
                 let msg: Message = *bytemuck::from_bytes::<Message>(&buf[..amt]);
                 match (msg.second_u128, msg.timestamp) {
                     (client_sent, client_queue) => {
-                        latency[NUM_POINTS - 1].client_sent_kernel = Some(client_sent);
-                        latency[NUM_POINTS - 1].client_queue = Some(client_queue);
+                        latency[num_points as usize - 1].client_sent_kernel = Some(client_sent);
+                        latency[num_points as usize - 1].client_queue = Some(client_queue);
                         break;
                     }
                 }
@@ -882,8 +888,8 @@ fn calculation_phase(context: &SetupContext) -> Result<SetupContext> {
 
 fn save_results(context: &SetupContext) -> Result<SetupContext> {
     let result_path = format!(
-        "../results/standard_{}/frequency_{}/bandwith_{}/qos_{}/udp/",
-        &context.standard, &context.frequency, &context.bandwith, &context.qos
+        "../{}/results/standard_{}/frequency_{}/bandwith_{}/qos_{}/udp/",
+        &context.config, &context.standard, &context.frequency, &context.bandwith, &context.qos
     );
     if let Err(e) = create_dir_all(&result_path) {
         eprintln!("Error while creating directories: {}", e);

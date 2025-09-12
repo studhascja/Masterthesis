@@ -159,14 +159,14 @@ class WifiTest(unittest.TestCase):
         self.assertTrue(client_prio)
         self.assertTrue(iperf_prio)
 
-def run_rust_udp(process_container):
-        rust_result = ["./client_udp/target/debug/client_udp", "15M", "120"]
+def run_rust_udp(process_container, duration, throughput):
+        rust_result = ["./client_udp/target/debug/client_udp", throughput, duration]
         process = subprocess.Popen(rust_result)
         process_container.append(process)
         process.wait()
 
-def run_rust_tcp(process_container):
-        rust_result = ["./client/target/debug/client", "15M", "120"]
+def run_rust_tcp(process_container, duration, throughput):
+        rust_result = ["./client/target/debug/client", throughput, duration]
         process = subprocess.Popen(rust_result)
         process_container.append(process)
         process.wait()
@@ -200,12 +200,20 @@ def main():
 
         line = lines[n-1].strip()
         parts = line.strip().split()
-        if len(parts) < 6:
+        if len(parts) < 7:
             continue
+     
+        config_version = parts[0]
+        with open(config_version, "r") as configl:
+            print("test")
+            c_line = configl.readline()
+            print("test")
+        c_parts = c_line.strip().split()
+        duration, throughput = c_parts
 
-        wifi_version = int(parts[0])
-        freq = float(parts[1])
-        bw = int(parts[2])
+        wifi_version = int(parts[1])
+        freq = float(parts[2])
+        bw = int(parts[3])
 
         print(f"\n🔁 Test {n}: SSID={SSID}, Standard=WiFi {wifi_version}, Freq={freq} GHz, Bandbreite={bw} MHz")
 	
@@ -213,7 +221,7 @@ def main():
                 connect_to_wifi(1)
         else:
                 connect_to_wifi(0)
-        if parts[3] == "1":
+        if parts[4] == "1":
             print("Starte QoS...")
            # subprocess.run(['bash', 'setup_qos.sh'])
         else:
@@ -222,10 +230,10 @@ def main():
        
         rust_process_container = []
 
-        if parts[4] == "udp":
-            rust_thread = threading.Thread(target=run_rust_udp, args=(rust_process_container,))
+        if parts[5] == "udp":
+            rust_thread = threading.Thread(target=run_rust_udp, args=(rust_process_container, duration, throughput,))
         else:
-            rust_thread = threading.Thread(target=run_rust_tcp, args=(rust_process_container,))
+            rust_thread = threading.Thread(target=run_rust_tcp, args=(rust_process_container, duration, throughput,))
 	
         rust_thread.start()
         if not os.path.exists(pipe_path):
@@ -262,6 +270,9 @@ def main():
         if n+1 > len(lines):
             break
 
+    with open("status", "w", encoding="utf-8") as f:
+        f.write(str(1))
+    
     output_file = "test_results"
 
     with open(output_file, "w", encoding="utf-8") as f:

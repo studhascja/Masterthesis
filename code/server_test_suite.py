@@ -31,14 +31,14 @@ def run_config_script(param, process_container):
     process = subprocess.Popen(hostapd_cmd)
     process_container.append(process)
 
-def run_rust_udp(process_container, val1, val2, val3, val4, val5):
-    rust_result = ['./server_udp/target/debug/server_udp', str(val1), str(val2), str(val3), str(val4), val5]
+def run_rust_udp(process_container, val0, val1, val2, val3, val4, val5):
+    rust_result = ['./server_udp/target/debug/server_udp', val0, str(val1), str(val2), str(val3), str(val4), val5]
     process = subprocess.Popen(rust_result)
     process_container.append(process)
     process.wait()
 
-def run_rust_tcp(process_container, val1, val2, val3, val4, val5):
-    rust_result = ['./server/target/debug/server', str(val1), str(val2), str(val3), str(val4), val5]
+def run_rust_tcp(process_container, val0, val1, val2, val3, val4, val5):
+    rust_result = ['./server/target/debug/server', str(val0), str(val1), str(val2), str(val3), str(val4), val5]
     process = subprocess.Popen(rust_result)
     process_container.append(process)
     process.wait()
@@ -46,11 +46,17 @@ def run_rust_tcp(process_container, val1, val2, val3, val4, val5):
 def process_line(line, index):
     global all_results
     parts = line.strip().split()
-    if len(parts) != 6:
+    if len(parts) != 7:
         print(f" ^|berspringe ung  ltige Zeile: {line}")
         return
 
-    val1, val2, val3, val4, val5, param = parts
+    val0, val1, val2, val3, val4, val5, param = parts
+    
+    with open(val0, "r") as config:
+        c_line = config.readline()
+   
+    c_parts = c_line.strip().split()
+    duration, throughput = c_parts
 
     config_process_container = []
     if val4 == "1":
@@ -68,10 +74,10 @@ def process_line(line, index):
     rust_process_container = []
 
     if val5 == "udp":
-        rust_thread = threading.Thread(target=run_rust_udp, args=(rust_process_container, val1, val2, val3, val4, "120"))
+        rust_thread = threading.Thread(target=run_rust_udp, args=(rust_process_container, val0, val1, val2, val3, val4, duration))
         rust_thread.start()
     else:
-        rust_thread = threading.Thread(target=run_rust_tcp, args=(rust_process_container, val1, val2, val3, val4, "120"))
+        rust_thread = threading.Thread(target=run_rust_tcp, args=(rust_process_container, val0, val1, val2, val3, val4, duration))
         rust_thread.start()
 
     suite = unittest.TestSuite()
@@ -137,9 +143,23 @@ def main():
 
     with open("test_configuration", "r") as config:
         lines = config.readlines()
-
-    for i, line in enumerate(lines):
-        process_line(line, i)
+ 
+    with open("status", "r") as status_file:
+        n = int(status_file.read().strip())
+        if n > len(lines):
+            with open(output_file, "w", encoding="utf-8") as f:
+                        f.write(str(1))
+        with open("status", "r") as status_file:
+            n = int(status_file.read().strip())
+            
+    while n < len(lines):
+        with open("status", "r") as status_file:
+            n = int(status_file.read().strip())
+            
+        line = lines[n-1].strip()
+        process_line(line, n-1)
+        with open("status", "w", encoding="utf-8") as f:
+            f.write(str(n + 1))
 
     if iperf_process_container:
         print("Beende iperf_script.sh...")
@@ -151,6 +171,9 @@ def main():
             iperf_process.kill()
 
     iperf_thread.join()
+
+with open("status", "w", encoding="utf-8") as f:
+    f.write(str(1))
 
 output_file = "test_results"
 
