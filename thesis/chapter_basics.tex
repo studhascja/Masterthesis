@@ -250,8 +250,9 @@ Unlike the 5 GHz band, no \ac{DFS} channels exist in the 6 GHz band.
 
 Having now described the fundamentals of Wi-Fi frequency bands, the following section addresses the major innovations introduced in standards 4 through 7.
 
-\subsection{IEEE 802.11n}
-Before addressing the specific characteristics of Wi-Fi 4, also known as IEEE 802.11n, a fundamental technology must first be introduced.
+\subsection{Basical Mechanisms of Wi-Fi}
+Before addressing the specific characteristics of the Wi-Fi standards fundamental technologies must first be introduced.
+These technologies will be described at the example of Wi-Fi 4.
 As described in \cite[p. 20]{ofdm}, one of the essential components of IEEE 802.11 is the modulation and multiplexing scheme \ac{OFDM}.
 This principle is illustrated in Figure \ref{fig:ofdm}.
 
@@ -371,11 +372,32 @@ For 40 MHz channels, the maximum data rate reaches 600 Mbit/s in Wi-Fi 4.
 In Linux, the HT mode (High Throughput) enables Wi-Fi 4-specific features.
 These include \ac{MIMO}, \ac{OFDM} optimizations\footnote{For 40 MHz channels, 56 instead of 52 data subcarriers are used.}, and shorter guard intervals, allowing \ac{OFDM} symbols to be transmitted at a higher frequency.
 
-The following section discusses the innovations introduced in Wi-Fi 5.
+The following section discusses the innovations introduced in the different Wi-Fi standards 5 - 7.
 
-\subsection{IEEE 802.11ac}
-\subsection{IEEE 802.11ax}
-\subsection{IEEE 802.11be}
+\subsection{Features of the Wi-Fi Standards 5 to 7}
+In Wi-Fi 5, also known as IEEE 802.11ac, only the 5 GHz band is used, in contrast to Wi-Fi 4, as described in \cite[p. 808]{IEEE80211ac2020}.
+Furthermore, the maximum data rate is increased through 8x8 \ac{MIMO}, 160 MHz channels and \ac{QAM}-256 modulation, i.e., 8 bits per symbol.
+For 160 MHz channels in Wi-Fi 5, 234 data subcarriers exist.
+Kolahi et al. report in \cite[p. 5]{5_160_f} that Wi-Fi 5 achieves a maximum data rate of 1.7 Gbit/s.
+Based on the previously mentioned formula \ref{eq:through} and 8 spatial streams, however, the theoretical maximum throughput is 6.9 Gbit/s.
+These values are also supported by Kelkar in \cite[p. 811]{IEEE80211ac2020}\footnote{Kelkar reports a value of 3.5 Gbit/s in \cite[p. 811]{IEEE80211ac2020}, but this corresponds to a Wi-Fi 5 configuration with 4 spatial streams. The results align when 8 spatial streams are considered.} and by \cite[p. 6]{Cisco2012}.
+This corresponds to an improvement in data rate of approximately 1150\% compared to Wi-Fi 4.
+However, measurements reported in \cite{5_160_f} indicate real-world data rates of only around 1.1 Gbit/s.
+Since the 600 Mbit/s reported for Wi-Fi 4 were also calculated theoretically, these two values can be compared.
+
+In addition to throughput-enhancing measures, Wi-Fi 5 introduced beamforming and \ac{MU-MIMO} in the downlink.
+As described by Chellappa et al. in \cite{MARS2018585}, beamforming can focus the signal strength towards a specific client by exploiting constructive interference.
+Thus, the signal is particularly strong at a specific spatial location where the client is located, as the multiple antennas cause the signals to combine constructively at that point.
+\ac{MU-MIMO}, as described in \cite[p. 17]{Cisco2012}, allows the access point to transmit to multiple clients simultaneously.
+This is possible due to the spatial streams, so in \ac{MU-MIMO}, each client receives one of these streams.
+Therefore, with 8x8 \ac{MIMO}, the server can simultaneously send messages to 8 clients.
+
+
+Beemforming, nur 5GHz, MU-MIMO, 8x8 MIMO, QAM-256, 160 MHz Kanäle
+
+OFDMA, QAM-1024, MU-MIMO Downlink, BSS COloring, bemcahbarte Netzwerke bkeommen Farben, mit 6e alle drei Frequenzbänder.
+
+320 MHz Kanäle, QAM-4096, MIMO 16x16, Multi link operaiton (mehrere Frequenbänder gleichzeitig)
 \subsection{Medium Access Mechanisms} \label{subsec:mac}
 EDCA TDMA
 \subsection{Quality of Service} \label{subsec:qos}
