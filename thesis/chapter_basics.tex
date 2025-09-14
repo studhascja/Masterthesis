@@ -201,6 +201,15 @@ In the final step, \circnum{11}, a system call transfers the data from the kerne
 Having described the packet path within the Linux networking stack, the following section addresses fundamental characteristics of \ac{WLAN} and characteristics of the standards 4 through 7.
 
 \section{Wi-Fi standards} \label{subsec:stand}
+As described in \cite[p. 56]{ofdm}, IEEE 802.11 is one of the most widely used wireless communication protocols.  
+This standard was developed and is maintained by the Institute of Electrical and Electronics Engineers (IEEE).  
+To ensure interoperability between devices from different manufacturers, the Wi-Fi Alliance was established, as noted in \cite{wifi_org}.  
+The alliance was founded by several major companies, including Intel, Cisco and Broadcom.  
+For this reason, the term Wi-Fi standards is often used synonymously with IEEE 802.11 standards.  
+
+In the following, the fundamental aspects of the Wi-Fi standard are discussed before the characteristics of the individual versions are explained in detail.  
+
+\subsection{Basical Mechanisms of Wi-Fi}
 Before discussing the specific standards and their characteristics, the frequency properties of Wi-Fi must first be explained.
 These are illustrated in Figure \ref{fig:channel}.
 It can be observed that Wi-Fi operates on the three frequency bands 2.4 GHz, 5 GHz and 6 GHz.
@@ -250,7 +259,6 @@ Unlike the 5 GHz band, no \ac{DFS} channels exist in the 6 GHz band.
 
 Having now described the fundamentals of Wi-Fi frequency bands, the following section addresses the major innovations introduced in standards 4 through 7.
 
-\subsection{Basical Mechanisms of Wi-Fi}
 Before addressing the specific characteristics of the Wi-Fi standards fundamental technologies must first be introduced.
 These technologies will be described at the example of Wi-Fi 4.
 As described in \cite[p. 20]{ofdm}, one of the essential components of IEEE 802.11 is the modulation and multiplexing scheme \ac{OFDM}.
@@ -392,12 +400,56 @@ Thus, the signal is particularly strong at a specific spatial location where the
 This is possible due to the spatial streams, so in \ac{MU-MIMO}, each client receives one of these streams.
 Therefore, with 8x8 \ac{MIMO}, the server can simultaneously send messages to 8 clients.
 
+As described in \cite[p. 2]{fi14100293}, eight years after the release of Wi-Fi 5, the Wi-Fi 6 standard, also known as IEEE 802.11ax, was published.  
+Among other features, \ac{MU-MIMO} was extended to support uplink transmissions.  
+In addition, the modulation was increased to \ac{QAM}-1024, i.e., 10 bits per modulation symbol.  
+According to equation \ref{eq:through}, this results in a theoretical maximum throughput of 9.6 Gbit/s.  
 
-Beemforming, nur 5GHz, MU-MIMO, 8x8 MIMO, QAM-256, 160 MHz Kanäle
+Mozaffariahrar et al. explain in \cite[p. 10]{fi14100293} that \ac{BSS} coloring was also introduced.  
+This mechanism addresses the case where \acp{BSS}, i.e., coverage areas of adjacent access points, overlap.  
+To allow a client within the range of multiple \acp{BSS} to identify its associated network, an additional header field was introduced.  
+This field contains a unique identifier so that the client can ignore transmissions from neighboring \acp{BSS}.  
 
-OFDMA, QAM-1024, MU-MIMO Downlink, BSS COloring, bemcahbarte Netzwerke bkeommen Farben, mit 6e alle drei Frequenzbänder.
+Another major innovation of Wi-Fi 6 is the support for three frequency bands with Wi-Fi 6E, instead of only one as in Wi-Fi 5.  
+Thus, all frequency bands shown in Figure \ref{fig:channel} can be used with Wi-Fi 6E.  
 
-320 MHz Kanäle, QAM-4096, MIMO 16x16, Multi link operaiton (mehrere Frequenbänder gleichzeitig)
+\begin{figure}[ht]
+    \centering
+    \includegraphics[width=\linewidth]{figures/ofdma.drawio.pdf}
+    \caption{Presentation of the OFDMA and MLO mechanisms, adapted from \cite{ofdma_pic}}
+    \label{fig:mlo}
+\end{figure}
+
+Furthermore, the modulation technique \ac{OFDM} was enhanced to \ac{OFDMA}.  
+As described in \cite[p. 5]{fi14100293}, this mainly improves efficiency when multiple clients are active.  
+The mechanism is illustrated in Figure \ref{fig:mlo}.  
+Although the figure shows Wi-Fi 7, the difference between \ac{OFDM} and \ac{OFDMA} is highlighted as well.  
+
+The distinction becomes apparent only with multiple clients.  
+In \ac{OFDM}, each symbol carries data from a single user.  
+This means that during symbol time $t_{s0}$ the data of user 0 is transmitted, in $t_{s1}$ the data of user 1 and so on.  
+As a result, if a user has little data to send, part of the allocated subcarriers may remain unused, particularly for small packet sizes.  
+\ac{OFDMA} solves this by allowing different users to be mapped onto different subcarriers within the same symbol.  
+Thus, within one modulation symbol, multiple clients can transmit simultaneously.  
+This significantly improves spectral efficiency, although the benefit is most relevant in multi-client scenarios, which are not the focus of this work.  
+
+At the time of writing, the newest standard is Wi-Fi 7, or IEEE 802.11be.  
+However, as Liu et al. note in \cite[p. 2]{liu2025ieee80211bewifi7}, it is officially released during this work in July 2025.
+But the necessary software is not yet available.  
+Nevertheless, the core innovations can already be discussed.  
+As Liu et al. describe in \cite[p. 3,4]{liu2025ieee80211bewifi7}, Wi-Fi 7—like Wi-Fi 6E—supports all three frequency bands.  
+
+The standard also introduces further throughput enhancing features, including 320 MHz channels, \ac{QAM}-4096 modulation, i.e. 12 bits per symbol and 16x16 \ac{MIMO}.  
+According to the measurement results presented by Liu et al., these enhancements enable data rates exceeding 40 Gbit/s.  
+Moreover, Wi-Fi 7 supports \ac{MLO}, which allows simultaneous transmission across multiple frequency bands.  
+This is shown in Figure \ref{fig:mlo}, where \ac{MLO} is shown.
+There also can be seen that in each \ac{MLO} Link \ac{OFDMA} is used.
+This provides both redundancy and load balancing.  
+In addition, the standard promises lower latency, though Liu et al. report in \cite[p. 5]{liu2025ieee80211bewifi7} that this improvement is only partially confirmed by measurements.  
+
+In this chapter, the key characteristics of the individual Wi-Fi standards have been presented.  
+The following section will address the concept of the medium access mechanism and the different types that exist.  
+
 \subsection{Medium Access Mechanisms} \label{subsec:mac}
 EDCA TDMA
 \subsection{Quality of Service} \label{subsec:qos}
