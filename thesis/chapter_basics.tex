@@ -450,8 +450,60 @@ In addition, the standard promises lower latency, though Liu et al. report in \c
 In this chapter, the key characteristics of the individual Wi-Fi standards have been presented.  
 The following section will address the concept of the medium access mechanism and the different types that exist.  
 
-\subsection{Medium Access Mechanisms} \label{subsec:mac}
-EDCA TDMA
+\subsection{Medium Access Control} \label{subsec:mac}
+In Section \ref{subsec:stand}, \ac{OFDM} and \ac{OFDMA} were discussed in the context of how messages from the sender are transmitted over the medium.  
+The task of the \ac{MAC} is to determine which sender is allowed to transmit its message.  
+Thus, the \ac{MAC} is located one layer above the modulation, which contains \ac{OFDM} and \ac{OFDMA}.  
+Nevertheless, within the OSI model, the \ac{MAC} is still considered part of the lowest layer, i.e. the physical layer.  
+
+\begin{figure}[ht]
+    \centering
+    \includegraphics[width=\linewidth]{figures/MAC.drawio.pdf}
+    \caption{Presentation of the CSMA/EDCA mechanism}
+    \label{fig:edca}
+\end{figure}
+
+In the IEEE 802.11 standard, the \ac{MAC} is based on the \ac{CSMA}/\ac{EDCA} principle.  
+As described in \cite[p. 1]{csma_edca}, this is the successor of the Distributed Coordination Function (DCF).  
+It provides the same functionality but additionally enables prioritization through \ac{QoS}, as described in Section \ref{subsec:qos}.  
+Therefore, it will be explained in more detail below and is also illustrated in Figure \ref{fig:edca}.  
+
+\ac{CSMA} is the mechanism used to check whether the medium\footnote{The term medium refers to the physical entity through which signals are transmitted.  
+In the case of Wi-Fi this is the air, i.e., the selected channel, while in the case of \ac{LAN} it would be the cable.} is currently free.  
+The algorithm that determines which sender is allowed to transmit first is \ac{EDCA}.  
+As described by Ugwu et al. in \cite[p. 3--7]{csma_edca}, different \acp{IFS} play a key role in this process.  
+Figure \ref{fig:edca} shows the two types, \ac{AIFS} and \ac{SIFS}.  
+
+Each sender, shown in Figure \ref{fig:edca} as $Client_1$ and $Client_2$, has an \ac{AIFS}, a \ac{CW} and a backoff timer.  
+These parameters depend on the \ac{QoS} group, which is explained in more detail in Section \ref{subsec:qos}.  
+In the figure, $Client_1$ belongs to \ac{QoS} group 1 and $Client_2$ to group 0.  
+Thus, $Client_1$ has a higher priority than $Client_2$.  
+This is reflected particularly in the smaller values of \ac{AIFS} and \ac{CW}.  
+The backoff is a randomly chosen number between 0 and the size of the respective \ac{CW}.  
+
+When transmitting a message, the sender first checks with \ac{CSMA} whether the medium is occupied, as described in \cite[p. 6]{csma_edca}.  
+If the medium is free, the sender waits for the duration of its specific \ac{AIFS} followed by the backoff countdown.  
+It is important to note that the backoff timer pauses whenever the medium becomes busy, as shown for $Client_2$ in Figure \ref{fig:edca}.  
+After the backoff expires, the client sends an \ac{RTS} to the access point.  
+If no other client is already transmitting, the access point responds after a \ac{SIFS} interval with a \ac{CTS}.  
+
+For \acp{AIFS}, it also holds that, regardless of priority, this interval must always be larger than \ac{SIFS}.  
+This is because \ac{SIFS} represents the time spacing between critical operations such as ACK, \ac{RTS} and \ac{CTS} frames.  
+If \ac{AIFS} were shorter than \ac{SIFS}, these timing relationships would be disrupted.  
+
+Upon receiving the \ac{CTS}, the client transmits its data, which is then acknowledged by the access point with an ACK \cite[p. 7]{csma_edca}.  
+Afterwards, the next client may attempt to transmit.  
+With this principle, higher-priority senders are more likely to gain access to the medium, since they wait less due to smaller \ac{AIFS} values and smaller backoff ranges.  
+Thus, as shown in Figure \ref{fig:edca}, a higher-priority client ($Client_1$) can transmit before a lower-priority client ($Client_2$), even if $Client_2$ attempted transmission first.  
+
+As Moraes et al. describe in \cite{4638758}, this approach is insufficient for providing hard real-time guarantees, since the contention process is probabilistic and therefore not deterministic.  
+In their paper, Moraes et al. propose a \ac{TDMA}-based \ac{MAC}.  
+This divides the medium into fixed time slots assigned to specific clients.  
+Thus, it becomes predictable when a client is allowed to transmit and when its data will be available.  
+Although this \ac{MAC} is not implemented in the standard, it is relevant in the context of Section \ref{sec:related} and is therefore mentioned here.  
+
+The following section discusses how prioritization can be achieved using \ac{QoS}.  
+
 \subsection{Quality of Service} \label{subsec:qos}
 
 \section{Real Time} \label{sec:real_time}
