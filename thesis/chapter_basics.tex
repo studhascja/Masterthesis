@@ -505,6 +505,34 @@ Although this \ac{MAC} is not implemented in the standard, it is relevant in the
 The following section discusses how prioritization can be achieved using \ac{QoS}.  
 
 \subsection{Quality of Service} \label{subsec:qos}
+With \ac{QoS}, different data streams can be treated differently.  
+In other words, as Tanenbaum explains in \cite[p. 405]{andrew_net}, \ac{QoS} allows assigning different properties such as bandwidth, jitter, delay and loss rate to various streams.  
+This forms the foundation for real-time capability in Wi-Fi, as described in \cite[p. 2]{rfc1633}.  
+
+Controlling bandwidth and burst size is referred to as traffic shaping, as noted by Tanenbaum in \cite[p. 407]{andrew_net}.  
+One of the most common implementations is the token bucket filter algorithm, which is illustrated in Figure \ref{fig:token}.  
+
+\begin{figure}[ht]
+    \centering
+    \includegraphics[width=\linewidth]{figures/token.drawio.pdf}
+    \caption{Presentation of the token bucket filter principle}
+    \label{fig:token}
+\end{figure}
+
+As described by Tanenbaum in \cite[p. 407]{andrew_net}, the mechanism consists of a bucket that is filled with tokens at a rate $r$.  
+The bucket has a maximum burst size $B$.  
+Once $B$ tokens are in the bucket, all additional tokens are discarded.  
+
+This principle is applied to a data stream.  
+For each transmitted packet, one token is removed from the bucket.  
+Thus, the data stream is limited to a short-term maximum burst of $B$ packets and a long-term average rate of $r$ packets.  
+In this way, throughput and the maximum number of packets to be sent can be constrained.  
+
+\ac{QoS} can also be defined using a \ac{DSCP} value in the packet header.  
+As described in \cite[p. 2]{8002923}, this allows classification into 22 different configurations, each with its own weighting of the four \ac{QoS} properties mentioned above.  
+
+Since this chapter has explained the fundamentals of \ac{QoS}, all network-relevant foundations have now been covered.  
+The only remaining background required for this work concerns real-time aspects, which will be discussed in the following chapter.  
 
 \section{Real Time} \label{sec:real_time}
 In this chapter, the fundamentals of real-time systems are explained.  
