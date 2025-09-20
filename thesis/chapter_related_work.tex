@@ -1,5 +1,29 @@
 \chapter{Related Work} \label{sec:related}
-\section{RT-Wi-Fi}
-\section{Quality of Service in Wi-Fi}
-\section{Disruptive factors in Wi-Fi's}
-\section{Categorization of this work}
+Es gibt viele Studien, welche die Echtzeitfähigkeit von Wi-Fi untersuchen.
+Angefangen mit Sudien, welche sich mit Wi-Fi und harter Echtzeit auseindaer setzen.
+Dabei setzen sowohl Wei et al. \cite{6728869}, als auch Moraes et al. \cite{4638758} auf das \ac{TDMA} Verfahren.
+In beiden Studien wird berichtet, dass harte Echtzeit nur mittels einer deterministischer \ac{MAC} erreicht wird.
+Somit kann in \cite{6728869} eine Frequenz an Echtzeitpaketen von 6Khz erreicht werden.
+
+Avdotin et al. setzt in \cite{Avdotin_2019} ebenfalls an der \ac{MAC} an, jedoch spezifisch für \ac{OFDMA}.
+In dieser Studie wird die Resource Allocation von \ac{OFDMA} angepasst und harte Echtzeitfähikgeit kann bis zu eine Zykluszeit von 1ms gehalten werden.
+Dies wiedersprcith den Aussagen von \cite{6728869} und \cite{4638758}, dass nur mittels \ac{TDMA} harte Echtzeit erreicht werden kann.
+Aber dennoch ist ein Eingriff in die Firmware nötig.
+
+Auch zu den Auswirkungen von \ac{QoS} Parametern auf die Echtzeitfähigkeit existieren Studien.
+Somit erörtern Tsolakou et al. in \cite{Tsolakou_2002s} die Auswirkungen von verschiedenen \ac{Qdisc} Disziplinen auf die Echtzeitfähigkeit.
+Des Weiteren legt Dahoud et al. in \cite{da_2019} die Auswirkungen von verschiedenen \ac{DSCP}-Werten auf die Latenz dar.
+
+Aber auch zur Allmeinen Performance existieren Studien.
+Somit beschreit Chotalia et al. in \cite{10.1007/978-3-031-40564-8_14} allgemeine Performance metrikend er Standarts 4 - 6 .
+Dabei geht er besonders auf den erzeugbaren Datendurchsatz ein.
+
+Dabei stellt sich nun die Frage, wie diese Arbeiten und Erkenntnisse von den Ergebenissen in dieser Arbeit zu separieren sind.
+Das Ziel in dieser Arbeit sit es, wie in Kapitel \ref{subsec:objective} beschrieben, die minimale Zyklusszeit für Echtzeitdaten herauszufinden, ohne dabei den Wi-Fi Standard grundlegend zu ändern.
+Somit sind die Ansätze von \ac{TDMA} und der Resoure Allocation Änderung von \ac{OFDMA} in dieser Arbeit nicht enthalten, da diese einen Eingriff in die Firmware vorraussetzwen würden.
+Des weiteren sind viele Studien, wie \cite{10.1007/978-3-031-40564-8_14} nur in Simulationen oder reinen Laborumgebungen enstanden.
+In dieser Arbeit sollen ebenfalls realisitsche Umgebungen und deren Einfluss auf die Datenverbindung betrachtet werden.
+Abschließend sollen nicht nur Echtzeitdaten übertragen, sondern auch die gleichzeitige Nutzung normaler Daten maximiert werden.
+Die KOmbination aus Betrieb in LAbor und Laborfreiem raum, keine Änderung am Standard und Maximierung von gleichzeitigen Nutzdaten, in KOmbination von Tests von verschiedenen Standards und \ac{QoS} Kombinationen, wurde bisher noch nicht untersucht.
+
+Im Folgenden wird darauf eingegangen, wie der Testaufbau in dieser Arbeit umgesetzt ist.
