@@ -172,6 +172,9 @@ def main():
 
     iperf_thread.join()
 
+if __name__ == '__main__':
+    main()
+
 with open("status", "w", encoding="utf-8") as f:
     f.write(str(1))
 
@@ -199,5 +202,18 @@ with open(output_file, "w", encoding="utf-8") as f:
             f.write(f"{traceback}\n")
 
 
-if __name__ == '__main__':
-    main()
+led_path = "/sys/class/leds/ACT/brightness"
+
+def led_on():
+    with open(led_path, "w") as f:
+        f.write("1")
+
+def led_off():
+    with open(led_path, "w") as f:
+        f.write("0")
+
+while True:
+    led_on()
+    time.sleep(0.5)
+    led_off()
+    time.sleep(0.5)

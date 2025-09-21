@@ -159,14 +159,14 @@ class WifiTest(unittest.TestCase):
         self.assertTrue(client_prio)
         self.assertTrue(iperf_prio)
 
-def run_rust_udp(process_container, duration, throughput):
-        rust_result = ["./client_udp/target/debug/client_udp", throughput, duration]
+def run_rust_udp(process_container, duration, throughput, size):
+        rust_result = ["./client_udp/target/debug/client_udp", throughput, duration, size]
         process = subprocess.Popen(rust_result)
         process_container.append(process)
         process.wait()
 
-def run_rust_tcp(process_container, duration, throughput):
-        rust_result = ["./client/target/debug/client", throughput, duration]
+def run_rust_tcp(process_container, duration, throughput, size):
+        rust_result = ["./client/target/debug/client", throughput, duration, size]
         process = subprocess.Popen(rust_result)
         process_container.append(process)
         process.wait()
@@ -205,11 +205,9 @@ def main():
      
         config_version = parts[0]
         with open(config_version, "r") as configl:
-            print("test")
             c_line = configl.readline()
-            print("test")
         c_parts = c_line.strip().split()
-        duration, throughput = c_parts
+        duration, throughput, size = c_parts
 
         wifi_version = int(parts[1])
         freq = float(parts[2])
@@ -231,9 +229,9 @@ def main():
         rust_process_container = []
 
         if parts[5] == "udp":
-            rust_thread = threading.Thread(target=run_rust_udp, args=(rust_process_container, duration, throughput,))
+            rust_thread = threading.Thread(target=run_rust_udp, args=(rust_process_container, duration, throughput, size,))
         else:
-            rust_thread = threading.Thread(target=run_rust_tcp, args=(rust_process_container, duration, throughput,))
+            rust_thread = threading.Thread(target=run_rust_tcp, args=(rust_process_container, duration, throughput, size,))
 	
         rust_thread.start()
         if not os.path.exists(pipe_path):
@@ -299,3 +297,19 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+led_path = "/sys/class/leds/ACT/brightness"
+
+def led_on():
+    with open(led_path, "w") as f:
+        f.write("1")
+
+def led_off():
+    with open(led_path, "w") as f:
+        f.write("0")
+
+while True:
+    led_on()
+    time.sleep(0.5)
+    led_off()
+    time.sleep(0.5)

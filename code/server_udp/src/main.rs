@@ -607,7 +607,9 @@ fn latency_test_phase(context: &SetupContext) -> Result<SetupContext> {
         loop {
             if start_time.elapsed() > TIMEOUT_DURATION {
                 println!("Timeout in Latency Test Phase");
-                i = i - 1;
+                if i > 0{
+                    i = i - 1;
+                }
                 next_tick = Instant::now() + interval;
                 if increment_timeout_count() {
                     println!("Too many timeouts, stopping Test Phase.");
@@ -767,7 +769,9 @@ fn calculation_phase(context: &SetupContext) -> Result<SetupContext> {
         loop {
             if calc_send_time.elapsed() > TIMEOUT_DURATION {
                 println!("Timeout in Latency Calc Phase");
-                i = i - 1;
+                if i > 0{
+                    i = i - 1;
+                }
                 next_tick = Instant::now() + interval;
                 if increment_timeout_count() {
                     println!("Too many timeouts, stopping Calculation Phase.");
