@@ -1,29 +1,33 @@
 \chapter{Related Work} \label{sec:related}
-Es gibt viele Studien, welche die Echtzeitfähigkeit von Wi-Fi untersuchen.
-Angefangen mit Sudien, welche sich mit Wi-Fi und harter Echtzeit auseindaer setzen.
-Dabei setzen sowohl Wei et al. \cite{6728869}, als auch Moraes et al. \cite{4638758} auf das \ac{TDMA} Verfahren.
-In beiden Studien wird berichtet, dass harte Echtzeit nur mittels einer deterministischer \ac{MAC} erreicht wird.
-Somit kann in \cite{6728869} eine Frequenz an Echtzeitpaketen von 6Khz erreicht werden.
 
-Avdotin et al. setzt in \cite{Avdotin_2019} ebenfalls an der \ac{MAC} an, jedoch spezifisch für \ac{OFDMA}.
-In dieser Studie wird die Resource Allocation von \ac{OFDMA} angepasst und harte Echtzeitfähikgeit kann bis zu eine Zykluszeit von 1ms gehalten werden.
-Dies wiedersprcith den Aussagen von \cite{6728869} und \cite{4638758}, dass nur mittels \ac{TDMA} harte Echtzeit erreicht werden kann.
-Aber dennoch ist ein Eingriff in die Firmware nötig.
+There are numerous studies investigating the real-time capabilities of Wi-Fi.  
+Theses studies can be divided by theire focus.
+They prioritize either designing Wi-Fi for real-time applications or improving the real-time capability of Wi-Fi.
 
-Auch zu den Auswirkungen von \ac{QoS} Parametern auf die Echtzeitfähigkeit existieren Studien.
-Somit erörtern Tsolakou et al. in \cite{Tsolakou_2002s} die Auswirkungen von verschiedenen \ac{Qdisc} Disziplinen auf die Echtzeitfähigkeit.
-Des Weiteren legt Dahoud et al. in \cite{da_2019} die Auswirkungen von verschiedenen \ac{DSCP}-Werten auf die Latenz dar.
+Works which focus on Wi-Fi and hard real-time operations, like Wei et al. \cite{6728869} and Moraes et al. \cite{4638758} rely mostly on the \ac{TDMA} approach.  
+In both studies, it is reported that hard real-time can only be achieved through a deterministic \ac{MAC}, what \ac{TDMA} was developed for.  
+As a result, \cite{6728869} demonstrates that a frequency of real-time packets of up to 6 kHz can be sustained.  
 
-Aber auch zur Allmeinen Performance existieren Studien.
-Somit beschreit Chotalia et al. in \cite{10.1007/978-3-031-40564-8_14} allgemeine Performance metrikend er Standarts 4 - 6 .
-Dabei geht er besonders auf den erzeugbaren Datendurchsatz ein.
+Avdotin et al. \cite{Avdotin_2019} also address the \ac{MAC} layer, but specifically for \ac{OFDMA}.  
+In this study, resource allocation within \ac{OFDMA} is adapted, enabling hard real-time capability with cycle times as low as 1 ms.  
+This contradicts the findings of \cite{6728869} and \cite{4638758}, which suggest that only \ac{TDMA} can guarantee hard real-time.  
+Nevertheless, firmware modifications are still required in this approach.  
 
-Dabei stellt sich nun die Frage, wie diese Arbeiten und Erkenntnisse von den Ergebenissen in dieser Arbeit zu separieren sind.
-Das Ziel in dieser Arbeit sit es, wie in Kapitel \ref{subsec:objective} beschrieben, die minimale Zyklusszeit für Echtzeitdaten herauszufinden, ohne dabei den Wi-Fi Standard grundlegend zu ändern.
-Somit sind die Ansätze von \ac{TDMA} und der Resoure Allocation Änderung von \ac{OFDMA} in dieser Arbeit nicht enthalten, da diese einen Eingriff in die Firmware vorraussetzwen würden.
-Des weiteren sind viele Studien, wie \cite{10.1007/978-3-031-40564-8_14} nur in Simulationen oder reinen Laborumgebungen enstanden.
-In dieser Arbeit sollen ebenfalls realisitsche Umgebungen und deren Einfluss auf die Datenverbindung betrachtet werden.
-Abschließend sollen nicht nur Echtzeitdaten übertragen, sondern auch die gleichzeitige Nutzung normaler Daten maximiert werden.
-Die KOmbination aus Betrieb in LAbor und Laborfreiem raum, keine Änderung am Standard und Maximierung von gleichzeitigen Nutzdaten, in KOmbination von Tests von verschiedenen Standards und \ac{QoS} Kombinationen, wurde bisher noch nicht untersucht.
+There are also studies examining the impact of \ac{QoS} parameters on real-time performance.  
+For example, Tsolakou et al. \cite{Tsolakou_2002s} analyze the influence of different \ac{Qdisc} disciplines on real-time capability.  
+However, their results are obtained purely through simulations.  
+Similarly, Dahoud et al. \cite{da_2019} study the effects of various \ac{DSCP} values on latency, considering packet time, packet loss and jitter.  
+They conclude that the \ac{DSCP} values CS4 and EF result in the lowest latencies.  
 
-Im Folgenden wird darauf eingegangen, wie der Testaufbau in dieser Arbeit umgesetzt ist.
+Beyond real-time aspects, several works examine the general performance of Wi-Fi standards.  
+Chotalia et al. \cite{10.1007/978-3-031-40564-8_14}, for instance, describe performance metrics across standards 4–6, with a particular focus on achievable throughput.  
+
+This raises the question of how the findings of these works relate to the goal of this thesis.  
+As described in Chapter \ref{subsec:objective}, the goal of this thesis is to determine the minimum cycle time for real-time data without fundamentally altering the Wi-Fi standard.  
+Consequently, approaches such as \ac{TDMA} or modifications of \ac{OFDMA} resource allocation are excluded, as they require changes to the firmware.  
+Furthermore, many studies, such as \cite{10.1007/978-3-031-40564-8_14}, are based solely on simulations or controlled laboratory setups.  
+In contrast, this thesis also considers non laboratory environments and their impact on data transmission.  
+Additionally, the focus is not only on transmitting real-time data but also on maximizing concurrent best-effort traffic.  
+The combination of operating in both laboratory and non-laboratory environments, avoiding modifications to the standard, maximizing concurrent data traffic and testing across multiple standards and \ac{QoS} configurations has not been addressed in prior research.  
+
+The following chapter describes the experimental setup used in this thesis.  
