@@ -295,7 +295,7 @@ fn main() -> Result<()> {
     let args: Vec<String> = env::args().collect();
     let iperf_o= Arc::new(args[1].clone());
     let time_c_o= Arc::new(args[2].clone());
-
+    let size_p_o= Arc::new(args[3].clone());
     // Connect to server
     let server_addr = "192.168.1.1:8080";
     let mut _difference = 0;
@@ -321,6 +321,7 @@ fn main() -> Result<()> {
 		
                 let iperf = Arc::clone(&iperf_o);
     		let time_c = Arc::clone(&time_c_o);
+            let size_p = Arc::clone(&size_p_o);
 
 		// Deserialize incoming message
                 let mut raw = MaybeUninit::<Message>::uninit();
@@ -403,6 +404,8 @@ fn main() -> Result<()> {
                                             &iperf,
                                             "-t",
                                             &time_c,
+                                            "-l",
+                                            &size_p,
                                             "-p",
                                             "5202",
                                         ])

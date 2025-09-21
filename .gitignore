@@ -63,4 +63,5 @@ target/
 *.skel.*
 *.dat
 *copy.rs
-*results*/*
+*.asy
+*.json

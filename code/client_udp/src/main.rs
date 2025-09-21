@@ -1,4 +1,5 @@
 use anyhow::Result;
+use std::fs::File;
 use bytemuck::{bytes_of, from_bytes, Pod, Zeroable};
 use libbpf_rs::skel::{OpenSkel, Skel, SkelBuilder};
 use libbpf_rs::RingBufferBuilder;
@@ -373,11 +374,13 @@ fn main() -> Result<()> {
     let args: Vec<String> = env::args().collect();
     let iperf_o= Arc::new(args[1].clone());
     let time_c_o= Arc::new(args[2].clone());
+    let size_p_o= Arc::new(args[3].clone());
 
     loop {
 	
 	let iperf= Arc::clone(&iperf_o);
 	let time_c= Arc::clone(&time_c_o);
+    let size_p= Arc::clone(&size_p_o);
 
         let size = socket.recv(&mut buf)?;
         if size == 0 {
@@ -443,37 +446,49 @@ fn main() -> Result<()> {
 
                     // Launch iperf3 in background
                     if seq == 0 {
-                        thread::spawn(move || {
-                            let mut command = Command::new("iperf3");
-                            let _ = command
-                                .args([
-                                    "-c",
-                                    "192.168.1.1",
-                                    "-u",
-                                    "-b",
-                                    &iperf,
-                                    "-t",
-                                    &time_c,
-                                    "-p",
-                                    "5202",
-                                ])
-                                .stderr(Stdio::piped())
-                                .stdout(Stdio::piped())
-                                .pre_exec(|| {
-                                    let param = sched_param { sched_priority: 0 };
-                                    let ret = sched_setscheduler(0, SCHED_OTHER, &param);
-                                    if ret != 0 {
-                                        return Err(std::io::Error::last_os_error());
-                                    }
-                                    Ok(())
-                                })
-                                .spawn()
-                                .and_then(|mut child| {
-                                    notify_python();
-                                    child.wait()?;
-                                    Ok(())
-                                });
-                        });
+                thread::spawn(move || {
+        let mut command = Command::new("iperf3");
+        let child = command
+            .args([
+                "-c", "192.168.1.1",
+                "-u",
+                "-b", &iperf,
+                "-t", &time_c,
+                "-l", &size_p,
+                "-p", "5202",
+                "-J",
+            ])
+            .stderr(Stdio::piped())
+            .stdout(Stdio::piped())
+            .pre_exec(|| {
+                let param = sched_param { sched_priority: 0 };
+                let ret = sched_setscheduler(0, SCHED_OTHER, &param);
+                if ret != 0 {
+                    return Err(std::io::Error::last_os_error());
+                }
+                Ok(())
+                })
+            .spawn()
+            .expect("Fehler beim Starten von iperf3");
+            
+            notify_python();
+            
+
+        // stdout einlesen
+        let output = child
+            .wait_with_output()
+            .expect("Fehler beim Warten auf iperf3");
+
+        // In Datei schreiben
+        let mut file = File::create("iperf3_output.json").expect("Kann Datei nicht erstellen");
+        file.write_all(&output.stdout).expect("Fehler beim Schreiben");
+
+        // (optional) Fehlerausgabe in Datei schreiben
+        if !output.stderr.is_empty() {
+            let mut err_file = File::create("iperf3_error.log").unwrap();
+            err_file.write_all(&output.stderr).unwrap();
+        }
+    });
                     }
 
                     let start = Instant::now();
@@ -482,7 +497,7 @@ fn main() -> Result<()> {
                     if let Some(event) = wait_for_event(seq, MessageType::Calc, 1) {
                         client_recv = event.timestamp - get_kernel_zero();
                     }
-		    println!("Client Sent Time Calc: {}", client_sent_time_calc);
+		    //println!("Client Sent Time Calc: {}", client_sent_time_calc);
                     let encoded = encode_message(
                         MessageType::Calc,
                         seq,
