@@ -44,7 +44,7 @@ for i in range(3):
     protocols = [proto for (vals, proto) in jitter_data.values()]
 
     plt.figure(figsize=(12, 6))
-    box = plt.boxplot(data, vert=True, patch_artist=True)
+    box = plt.boxplot(data, vert=True, patch_artist=True, showfliers=False)
 
     # Farben nach Protokoll
     for patch, proto in zip(box['boxes'], protocols):
@@ -66,7 +66,7 @@ for i in range(3):
     data_latency = [vals for (vals, proto) in latency_data.values()]
 
     plt.figure(figsize=(12, 6))
-    box = plt.boxplot(data_latency, vert=True, patch_artist=True)
+    box = plt.boxplot(data_latency, vert=True, patch_artist=True, showfliers=False)
 
     # Farben nach Protokoll
     for patch, proto in zip(box['boxes'], protocols):
