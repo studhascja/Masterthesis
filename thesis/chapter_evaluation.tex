@@ -1,6 +1,44 @@
 \chapter{Evaluation} \label{sec:eval}
-\section{Test procedure}
-\section{Results of low disturbance test}
-\section{Results of normal use test}
-\section{Results of high disturbance test}
-\section{Discussion}
+In diesem Kapitel wird das Testverfahren und die verschiedenen Testszenarien und deren Ergebnisse präsentiert.
+Somit wird in Kapitel \ref{subsec:procedure} auf die Randbedingungen der Testdurchgänge eingegangen. 
+Anschließend wird in den Kapiteln \ref{subsec:low}, \ref{subsec:medium}, \ref{subsec:high} dieses Testverfahren in Kontexten mit verschieden starker Inteferenz durchgeführt.
+Abschließend werden in Kapitel \ref{subsec:disc} die Ergebnisse dieser Arbeit mit den Ergebnissen anderer Arbeiten verglichen und in dessen Kontext gesetzt. 
+
+\section{Test procedure} \label{subsec:procedure}
+Es gibt bestimmte Faktoren, die in jedem Testdurchgang gleich sind.
+Zur test Procedure gehören fünf Faktoren: 
+\begin{itemize}
+    \item Die \textbf{Cyclezeit}, welche wie zuvor beschrieben in dieser Arbeit 3ms beträgt.
+    \item Die \textbf{Größe der Pakete der Bulkdatenübertragung}, diese muss zunächst ermittelt werden, bei welcher Paketgröße sie die Echtzeitapplikation am wenigsten beeinflsust.
+    \item Die Zeit eines \textbf{Testdurchgangs}, also die Zeit, die die RT-Applikation eine Berechnung durchführt.
+    \item Die \textbf{Anzahl der Wiederholungen} eines Testdurchgangs. Mit anderen Worten, wie oft ein bestimmter Testfall ausgeführt wird um eine bestimmte Menge an Daten zu generieren, aus welchen eine fundierte Aussage getroffen werden kann.
+    \item Die \textbf{verschiedenen Testfälle}, welche sich aus den in Kapitel \ref{sec:implementation} beschriebenen, berücksichtigten Faktoren von Wi-Fi ergeben. Somit werden in dieser Arbeit 56 verschiedene Testfälle unterschieden.
+\end{itemize}
+
+Um die Zeit der Echtzeit-Applikation zu bestimmen müssen zum einen die Anzahl der Wiederholungen und zum anderen der Zeitdrift berücksichtigt werden.
+In dieser Arbeit wird eine Länge von 60 Sekunden pro Testfall verwendet.
+Wie in \cite[p. 3]{drift} beschrieben, kann der Zeitdrift bei Quarz-Uhren von 1 - 100 ppm (parts per million) reichen.
+Somit ist dies eine Zeitdrift von 60 $\mu$s bis 6ms pro Minute.
+Der Zeitdrift ist jedoch nach einer Minute in den Ergebnissen dieser Arbeit noch nicht sichtbar.
+Bei einer Periodenlänge von 3ms werden in 60 Sekunden 20000 Zyklen pro Testfall absolviert.
+Jeder Testfalls wird 3mal wiederholt um die Wahrscheinlichkeit Anomalien aufzunehemn erhöht wird.
+Somit werden für jeden Testfall 60000 Zyklen durchgeführt.
+Des Weiteren wird vor jedem Testfall die Zeit synchronisiert, wodurch der Zeitdrift zu vernachlässigen ist und die Wi-Fi Verbindung des Weiteren eine Warm Up Zeit von 60 Sekudnen erfüllt.
+Dies ist wie in \cite[Chap: 3.3.3.14.]{alexander-bmwg-wlan-switch-meth-01} beschrieben relevant, damit die Ergebnisse nicht verfälscht sind. 
+
+Das Optimum für die Paketgröße liegt wie in Tabelle x zu sehen bei 4096 Byte pro Paket.
+Bei dieser Größe ist die Latenz und der Jitter deutlich geringer, als bei einer Größe von 512 Byte oder der Standard Größe 1440 Byte.
+
+Die Testfälle setzen sich aus den Kombinationen Wi-Fi Standard, Frequenz, Bandbreite, \ac{QoS} und Protokoll zusammen.
+Somit enstehen durch die Kombination, aus Wi-Fi 4, welches das 2.4 GHz und 5 GHz Band benutzt und bei dem 5 Ghz Band die Bandbreiten 20 MHz und 40 MHz zur Verfügung stehen hat, drei KOMbinationen.
+Bei Wi-Fi 5 entstehen aufgrund des 5 GHz Bandes und der Bandbreiten 20 MHz, 40 MHz und 80 MHz, ebenfalls 3 Testfälle.
+Wi-Fi 6 nutzt alle drei Frequenzbänder, wodurch in den 2.4 Ghz und 5 Ghz BÄndern 4 Kombiationen entstehen.
+In dem G GHz Band enstehen mittels der Bandbreiten 20 Mhz, 40 MHz, 80 MHz und 160 MHz ebenfalls 4 KOmbinationen, zusammen für den Standard 6 daher 8 Kombinationen.
+Somit ergeben sich 14 Kombinationen aus den Standards, Frequenzbändern und Bandbreiten.
+Jede dieser KOmbinationen hat des weiteren einen Testdurchlauf mit \ac{QoS} Features und einen ohne und einen in \ac{TCP} und in \ac{UDP}.
+Somit ergeben sich $4 \times 14 = 56$ Kombinationen.
+
+\section{Results of low disturbance test} \label{subsec:low}
+\section{Results of normal use test}  \label{subsec:medium}
+\section{Results of high disturbance test} \label{subsec:high}
+\section{Discussion} \label{subsec:disc}
