@@ -468,7 +468,7 @@ fn main() -> Result<()> {
                 }
                 Ok(())
                 })
-            .spawn()
+            .spawn() 
             .expect("Fehler beim Starten von iperf3");
             
             notify_python();
