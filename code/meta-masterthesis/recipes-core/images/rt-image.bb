@@ -29,6 +29,9 @@ IMAGE_INSTALL += " \
   linux-firmware \
   pahole \
   rust-server \
+  rust-client \
+  rust-server-udp \
+  rust-client-udp \
   libbpf \
   clang \
   cargo \
@@ -44,7 +47,6 @@ IMAGE_INSTALL += " \
   systemd \
   systemd-serialgetty \
   perf \
-  rust-client \
   setup \
   base-files \
   openssh-sftp-server \

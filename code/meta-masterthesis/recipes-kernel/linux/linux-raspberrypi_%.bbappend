@@ -8,6 +8,7 @@ SRC_URI += " \
     file://config-enable-bpf-btf.cfg \
     file://config-enable-mt7925e.cfg \
     file://config-network.cfg \
+    file://config-enable-ath9k.cfg \
 "
 
 

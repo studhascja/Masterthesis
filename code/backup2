@@ -1,0 +1,385 @@
+use anyhow::Result;
+use bytemuck::{bytes_of, from_bytes, Pod, Zeroable};
+use libbpf_rs::skel::{OpenSkel, Skel, SkelBuilder};
+use libbpf_rs::RingBufferBuilder;
+use once_cell::sync::Lazy;
+use serde::{Deserialize, Serialize};
+use std::{
+    collections::VecDeque,
+    convert::TryFrom,
+    env,
+    f64::consts::PI,
+    fs::{create_dir_all, OpenOptions},
+    io::{BufWriter, Read, Write},
+    net::{TcpListener, TcpStream},
+    process,
+    sync::{
+	OnceLock,
+        atomic::{AtomicBool, Ordering},
+        Arc, Mutex,
+    },
+    thread,
+    time::{Duration, Instant, SystemTime},
+};
+use libc::{sched_param, pthread_self, pthread_setschedparam, SCHED_RR};
+
+include!("bpf/monitore.skel.rs");
+
+const TIMEOUT_NS: u64 = 3_000_000;
+const NUM_POINTS: usize = 4000;
+const RADIUS: f64 = 10.0;
+
+static CURRENT_EVENT: OnceLock<Arc<Mutex<VecDeque<Event>>>> = OnceLock::new();
+static CURRENT_QUEUE_EVENT: OnceLock<Arc<Mutex<VecDeque<Event>>>> = OnceLock::new();
+static USER_ZERO: Lazy<Mutex<Instant>> = Lazy::new(|| Mutex::new(Instant::now()));
+static KERNEL_ZERO: Lazy<Mutex<u64>> = Lazy::new(|| Mutex::new(0));
+static MESSAGE_COUNT: Lazy<Mutex<u64>> = Lazy::new(|| Mutex::new(0));
+
+#[repr(C, packed)]
+#[derive(Copy, Clone, Debug, Zeroable, Pod)]
+struct Message {
+    timestamp: u128,
+    first_u128: u128,
+    second_u128: u128,
+    i_val: i128,
+    first_f64: f64,
+    second_f64: f64,
+    seq: u64,
+    msg_type: u8,
+    _padding: [u8; 7],
+}
+
+#[repr(C, packed)]
+#[derive(Copy, Clone, Debug, Zeroable, Pod)]
+struct BpfData {
+    msg_type: u8,
+    _padding: [u8; 7],
+    seq: u64,
+}
+
+#[repr(C, packed)]
+#[derive(Copy, Clone, Debug, Zeroable, Pod)]
+struct Event {
+    event_type: u8,
+    _padding: [u8; 7],
+    timestamp: u64,
+    data: BpfData,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+enum Data {
+    IntegerI128(i128),
+    IntegerU128(u128),
+    IntegerU64(u64),
+    Float(f64),
+}
+
+#[repr(u8)]
+#[derive(Serialize, Deserialize, Debug, PartialEq)]
+enum MessageType {
+    Start = 0,
+    NTP = 1,
+    NtpResult = 2,
+    PTP = 3,
+    PtpResult = 4,
+    Calc = 5,
+}
+
+impl TryFrom<u8> for MessageType {
+    type Error = std::convert::Infallible;
+    fn try_from(value: u8) -> Result<Self, Self::Error> {
+        Ok(match value {
+            0 => MessageType::Start,
+            1 => MessageType::NTP,
+            2 => MessageType::NtpResult,
+            3 => MessageType::PTP,
+            4 => MessageType::PtpResult,
+            5 => MessageType::Calc,
+            _ => panic!("Invalid MessageType: {}", value),
+        })
+    }
+}
+
+fn encode_message(
+    msg_type: MessageType,
+    seq: u64,
+    timestamp: u128,
+    first_u128: u128,
+    second_u128: u128,
+    first_f64: f64,
+    second_f64: f64,
+    i_val: i128,
+) -> Result<Vec<u8>> {
+    let msg = Message {
+        msg_type: msg_type as u8,
+        seq,
+        timestamp,
+        first_u128,
+        second_u128,
+        first_f64,
+        second_f64,
+        i_val,
+        _padding: [0; 7],
+    };
+    Ok(bytes_of(&msg).to_vec())
+}
+
+fn get_time_stamp() -> u128 {
+    SystemTime::now()
+        .duration_since(SystemTime::UNIX_EPOCH)
+        .unwrap()
+        .as_nanos()
+}
+
+fn set_rt_priority(prio: i32) {
+    unsafe {
+        let mut param = sched_param { sched_priority: prio };
+        let ret = pthread_setschedparam(pthread_self(), SCHED_RR, &mut param);
+        if ret != 0 {
+            eprintln!("Failed to set RT priority: {}", ret);
+        } else {
+            println!("RT priority set to {}", prio);
+        }
+    }
+}
+
+fn wait_until(next_tick: Instant) {
+    let now = Instant::now();
+    if next_tick > now {
+        let sleep_time = next_tick - now;
+        if sleep_time > Duration::from_micros(500) {
+            thread::sleep(sleep_time - Duration::from_micros(200));
+        }
+        while Instant::now() < next_tick {
+            std::hint::spin_loop();
+        }
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn measure_instant() {
+    let mut time = USER_ZERO.lock().unwrap();
+    *time = Instant::now();
+}
+
+fn increment_message_count() -> u64 {
+    let mut count = MESSAGE_COUNT.lock().unwrap();
+    *count += 1;
+    *count
+}
+
+fn set_kernel_zero(value: u64) {
+    *KERNEL_ZERO.lock().unwrap() = value;
+}
+
+fn get_kernel_zero() -> u64 {
+    *KERNEL_ZERO.lock().unwrap()
+}
+
+fn update_user_zero() {
+    measure_instant();
+}
+
+fn read_user_zero() -> Instant {
+    *USER_ZERO.lock().unwrap()
+}
+
+fn handle_time(
+    mut stream: TcpStream,
+    disconnect_counter: Arc<Mutex<u32>>,
+    standard: Arc<String>,
+    frequency: Arc<String>,
+    bandwith: Arc<String>,
+    qos: Arc<String>,
+) -> Result<()> {
+    let mut buffer = [0; 1024];
+    stream.set_read_timeout(Some(Duration::from_secs(5)))?;
+    let mut recv_buf = vec![];
+    loop {
+        match stream.read(&mut buffer) {
+            Ok(0) => {
+                *disconnect_counter.lock().unwrap() += 1;
+                println!("Client getrennt");
+                return Ok(());
+            }
+            Ok(n) => {
+                recv_buf.extend_from_slice(&buffer[..n]);
+                while recv_buf.len() >= std::mem::size_of::<Message>() {
+                    let raw = recv_buf.drain(..std::mem::size_of::<Message>()).collect::<Vec<u8>>();
+                    let msg: Message = *from_bytes(&raw);
+                    handle_message(
+                        &stream,
+                        &msg,
+                        &standard,
+                        &frequency,
+                        &bandwith,
+                        &qos,
+                    )?;
+                }
+            }
+            Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => continue,
+            Err(e) => {
+                eprintln!("Lesefehler: {}", e);
+                return Err(e.into());
+            }
+        }
+    }
+}
+
+fn handle_message(
+    mut stream: &TcpStream,
+    msg: &Message,
+    standard: &str,
+    frequency: &str,
+    bandwith: &str,
+    qos: &str,
+) -> Result<()> {
+    let msg_type = MessageType::try_from(msg.msg_type)?;
+   // println!("Empfangen: {:?}, Seq: {}", msg_type, msg.seq);
+
+    match msg_type {
+        MessageType::Start => {
+            let cmd = format!(
+                "iw dev wlan0 set channel {} {} {} {}",
+                frequency, bandwith, standard, qos
+            );
+            let output = process::Command::new("sh")
+                .arg("-c")
+                .arg(&cmd)
+                .output()?;
+            println!("Ausgabe: {}", String::from_utf8_lossy(&output.stdout));
+        }
+        MessageType::Calc => {
+            let now = get_time_stamp();
+            let duration = now.saturating_sub(msg.timestamp);
+            let encoded = encode_message(
+                MessageType::Calc,
+                msg.seq,
+                now,
+                0,
+                0,
+                duration as f64 / 1_000_000.0,
+                0.0,
+                0,
+            )?;
+            stream.write_all(&encoded)?;
+        }
+        MessageType::NTP => {
+            let kernel_time = get_kernel_zero();
+            let now = get_time_stamp();
+            let encoded = encode_message(
+                MessageType::NtpResult,
+                msg.seq,
+                now,
+                kernel_time as u128,
+                msg.timestamp,
+                0.0,
+                0.0,
+                0,
+            )?;
+            stream.write_all(&encoded)?;
+        }
+        MessageType::PTP => {
+            let now = get_time_stamp();
+            let encoded = encode_message(
+                MessageType::PtpResult,
+                msg.seq,
+                now,
+                0,
+                msg.timestamp,
+                0.0,
+                0.0,
+                0,
+            )?;
+            stream.write_all(&encoded)?;
+        }
+        _ => {}
+    }
+    Ok(())
+}
+
+fn main() -> Result<(), libbpf_rs::Error> {
+    set_rt_priority(99);
+    let event_queue = Arc::new(Mutex::new(VecDeque::new()));
+    let queue_event_queue = Arc::new(Mutex::new(VecDeque::new()));
+
+    CURRENT_EVENT.set(event_queue.clone()).unwrap();
+    CURRENT_QUEUE_EVENT.set(queue_event_queue.clone()).unwrap();
+
+    let event_ref = CURRENT_EVENT.get().unwrap();
+    let queue_event_ref = CURRENT_QUEUE_EVENT.get().unwrap();
+
+    let open_skel = MonitoreSkelBuilder::default().open()?;
+    println!("Skelett geöffnet.");
+
+    let mut skel = open_skel.load()?;
+    println!("Skelett geladen.");
+
+    skel.attach()?;
+    println!("eBPF-Programm läuft …");
+
+    let running = Arc::new(AtomicBool::new(true));
+    let r = running.clone();
+    let maps = skel.maps();
+    let mut ringbuf_builder = RingBufferBuilder::new();
+
+    ringbuf_builder.add(maps.events(), move |data: &[u8]| {
+        if data.len() != std::mem::size_of::<Event>() {
+            eprintln!("Unexpected data size: {} vs {}", data.len(), std::mem::size_of::<Event>());
+            return 0;
+        }
+
+        let event = from_bytes::<Event>(data);
+        if event.event_type == 0 {
+            set_kernel_zero(event.timestamp);
+        } else if event.event_type == 3 {
+            queue_event_ref.lock().unwrap().push_back(*event);
+        } else {
+            event_ref.lock().unwrap().push_back(*event);
+        }
+        0
+    })?;
+
+    let mut ringbuf = ringbuf_builder.build()?;
+
+    thread::spawn(move || {
+        while r.load(Ordering::Relaxed) {
+            ringbuf.poll(Duration::from_millis(100)).unwrap();
+        }
+    });
+
+    println!("Size of Message: {}", std::mem::size_of::<Message>());
+
+    let args: Vec<String> = env::args().collect();
+    let standard = Arc::new(args[1].clone());
+    let frequency = Arc::new(args[2].clone());
+    let bandwith = Arc::new(args[3].clone());
+    let qos = Arc::new(args[4].clone());
+    let listener = TcpListener::bind("192.168.1.1:8080")?;
+    println!("Server läuft auf 192.168.1.1:8080");
+
+    let disconnect_counter = Arc::new(Mutex::new(0));
+    for stream in listener.incoming() {
+        match stream {
+            Ok(stream) => {
+                let standard = Arc::clone(&standard);
+                let frequency = Arc::clone(&frequency);
+                let bandwith = Arc::clone(&bandwith);
+                let qos = Arc::clone(&qos);
+                let disconnect_counter = Arc::clone(&disconnect_counter);
+                thread::spawn(move || {
+                    let _ = handle_time(
+                        stream,
+                        disconnect_counter,
+                        standard,
+                        frequency,
+                        bandwith,
+                        qos,
+                    );
+                });
+            }
+            Err(e) => eprintln!("Verbindungsfehler: {}", e),
+        }
+    }
+    Ok(())
+}
