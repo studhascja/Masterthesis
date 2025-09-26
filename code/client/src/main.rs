@@ -199,7 +199,7 @@ fn wait_for_event(seq: u64, msg_type: MessageType, event_type: u8) -> Option<Eve
             .clone();
     }
     loop {
-        if start.elapsed() > Duration::from_millis(10) {
+        if start.elapsed() > Duration::from_millis(1) {
             println!("Nix: {}", event_type);
             return None;
         }
@@ -448,6 +448,8 @@ fn main() -> Result<()> {
                             )?;
                             stream.write_all(&encoded)?;
                             increment_message_count();
+                            client_queue_time_calc =
+                                Instant::now().duration_since(read_user_zero()).as_nanos() as u128;
 
                             client_sent_time_calc =
                                 Instant::now().duration_since(read_user_zero()).as_nanos() as u128;

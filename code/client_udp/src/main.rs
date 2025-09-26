@@ -426,9 +426,9 @@ fn main() -> Result<()> {
                     client_sent_time =
                         Instant::now().duration_since(read_user_zero()).as_nanos() as u128;
 
-                    if let Some(event) = wait_for_event(seq, MessageType::NtpResult, 2) {
-                        client_sent_time = (event.timestamp - get_kernel_zero()) as u128;
-                    }
+                   // if let Some(event) = wait_for_event(seq, MessageType::NtpResult, 2) {
+                   //     client_sent_time = (event.timestamp - get_kernel_zero()) as u128;
+                   // }
                 }
                 Ok(MessageType::PTP) => {
                     update_user_zero();
@@ -511,14 +511,14 @@ fn main() -> Result<()> {
                     socket.send(&encoded)?;
                     increment_message_count();
 
-                    client_sent_time_calc =
-                        Instant::now().duration_since(read_user_zero()).as_nanos() as u128;
+                 //   client_sent_time_calc =
+                 //       Instant::now().duration_since(read_user_zero()).as_nanos() as u128;
 
-                    if let Some(event) = wait_for_event(seq, MessageType::Calc, 2) {
-                        client_sent_time_calc = (event.timestamp - get_kernel_zero()) as u128;
-                    }    else{
-                        println!("No matching send event found for seq {}", seq);
-                    }
+                 //   if let Some(event) = wait_for_event(seq, MessageType::Calc, 2) {
+                 //       client_sent_time_calc = (event.timestamp - get_kernel_zero()) as u128;
+                 //   }    else{
+                 //       println!("No matching send event found for seq {}", seq);
+                 //   }
 
                     let duration_queue = start.elapsed();
 
@@ -526,7 +526,9 @@ fn main() -> Result<()> {
                     if let Some(evt) = queue_event {
                         client_queue_time_calc = (evt.timestamp - get_kernel_zero()) as u128;
                     }
-
+                    
+                    client_sent_time_calc =
+                        Instant::now().duration_since(read_user_zero()).as_nanos() as u128;
                     let duration = start.elapsed();
                     if duration.as_millis() > 2 {
                         println!("⚠️ Calc function took {:.4?} ms", duration);

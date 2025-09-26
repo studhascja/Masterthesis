@@ -1,56 +1,168 @@
-4 2.4 20 0 udp wifi4
-4 2.4 20 0 tcp wifi4
-4 2.4 20 1 udp wifi4
-4 2.4 20 1 tcp wifi4
-4 5 20 0 udp wifi4_20
-4 5 20 0 tcp wifi4_20
-4 5 20 1 udp wifi4_20
-4 5 20 1 tcp wifi4_20
-4 5 40 0 udp wifi4_40
-4 5 40 0 tcp wifi4_40
-4 5 40 1 udp wifi4_40
-4 5 40 1 tcp wifi4_40
-5 5 20 0 udp wifi5_20
-5 5 20 0 tcp wifi5_20
-5 5 20 1 udp wifi5_20
-5 5 20 1 tcp wifi5_20
-5 5 40 0 udp wifi5_40
-5 5 40 0 tcp wifi5_40
-5 5 40 1 udp wifi5_40
-5 5 40 1 tcp wifi5_40
-5 5 80 0 udp wifi5_80
-5 5 80 0 tcp wifi5_80
-5 5 80 1 udp wifi5_80
-5 5 80 1 tcp wifi5_80
-6 2.4 20 0 udp wifi6
-6 2.4 20 0 tcp wifi6
-6 2.4 20 1 udp wifi6
-6 2.4 20 1 tcp wifi6
-6 5 20 0 udp wifi6_5_20
-6 5 20 0 tcp wifi6_5_20
-6 5 20 1 udp wifi6_5_20
-6 5 20 1 tcp wifi6_5_20
-6 5 40 0 udp wifi6_5_40
-6 5 40 0 tcp wifi6_5_40
-6 5 40 1 udp wifi6_5_40
-6 5 40 1 tcp wifi6_5_40
-6 5 80 0 udp wifi6_5_80
-6 5 80 0 tcp wifi6_5_80
-6 5 80 1 udp wifi6_5_80
-6 5 80 1 tcp wifi6_5_80
-6 6 20 0 udp wifi6_6_20
-6 6 20 0 tcp wifi6_6_20
-6 6 20 1 udp wifi6_6_20
-6 6 20 1 tcp wifi6_6_20
-6 6 40 0 udp wifi6_6_40
-6 6 40 0 tcp wifi6_6_40
-6 6 40 1 udp wifi6_6_40
-6 6 40 1 tcp wifi6_6_40
-6 6 80 0 udp wifi6_6_80
-6 6 80 0 tcp wifi6_6_80
-6 6 80 1 udp wifi6_6_80
-6 6 80 1 tcp wifi6_6_80
-6 6 160 0 udp wifi6_6_160
-6 6 160 0 tcp wifi6_6_160
-6 6 160 1 udp wifi6_6_160
-6 6 160 1 tcp wifi6_6_160
+1 4 2.4 20 1 udp wifi4
+1 4 2.4 20 1 tcp wifi4
+1 4 2.4 20 0 udp wifi4
+1 4 2.4 20 0 tcp wifi4
+1 4 5 20 0 udp wifi4_20
+1 4 5 20 0 tcp wifi4_20
+1 4 5 20 1 udp wifi4_20
+1 4 5 20 1 tcp wifi4_20
+1 4 5 40 0 udp wifi4_40
+1 4 5 40 0 tcp wifi4_40
+1 4 5 40 1 udp wifi4_40
+1 4 5 40 1 tcp wifi4_40
+1 5 5 20 0 udp wifi5_20
+1 5 5 20 0 tcp wifi5_20
+1 5 5 20 1 udp wifi5_20
+1 5 5 20 1 tcp wifi5_20
+1 5 5 40 0 udp wifi5_40
+1 5 5 40 0 tcp wifi5_40
+1 5 5 40 1 udp wifi5_40
+1 5 5 40 1 tcp wifi5_40
+1 5 5 80 0 udp wifi5_80
+1 5 5 80 0 tcp wifi5_80
+1 5 5 80 1 udp wifi5_80
+1 5 5 80 1 tcp wifi5_80
+1 6 2.4 20 0 udp wifi6
+1 6 2.4 20 0 tcp wifi6
+1 6 2.4 20 1 udp wifi6
+1 6 2.4 20 1 tcp wifi6
+1 6 5 20 0 udp wifi6_5_20
+1 6 5 20 0 tcp wifi6_5_20
+1 6 5 20 1 udp wifi6_5_20
+1 6 5 20 1 tcp wifi6_5_20
+1 6 5 40 0 udp wifi6_5_40
+1 6 5 40 0 tcp wifi6_5_40
+1 6 5 40 1 udp wifi6_5_40
+1 6 5 40 1 tcp wifi6_5_40
+1 6 5 80 0 udp wifi6_5_80
+1 6 5 80 0 tcp wifi6_5_80
+1 6 5 80 1 udp wifi6_5_80
+1 6 5 80 1 tcp wifi6_5_80
+1 6 6 20 0 udp wifi6_6_20
+1 6 6 20 0 tcp wifi6_6_20
+1 6 6 20 1 udp wifi6_6_20
+1 6 6 20 1 tcp wifi6_6_20
+1 6 6 40 0 udp wifi6_6_40
+1 6 6 40 0 tcp wifi6_6_40
+1 6 6 40 1 udp wifi6_6_40
+1 6 6 40 1 tcp wifi6_6_40
+1 6 6 80 0 udp wifi6_6_80
+1 6 6 80 0 tcp wifi6_6_80
+1 6 6 80 1 udp wifi6_6_80
+1 6 6 80 1 tcp wifi6_6_80
+1 6 6 160 0 udp wifi6_6_160
+1 6 6 160 0 tcp wifi6_6_160
+1 6 6 160 1 udp wifi6_6_160
+1 6 6 160 1 tcp wifi6_6_160
+2 4 2.4 20 1 tcp wifi4
+2 4 2.4 20 0 udp wifi4
+2 4 2.4 20 1 udp wifi4
+2 4 2.4 20 0 tcp wifi4
+2 4 5 20 0 udp wifi4_20
+2 4 5 20 0 tcp wifi4_20
+2 4 5 20 1 udp wifi4_20
+2 4 5 20 1 tcp wifi4_20
+2 4 5 40 0 udp wifi4_40
+2 4 5 40 0 tcp wifi4_40
+2 4 5 40 1 udp wifi4_40
+2 4 5 40 1 tcp wifi4_40
+2 5 5 20 0 udp wifi5_20
+2 5 5 20 0 tcp wifi5_20
+2 5 5 20 1 udp wifi5_20
+2 5 5 20 1 tcp wifi5_20
+2 5 5 40 0 udp wifi5_40
+2 5 5 40 0 tcp wifi5_40
+2 5 5 40 1 udp wifi5_40
+2 5 5 40 1 tcp wifi5_40
+2 5 5 80 0 udp wifi5_80
+2 5 5 80 0 tcp wifi5_80
+2 5 5 80 1 udp wifi5_80
+2 5 5 80 1 tcp wifi5_80
+2 6 2.4 20 0 udp wifi6
+2 6 2.4 20 0 tcp wifi6
+2 6 2.4 20 1 udp wifi6
+2 6 2.4 20 1 tcp wifi6
+2 6 5 20 0 udp wifi6_5_20
+2 6 5 20 0 tcp wifi6_5_20
+2 6 5 20 1 udp wifi6_5_20
+2 6 5 20 1 tcp wifi6_5_20
+2 6 5 40 0 udp wifi6_5_40
+2 6 5 40 0 tcp wifi6_5_40
+2 6 5 40 1 udp wifi6_5_40
+2 6 5 40 1 tcp wifi6_5_40
+2 6 5 80 0 udp wifi6_5_80
+2 6 5 80 0 tcp wifi6_5_80
+2 6 5 80 1 udp wifi6_5_80
+2 6 5 80 1 tcp wifi6_5_80
+2 6 6 20 0 udp wifi6_6_20
+2 6 6 20 0 tcp wifi6_6_20
+2 6 6 20 1 udp wifi6_6_20
+2 6 6 20 1 tcp wifi6_6_20
+2 6 6 40 0 udp wifi6_6_40
+2 6 6 40 0 tcp wifi6_6_40
+2 6 6 40 1 udp wifi6_6_40
+2 6 6 40 1 tcp wifi6_6_40
+2 6 6 80 0 udp wifi6_6_80
+2 6 6 80 0 tcp wifi6_6_80
+2 6 6 80 1 udp wifi6_6_80
+2 6 6 80 1 tcp wifi6_6_80
+2 6 6 160 0 udp wifi6_6_160
+2 6 6 160 0 tcp wifi6_6_160
+2 6 6 160 1 udp wifi6_6_160
+2 6 6 160 1 tcp wifi6_6_160
+3 4 2.4 20 1 tcp wifi4
+3 4 2.4 20 0 udp wifi4
+3 4 2.4 20 1 udp wifi4
+3 4 2.4 20 0 tcp wifi4
+3 4 5 20 0 udp wifi4_20
+3 4 5 20 0 tcp wifi4_20
+3 4 5 20 1 udp wifi4_20
+3 4 5 20 1 tcp wifi4_20
+3 4 5 40 0 udp wifi4_40
+3 4 5 40 0 tcp wifi4_40
+3 4 5 40 1 udp wifi4_40
+3 4 5 40 1 tcp wifi4_40
+3 5 5 20 0 udp wifi5_20
+3 5 5 20 0 tcp wifi5_20
+3 5 5 20 1 udp wifi5_20
+3 5 5 20 1 tcp wifi5_20
+3 5 5 40 0 udp wifi5_40
+3 5 5 40 0 tcp wifi5_40
+3 5 5 40 1 udp wifi5_40
+3 5 5 40 1 tcp wifi5_40
+3 5 5 80 0 udp wifi5_80
+3 5 5 80 0 tcp wifi5_80
+3 5 5 80 1 udp wifi5_80
+3 5 5 80 1 tcp wifi5_80
+3 6 2.4 20 0 udp wifi6
+3 6 2.4 20 0 tcp wifi6
+3 6 2.4 20 1 udp wifi6
+3 6 2.4 20 1 tcp wifi6
+3 6 5 20 0 udp wifi6_5_20
+3 6 5 20 0 tcp wifi6_5_20
+3 6 5 20 1 udp wifi6_5_20
+3 6 5 20 1 tcp wifi6_5_20
+3 6 5 40 0 udp wifi6_5_40
+3 6 5 40 0 tcp wifi6_5_40
+3 6 5 40 1 udp wifi6_5_40
+3 6 5 40 1 tcp wifi6_5_40
+3 6 5 80 0 udp wifi6_5_80
+3 6 5 80 0 tcp wifi6_5_80
+3 6 5 80 1 udp wifi6_5_80
+3 6 5 80 1 tcp wifi6_5_80
+3 6 6 20 0 udp wifi6_6_20
+3 6 6 20 0 tcp wifi6_6_20
+3 6 6 20 1 udp wifi6_6_20
+3 6 6 20 1 tcp wifi6_6_20
+3 6 6 40 0 udp wifi6_6_40
+3 6 6 40 0 tcp wifi6_6_40
+3 6 6 40 1 udp wifi6_6_40
+3 6 6 40 1 tcp wifi6_6_40
+3 6 6 80 0 udp wifi6_6_80
+3 6 6 80 0 tcp wifi6_6_80
+3 6 6 80 1 udp wifi6_6_80
+3 6 6 80 1 tcp wifi6_6_80
+3 6 6 160 0 udp wifi6_6_160
+3 6 6 160 0 tcp wifi6_6_160
+3 6 6 160 1 udp wifi6_6_160
+3 6 6 160 1 tcp wifi6_6_160
