@@ -216,7 +216,7 @@ The test environment in Figure \ref{fig:technologies} is divided into several el
 The \ac{OS} is excluded from the discussion and the focus is placed solely on the components of the test system.
 
 The server part of the test system is controlled via the \textbf{Server Test Suite}, which is responsible for executing test runs and automating the overall testing process. 
-For each combination of access point configuration and QoS level, the test suite performs a complete test run. 
+For each combination of access point configuration and QoS level, the test suite performs a complete test run, so with the Test Suits a factorial design can be assured.
 Therefore, the total number of test runs is defined as $N_T = N_{AP} \times N_{QoS}$, where $N_T$ is the total number of test runs, $N_{AP}$ is the number of different access point configurations and $N_{QoS}$ is the number of different considered QoS levels. 
 The Server Test Suite is essential for the automated execution of these test runs, thereby fulfilling the previously specified requirement for test automation.
 

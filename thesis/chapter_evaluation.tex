@@ -1,44 +1,49 @@
 \chapter{Evaluation} \label{sec:eval}
-In diesem Kapitel wird das Testverfahren und die verschiedenen Testszenarien und deren Ergebnisse präsentiert.
-Somit wird in Kapitel \ref{subsec:procedure} auf die Randbedingungen der Testdurchgänge eingegangen. 
-Anschließend wird in den Kapiteln \ref{subsec:low}, \ref{subsec:medium}, \ref{subsec:high} dieses Testverfahren in Kontexten mit verschieden starker Inteferenz durchgeführt.
-Abschließend werden in Kapitel \ref{subsec:disc} die Ergebnisse dieser Arbeit mit den Ergebnissen anderer Arbeiten verglichen und in dessen Kontext gesetzt. 
+In this chapter, the test methodology, the different test scenarios and their results are presented.  
+Chapter \ref{subsec:procedure} discusses the boundary conditions of the test runs.  
+Subsequently, in Chapters \ref{subsec:low}, \ref{subsec:medium} and \ref{subsec:high}, the procedure is applied under environments with varying levels of interference.  
+Finally, Chapter \ref{subsec:disc} compares the results of this thesis with findings from related work and places them in context.  
 
 \section{Test procedure} \label{subsec:procedure}
-Es gibt bestimmte Faktoren, die in jedem Testdurchgang gleich sind.
-Zur test Procedure gehören fünf Faktoren: 
+
+Certain factors remain constant across all test runs.  
+The test procedure is defined by five key elements:  
 \begin{itemize}
-    \item Die \textbf{Cyclezeit}, welche wie zuvor beschrieben in dieser Arbeit 3ms beträgt.
-    \item Die \textbf{Größe der Pakete der Bulkdatenübertragung}, diese muss zunächst ermittelt werden, bei welcher Paketgröße sie die Echtzeitapplikation am wenigsten beeinflsust.
-    \item Die Zeit eines \textbf{Testdurchgangs}, also die Zeit, die die RT-Applikation eine Berechnung durchführt.
-    \item Die \textbf{Anzahl der Wiederholungen} eines Testdurchgangs. Mit anderen Worten, wie oft ein bestimmter Testfall ausgeführt wird um eine bestimmte Menge an Daten zu generieren, aus welchen eine fundierte Aussage getroffen werden kann.
-    \item Die \textbf{verschiedenen Testfälle}, welche sich aus den in Kapitel \ref{sec:implementation} beschriebenen, berücksichtigten Faktoren von Wi-Fi ergeben. Somit werden in dieser Arbeit 56 verschiedene Testfälle unterschieden.
-\end{itemize}
+    \item The \textbf{cycle time}, which in this thesis is fixed at 3 ms as previously described.  
+    \item The \textbf{packet size of bulk data transmission}, which must be determined to minimize interference with the real-time application.  
+    \item The \textbf{duration of a single test run}, i.e., the time during which the RT-application executes its computation.  
+    \item The \textbf{number of repetitions} of each test run, i.e., how often a given test case is executed to produce sufficient data for reliable conclusions.  
+    \item The \textbf{different test cases}, derived from the Wi-Fi factors outlined in Chapter \ref{sec:implementation}.  
+    In this thesis, a total of 112 different test cases are considered.  
+\end{itemize}  
 
-Um die Zeit der Echtzeit-Applikation zu bestimmen müssen zum einen die Anzahl der Wiederholungen und zum anderen der Zeitdrift berücksichtigt werden.
-In dieser Arbeit wird eine Länge von 60 Sekunden pro Testfall verwendet.
-Wie in \cite[p. 3]{drift} beschrieben, kann der Zeitdrift bei Quarz-Uhren von 1 - 100 ppm (parts per million) reichen.
-Somit ist dies eine Zeitdrift von 60 $\mu$s bis 6ms pro Minute.
-Der Zeitdrift ist jedoch nach einer Minute in den Ergebnissen dieser Arbeit noch nicht sichtbar.
-Bei einer Periodenlänge von 3ms werden in 60 Sekunden 20000 Zyklen pro Testfall absolviert.
-Jeder Testfalls wird 3mal wiederholt um die Wahrscheinlichkeit Anomalien aufzunehemn erhöht wird.
-Somit werden für jeden Testfall 60000 Zyklen durchgeführt.
-Des Weiteren wird vor jedem Testfall die Zeit synchronisiert, wodurch der Zeitdrift zu vernachlässigen ist und die Wi-Fi Verbindung des Weiteren eine Warm Up Zeit von 60 Sekudnen erfüllt.
-Dies ist wie in \cite[Chap: 3.3.3.14.]{alexander-bmwg-wlan-switch-meth-01} beschrieben relevant, damit die Ergebnisse nicht verfälscht sind. 
+To determine the execution time of the real-time application, both the number of repetitions and potential clock drift must be taken into account.  
+In this thesis, each test case is executed for 60 seconds.  
+As described in \cite[p. 3]{drift}, quartz clocks can exhibit a drift of 1-100 ppm (parts per million).  
+This corresponds to a drift of 60 $\mu$s to 6 ms per minute.  
+However, in the results of this thesis, no noticeable drift was observed within a one-minute interval.  
 
-Das Optimum für die Paketgröße liegt wie in Tabelle x zu sehen bei 4096 Byte pro Paket.
-Bei dieser Größe ist die Latenz und der Jitter deutlich geringer, als bei einer Größe von 512 Byte oder der Standard Größe 1440 Byte.
+With a cycle time of 3 ms, each 60-second run consists of 20,000 cycles.  
+Each test case is repeated three times, resulting in 60,000 cycles per case to increase the probability of capturing anomalies.  
+Additionally, before each run, the system clock is synchronized, effectively eliminating clock drift.  
+The Wi-Fi connection is also given a warm-up period of 60 seconds, as recommended in \cite[Chap.~3.3.3.14]{alexander-bmwg-wlan-switch-meth-01}, to avoid distortions in the results.  
 
-Die Testfälle setzen sich aus den Kombinationen Wi-Fi Standard, Frequenz, Bandbreite, \ac{QoS} und Protokoll zusammen.
-Somit enstehen durch die Kombination, aus Wi-Fi 4, welches das 2.4 GHz und 5 GHz Band benutzt und bei dem 5 Ghz Band die Bandbreiten 20 MHz und 40 MHz zur Verfügung stehen hat, drei KOMbinationen.
-Bei Wi-Fi 5 entstehen aufgrund des 5 GHz Bandes und der Bandbreiten 20 MHz, 40 MHz und 80 MHz, ebenfalls 3 Testfälle.
-Wi-Fi 6 nutzt alle drei Frequenzbänder, wodurch in den 2.4 Ghz und 5 Ghz BÄndern 4 Kombiationen entstehen.
-In dem G GHz Band enstehen mittels der Bandbreiten 20 Mhz, 40 MHz, 80 MHz und 160 MHz ebenfalls 4 KOmbinationen, zusammen für den Standard 6 daher 8 Kombinationen.
-Somit ergeben sich 14 Kombinationen aus den Standards, Frequenzbändern und Bandbreiten.
-Jede dieser KOmbinationen hat des weiteren einen Testdurchlauf mit \ac{QoS} Features und einen ohne und einen in \ac{TCP} und in \ac{UDP}.
-Somit ergeben sich $4 \times 14 = 56$ Kombinationen.
+The optimal packet size, as shown in Table~X, is 4096 bytes per packet.  
+At this size, both latency and jitter are significantly lower than with 512-byte packets or the standard size of 1440 bytes.  
 
-\section{Results of low disturbance test} \label{subsec:low}
-\section{Results of normal use test}  \label{subsec:medium}
-\section{Results of high disturbance test} \label{subsec:high}
+The test cases are defined as combinations of Wi-Fi standard, frequency, bandwidth, \ac{QoS}, and transport protocol.  
+For Wi-Fi~4, three combinations exist: the 2.4 GHz band and in the 5 GHz band both 20 MHz and 40 MHz channel widths.  
+For Wi-Fi~5, the 5 GHz band with 20 MHz, 40 MHz and 80 MHz channel widths yields three combinations.  
+Wi-Fi~6 supports all three frequency bands.  
+In the 2.4 GHz and 5 GHz bands, four combinations arise, while in the 6 GHz band, the available channel widths of 20, 40, 80 and 160 MHz yield four more combinations.  
+In total, Wi-Fi~6 therefore contributes eight combinations.  
+Together, across all standards, 14 unique combinations of standards, frequency bands, and bandwidths are considered.  
+
+Each of these 14 combinations is tested with four differnet levels of \ac{QoS} and with both \ac{TCP} and \ac{UDP}.  
+This results in a total of $8 \times 14 = 112$ test cases.  
+
+
+\section{Low disturbance test} \label{subsec:low}
+\section{Average disturbance test}  \label{subsec:medium}
+\section{High disturbance test} \label{subsec:high}
 \section{Discussion} \label{subsec:disc}
