@@ -10,7 +10,7 @@ Certain factors remain constant across all test runs.
 The test procedure is defined by five key elements:  
 \begin{itemize}
     \item The \textbf{cycle time}, which in this thesis is fixed at 3 ms as previously described.  
-    \item The \textbf{packet size of bulk data transmission}, which must be determined to minimize interference with the real-time application.  
+    \item The \textbf{packet size and bandwith of bulk data transmission}, which must be determined to minimize interference with the real-time application and simultaneously deliver a reasonable amount of data.  
     \item The \textbf{duration of a single test run}, i.e., the time during which the RT-application executes its computation.  
     \item The \textbf{number of repetitions} of each test run, i.e., how often a given test case is executed to produce sufficient data for reliable conclusions.  
     \item The \textbf{different test cases}, derived from the Wi-Fi factors outlined in Chapter \ref{sec:implementation}.  
@@ -28,8 +28,82 @@ Each test case is repeated three times, resulting in 60,000 cycles per case to i
 Additionally, before each run, the system clock is synchronized, effectively eliminating clock drift.  
 The Wi-Fi connection is also given a warm-up period of 60 seconds, as recommended in \cite[Chap.~3.3.3.14]{alexander-bmwg-wlan-switch-meth-01}, to avoid distortions in the results.  
 
-The optimal packet size, as shown in Table~X, is 4096 bytes per packet.  
+Preliminary experiments were conducted to select the throughput and packet size.  
+The results are presented in Table~\ref{tab:throughput} and Table~\ref{tab:packetsize}.  
+
+For the tests regarding the impact of the bulk data volume, the \ac{UDP} protocol with the standard packet size of 1440~Bytes was used.  
+The selection of the bulk data volume is challenging, as each standard has a different maximum data rate depending on modulation and available bandwidth.  
+Therefore, the bulk data volume would ideally need to be chosen proportionally to the maximum data rate in each case.  
+
+However, this work aims to investigate the limits of real-time capability of Wi-Fi when it simultaneously transmits a certain amount of additional data.  
+For this reason, a fixed amount of bulk data is selected, which remains identical across all standards and bandwidths.  
+Consequently, standards with higher maximum data rates experience a lower relative load from the bulk data and therefore benefit in terms of real-time performance.  
+This decision is motivated by the fact that, in practice, the relative load caused by other data traffic is not always known, and thus a Wi-Fi system with higher capacity inherently provides an advantage.  
+
+\begin{table}
+\begin{tabular}{||c|c|c||}
+\hline\hline
+\textbf{Throughput} & \textbf{Average Latency ($\mu$s)} & \textbf{Maximum Latency ($\mu$s)} \\
+\hline\hline
+5 Mbit & 910 & 75630 \\
+\hline
+20 Mbit & 980 & 238341 \\
+\hline
+30 Mbit & 1170 & 81920 \\
+\hline
+50 Mbit & 1320 & 254612 \\
+\hline\hline
+\end{tabular}
+\caption{Comparison of the impact of different bulkloads on the Wi-Fi connection on the average and maximum execution time of one cycle of the real-time application.}
+\label{tab:throughput}
+\end{table}
+
+Table~\ref{tab:throughput} presents the results of the preliminary experiments regarding the bulk data volume.  
+The table shows the average and maximum latency\footnote{Latency is defined as the time required to complete a cycle of the real-time application.} of one cycle of the real-time application for data rates of 5, 20, 30 and 50~Mbit/s.  
+
+It can be observed that, in particular, the maximum latency increases significantly with higher data rates.  
+It is also evident that the maximum latency at 20~Mbit/s is higher than at 30~Mbit/s.  
+This effect can be attributed to an unfavorable execution-time constellation in the test run at 20~Mbit/s.  
+This explanation is supported by the average latency, which increases continuously with the data rate.  
+
+The maximum data rate of Wi-Fi~4 with 20~MHz bandwidth is 76.9~Mbit/s.  
+Thus, the results of the test case with 20~Mbit/s are still realistic, but for this study, a data rate of 30~Mbit/s is selected.  
+The test runs with 5~Mbit/s show up to 45\% lower maximum latency in the low-bandwidth cases compared to the runs with 30~Mbit/s.  
+However, in a network that carries both real-time and bulk data traffic, it is not realistic to limit the non-real-time traffic to 5~Mbit/s.  
+At 30~Mbit/s, the maximum data rate of Wi-Fi~4 with 20~MHz bandwidth is utilized by 39\%, and the preliminary experiments did not show significant degradations compared to 20~Mbit/s.  
+
+Preliminary experiments were also conducted for the selection of the packet size.  
+The results are presented in Table~\ref{tab:packetsize}.  
+These experiments were carried out using a data rate of 30~Mbit/s with the \ac{UDP} protocol.  
+It can be observed that the packet size has a significant influence on the latency.  
+
+\begin{table}
+\begin{tabular}{||c|c|c||}
+\hline\hline
+\textbf{Package size (Bytes)} & \textbf{Average Latency ($\mu$s)} & \textbf{Maximum Latency ($\mu$s)} \\
+\hline\hline
+512    & 1000 & 69169 \\
+\hline
+1440   &  980 & 61506 \\
+\hline
+\rowcolor{green!30}
+4096   &  910 & 37784 \\
+\hline
+8192   & 1120 & 38421 \\
+\hline
+16384  & 1280 & 41800 \\
+\hline\hline
+\end{tabular}
+\caption{Comparison of the impact of different packet sizes on the average and maximum execution time of one cycle of the real-time application.}
+\label{tab:packetsize}
+\end{table}
+
+The optimal packet size, as shown in green in Table \ref{tab:packetsize}, is 4096 bytes per packet.  
 At this size, both latency and jitter are significantly lower than with 512-byte packets or the standard size of 1440 bytes.  
+Furthermore, both latency values are lower than for larger packet sizes.  
+However, it is noticeable that larger packet sizes perform better than smaller ones.  
+
+Based on the results of the preliminary experiments, this study employs a data rate of 30~Mbit/s with a packet size of 4096~Bytes for the bulk data.  
 
 The test cases are defined as combinations of Wi-Fi standard, frequency, bandwidth, \ac{QoS}, and transport protocol.  
 For Wi-Fi~4, three combinations exist: the 2.4 GHz band and in the 5 GHz band both 20 MHz and 40 MHz channel widths.  
@@ -42,7 +116,7 @@ Together, across all standards, 14 unique combinations of standards, frequency b
 Each of these 14 combinations is tested with four differnet levels of \ac{QoS} and with both \ac{TCP} and \ac{UDP}.  
 This results in a total of $8 \times 14 = 112$ test cases.  
 
-
+In the following, the test runs in an environment with low interference are discussed first.  
 \section{Low disturbance test} \label{subsec:low}
 \section{Average disturbance test}  \label{subsec:medium}
 \section{High disturbance test} \label{subsec:high}
