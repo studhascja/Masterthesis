@@ -117,7 +117,68 @@ Each of these 14 combinations is tested with four differnet levels of \ac{QoS} a
 This results in a total of $8 \times 14 = 112$ test cases.  
 
 In the following, the test runs in an environment with low interference are discussed first.  
+
 \section{Low disturbance test} \label{subsec:low}
+
+In this test scenario, the experiments were conducted in an \ac{EMC} (Electromagnetic Compatibility) laboratory to bypass theoratical interference factors.  
+The objective of these experiments is to evaluate the behavior of the different test cases in an ideal environment.  
+The results can subsequently be used to assess the impact of real-world conditions on the Wi-Fi connection.  
+In the \ac{EMC} laboratory, neither external electromagnetic interference nor additional influencing factors such as electrical devices or human presence are present.  
+
+The results of the experiments are illustrated in Figures \ref{fig:tcp_low} and \ref{fig:udp_low}.  
+A distinction is made between \ac{TCP}- and \ac{UDP}-based test cases.  
+The naming convention of the test cases follows the pattern: Standard-Frequency-Bandwidth-QoS-Protocol.  
+A value of “1” in the \ac{QoS} field indicates that \ac{QoS} is enabled.  
+Specifically, the value 0xB8 was set as the \ac{DSCP} flag.  
+This corresponds to the \ac{EF} class, which is intended for latency-critical applications, as described in the official \ac{IETF} document RFC 3246 \cite{rfc3246}.  
+This class is particularly designed for voice and video applications that require low latency and minimal jitter.  
+
+\begin{figure}[ht]
+    \centering
+    \resizebox{\textwidth}{!}{\input{figures/jitter_tcp_boxplot_3.pgf}}
+    \caption{Presentation of the jitter of the TCP test cases in a low-interference environment.}
+    \label{fig:tcp_low}
+\end{figure}
+
+Figure \ref{fig:tcp_low} presents the test cases using the \ac{TCP} protocol.  
+It can be observed that test cases with enabled \ac{QoS} consistently exhibit significantly lower maximum values. 
+An improvment of up to 70\% is achieved in some cases.
+The mean values are also lower in most cases, although the difference is comparatively small.  
+A similar behavior is observed in the \ac{UDP} test cases shown in Figure \ref{fig:udp_low}.  
+
+Among the phases described in Section \ref{sec:implementation}, Phases 3 and 6 account for the largest share of the cycle time, together exceeding 90~\% in nearly all cases.  
+These phases begin with the transfer of the packet to the driver queue vai the Tracepoint \texttt{net\_dev\_xmit} and end with the confirmation of reception at the target device via the Tracepoint \texttt{netif\_receive\_skb}.  
+A finer subdivision is not possible within this part of the network stack since no additional tracepoints exist.  
+The significantly reduced jitter maxima in test cases with enabled \ac{QoS} affect only Phases 3 and 6.  
+This is due to the preferential treatment of packets with the \ac{DSCP} flag set in both the driver and the firmware.  
+As described in \cite{rfc3246}, the standard for the \ac{EF} class specifies shorter queues and reduced backoff times.  
+Consequently, the delays within the driver and firmware are reduced, preventing occasional high latencies.  
+However, this is not guaranteed, as illustrated by test case 6-5-80-1-TCP in Figure \ref{fig:tcp_low}, which shows comparatively high maximum values despite \ac{QoS} being enabled.  
+
+\begin{figure}[ht]
+    \centering
+    \resizebox{\textwidth}{!}{\input{figures/jitter_udp_boxplot_3.pgf}}
+    \caption{Presentation of the jitter of the UDP test cases in a low-interference environment.}
+    \label{fig:udp_low}
+\end{figure}
+
+It is also noteworthy that the \ac{TCP} test cases consistently show lower mean jitter and mean latency compared to the \ac{UDP} test cases.  
+This observation is unexpected, as the connection establishment and error correction mechanisms in \ac{TCP} would typically suggest lower performance.  
+The maximum values, however, are approximately the same for both protocols.  
+
+Another unexpected observation concerns the test cases with 80~MHz bandwidth, which in most instances show comparatively poor results.  
+Both with \ac{TCP} and \ac{UDP}, the test cases using 80~MHz bandwidth exhibit the highest jitter maxima.  
+Out of eight test cases with 80~MHz bandwidth, six show a relatively high maximum jitter.  
+Only test case 5-5-80-1 exhibits low maximum values, both for \ac{TCP} and for \ac{UDP}.  
+
+It was initially expected that test cases with lower bandwidth would show poorer performance, since the channel is more heavily utilized.  
+This expectation is generally confirmed, as both the average and maximum jitter tend to decrease with increasing bandwidth.  
+However, the 80~MHz test cases form an exception to this trend.  
+
+A correlation between the factors standard and frequency in the testcases and the jitter could not be identified.  
+
+Having established the behavior of the test system under ideal conditions, the following section examines the results in a more realistic environment.  
+
 \section{Average disturbance test}  \label{subsec:medium}
 \section{High disturbance test} \label{subsec:high}
 \section{Discussion} \label{subsec:disc}
