@@ -120,7 +120,7 @@ In the following, the test runs in an environment with low interference are disc
 
 \section{Low disturbance test} \label{subsec:low}
 
-In this test scenario, the experiments were conducted in an \ac{EMC} (Electromagnetic Compatibility) laboratory to bypass theoratical interference factors.  
+In this test scenario, the experiments were conducted in an \ac{EMC} laboratory to bypass theoratical interference factors.  
 The objective of these experiments is to evaluate the behavior of the different test cases in an ideal environment.  
 The results can subsequently be used to assess the impact of real-world conditions on the Wi-Fi connection.  
 In the \ac{EMC} laboratory, neither external electromagnetic interference nor additional influencing factors such as electrical devices or human presence are present.  
@@ -180,5 +180,19 @@ A correlation between the factors standard and frequency in the testcases and th
 Having established the behavior of the test system under ideal conditions, the following section examines the results in a more realistic environment.  
 
 \section{Average disturbance test}  \label{subsec:medium}
+
+\ref{fig:mid_tcp} and \ref{fig:mid_udp} illustrate the results of the test runs in an environment with average interference.
+\ac{TCP} Maxima höher, \ac{UDP} Mittelwert
+generell höherer Jitter, jedoch mit \ac{QoS} geringer, alle hohen Ausreiser ohne \ac{QoS}
+bei \ac{TCP} regelmäßig sogar leicht besser als ohne Inteferenzen.
+Frequenz 6 deutlicher vorteil,
+Standard 6 nicht, swohl bei \ac{TCP} 5-80, 5-40, als auch bei \ac{UDP} 5-40, 2.4-20 schlechter als bei anderen Standards -> höhere Anfälligkeit aufgrund der höheren Modulation
+5-5-40-0 bei \ac{TCP} ausreißer, bei \ac{UDP} 6-2.4-20-0 (Bandbreite)
+Ausreiser sind immer wieder festzustellen, vor allem bei längerem Laufen.
+Lediglich die Häufigkeit unterscheidet sich.
+Ausreißer immer in den Phasen 3 und 6, also im Treiber und der Firmware.
+Dabei ist die CLientseite stärker betroffen, diese sendet und empfängt Daten gleichzeitig, dies erklärt die stärkere Belastung und höheren Jitter.
+ 
+
 \section{High disturbance test} \label{subsec:high}
 \section{Discussion} \label{subsec:disc}
