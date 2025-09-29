@@ -2,16 +2,15 @@ import os
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
-from matplotlib.legend_handler import HandlerTuple
 
 # -------------------------
 # LaTeX-ähnlicher Style
 # -------------------------
 plt.rcParams.update({
     "font.family": "serif",
-    "font.weight": "bold",      # alle Schriften fett
-    "axes.labelweight": "bold", # Achsenbeschriftung fett
-    "axes.titleweight": "bold", # Titel fett
+    "font.weight": "bold",
+    "axes.labelweight": "bold",
+    "axes.titleweight": "bold",
     "font.size": 12,
     "axes.labelsize": 13,
     "axes.titlesize": 15,
@@ -24,156 +23,96 @@ plt.rcParams.update({
 })
 
 # -------------------------
-# Configs auswählen
+# Daten einlesen
 # -------------------------
-config_x = input("Baseline Config (x): ").strip()
-config_y = input("Vergleich Config (y): ").strip()
-config_z = input("Vergleich Config (z, leer lassen wenn nicht gewünscht): ").strip()
+all_latency_data = {}
 
-def read_jitter(base_dir):
-    """Liest maximale und mittlere Jitter-Werte für die Gesamtzeit aus einer Config ein."""
-    data = {}
-    for root, dirs, files in os.walk(base_dir):
-        if "latencys_0" in files:
-            path = os.path.join(root, "latencys_0")
-            parts = path.split(os.sep)
+for i in range(3):
+    config = str(i + 1)
+    BASE_DIR = config + "/results"
 
-            # Schlüssel: std, freq, bw, qos, proto
-            std = parts[2].split("_")[1]
-            freq = parts[3].split("_")[1]
-            bw = parts[4].split("_")[1]
-            qos = parts[5].split("_")[1]
-            proto = parts[6].lower()
+    for root, dirs, files in os.walk(BASE_DIR):
+        for file in files:
+            if file == "latencys_0":
+                path = os.path.join(root, file)
+                parts = path.split(os.sep)
+                std = parts[2].split("_")[1]
+                freq = parts[3].split("_")[1]
+                bw = parts[4].split("_")[1]
+                qos = parts[5].split("_")[1]
+                proto = parts[6].lower()
 
-            key = f"{std}-{freq}-{bw}-{qos}-{proto}"
+                test_key = f"{std}-{freq}-{bw}"  # ohne QoS und Proto
+                group_key = (test_key, proto, qos)
 
-            rtts = []
-            with open(path, "r") as f:
-                for line in f:
-                    try:
-                        numbers = list(map(int, line.strip().split(",")))
-                        rtts.append(numbers[-1])  # nur Gesamtzeit
-                    except ValueError:
-                        continue
+                rtts = []
+                with open(path, "r") as f:
+                    for line in f:
+                        try:
+                            numbers = list(map(int, line.strip().split(",")))
+                            rtts.append(numbers[-1])
+                        except ValueError:
+                            continue
 
-            if len(rtts) > 1:
-                diffs = [abs(rtts[i] - rtts[i-1]) / 1e3 for i in range(1, len(rtts))]  # ns -> µs
-                max_jitter = max(diffs) if diffs else 0
-                avg_jitter = np.mean(diffs) if diffs else 0
-                data[key] = {"max": max_jitter, "avg": avg_jitter, "qos": qos, "proto": proto}
-    return data
+                if len(rtts) > 1:
+                    all_latency_data.setdefault(group_key, []).append(rtts)
 
 # -------------------------
-# Daten sammeln
+# Jitter berechnen
 # -------------------------
-data_x = read_jitter(config_x + "/results")
-data_y = read_jitter(config_y + "/results")
-data_z = read_jitter(config_z + "/results") if config_z else None
+jitter_stats = {}
+for (test_key, proto, qos), runs in all_latency_data.items():
+    max_vals, avg_vals = [], []
+    for rtts in runs:
+        rtts = [v for v in rtts if v < 1e8]
+        if len(rtts) < 2:
+            continue
+        diffs = [abs(rtts[i] - rtts[i-1]) / 1e3 for i in range(1, len(rtts))]
+        max_vals.append((max(rtts) - min(rtts)) / 1e3)
+        avg_vals.append(np.mean(diffs) if diffs else np.nan)
 
-# -------------------------
-# Prozentuale Differenzen
-# -------------------------
-def calc_diffs(base, comp, proto_filter=None):
-    diffs_max, diffs_avg, qos_flags, labels = [], [], [], []
-    for key in base.keys():
-        if key in comp:
-            if proto_filter and not key.endswith(proto_filter):
-                continue
-            base_max, base_avg = base[key]["max"], base[key]["avg"]
-            comp_max, comp_avg = comp[key]["max"], comp[key]["avg"]
-
-            d_max = ((comp_max - base_max) / base_max * 100) if base_max > 0 else 0
-            d_avg = ((comp_avg - base_avg) / base_avg * 100) if base_avg > 0 else 0
-
-            labels.append(key)
-            diffs_max.append(d_max)
-            diffs_avg.append(d_avg)
-            qos_flags.append(base[key]["qos"] == "1")
-    return labels, diffs_max, diffs_avg, qos_flags
+    if max_vals and avg_vals:
+        jitter_stats[(test_key, proto, qos)] = {
+            "max": np.nanmax(max_vals),
+            "avg": np.nanmean(avg_vals)
+        }
 
 # -------------------------
-# Plot Funktion (ein Plot pro Protokoll)
+# X-Achse vorbereiten: Testcases nach proto/qos
 # -------------------------
-def make_plot(proto):
-    labels, diffs_max_y, diffs_avg_y, qos_flags = calc_diffs(data_x, data_y, proto_filter=proto)
-    if data_z:
-        _, diffs_max_z, diffs_avg_z, _ = calc_diffs(data_x, data_z, proto_filter=proto)
+x_labels = sorted({f"{k[1].upper()} {'QoS' if k[2]=='1' else 'no QoS'}" for k in jitter_stats.keys()})
+x = np.arange(len(x_labels))
 
-    if not labels:  # nichts zu plotten
-        return
-
-    x = np.arange(len(labels))
-    fig, ax = plt.subplots(figsize=(11, 6))
-
-    # Mittelwerte berechnen
-    mean_y_max = np.mean(diffs_max_y) if diffs_max_y else 0
-    mean_y_avg = np.mean(diffs_avg_y) if diffs_avg_y else 0
-    line_mean_y_max = ax.axhline(mean_y_max, color="red", linestyle="-.", linewidth=2, label="Mean Max")
-    line_mean_y_avg = ax.axhline(mean_y_avg, color="orange", linestyle="-.", linewidth=2, label="Mean Avg")
-
-    # Linien für Config y
-    ax.plot(x, diffs_max_y, "-", color="tab:blue", label=f"{config_y} vs {config_x} Max jitter")
-    ax.plot(x, diffs_avg_y, "--", color="tab:green", label=f"{config_y} vs {config_x} Avg jitter")
-
-    # Linien für Config z (falls vorhanden)
-    if data_z:
-        ax.plot(x, diffs_max_z, "-", color="tab:purple", label=f"{config_z} vs {config_x} Max jitter")
-        ax.plot(x, diffs_avg_z, "--", color="tab:brown", label=f"{config_z} vs {config_x} Avg jitter")
-
-    # Marker für QoS hervorheben
-    for xi, dy, da, qos in zip(x, diffs_max_y, diffs_avg_y, qos_flags):
-        ax.plot(xi, dy, "o", color="black" if qos else "white", markeredgecolor="tab:blue")
-        ax.plot(xi, da, "s", color="black" if qos else "white", markeredgecolor="tab:green")
-
-    if data_z:
-        for xi, dy, da, qos in zip(x, diffs_max_z, diffs_avg_z, qos_flags):
-            ax.plot(xi, dy, "o", color="black" if qos else "white", markeredgecolor="tab:purple")
-            ax.plot(xi, da, "s", color="black" if qos else "white", markeredgecolor="tab:brown")
-
-    # QoS Symbole für Legende
-    qos0 = Line2D([], [], marker="o", color="white", markeredgecolor="tab:blue", linestyle="None")
-    qos1 = Line2D([], [], marker="o", color="black", markeredgecolor="tab:blue", linestyle="None")
-    qos0_sq = Line2D([], [], marker="s", color="white", markeredgecolor="tab:green", linestyle="None")
-    qos1_sq = Line2D([], [], marker="s", color="black", markeredgecolor="tab:green", linestyle="None")
-
-    max_line = Line2D([], [], color="tab:blue", linestyle="-", marker="o", label="Max Jitter")
-    avg_line = Line2D([], [], color="tab:green", linestyle="--", marker="s", label="Avg Jitter")
-
-    legend_handles = [max_line, avg_line, line_mean_y_max, line_mean_y_avg]
-    if data_z:
-        mean_z_max = np.mean(diffs_max_z) if diffs_max_z else 0
-        mean_z_avg = np.mean(diffs_avg_z) if diffs_avg_z else 0
-        line_mean_z_max = ax.axhline(mean_z_max, color="purple", linestyle="-.", linewidth=2, label="Mean Max Z")
-        line_mean_z_avg = ax.axhline(mean_z_avg, color="brown", linestyle="-.", linewidth=2, label="Mean Avg Z")
-        legend_handles.extend([line_mean_z_max, line_mean_z_avg])
-
-    qos0_tuple = (qos0, qos0_sq)
-    qos1_tuple = (qos1, qos1_sq)
-    legend_handles.extend([qos0_tuple, qos1_tuple])
-
-    ax.legend(
-        handles=legend_handles,
-        labels=["Max Jitter", "Avg Jitter", "Mean Max", "Mean Avg"]
-               + (["Mean Max Z", "Mean Avg Z"] if data_z else [])
-               + ["QoS=0", "QoS=1"],
-        handler_map={tuple: HandlerTuple(ndivide=None)},
-        loc="best"
-    )
-
-    ax.axhline(0, color="black", linestyle=":", linewidth=1)
-    ax.set_xticks(x)
-    ax.set_xticklabels(labels, rotation=90)
-    ax.set_xlabel("Testcase configurations (std-freq-bw-qos-proto)")
-    ax.set_ylabel("Difference of jitter to baseline (%)")
-    ax.set_title(f"Jitter comparison for {proto.upper()} cases")
-
-    ax.grid(True, linestyle=":", linewidth=0.7)
-    plt.tight_layout()
-    plt.savefig(f"jitter_comparison_{config_x}_{config_y}_{config_z if config_z else ''}_{proto}.pdf")
-    plt.close()
+def get_curve(mode):
+    """Gibt die Jitter-Werte für alle X-Labels zurück."""
+    values = []
+    for lbl in x_labels:
+        proto, qos = lbl.split()[0].lower(), '1' if 'QoS' in lbl else '0'
+        val_list = [v[mode] for (k_test, k_proto, k_qos), v in jitter_stats.items() if k_proto == proto and k_qos == qos]
+        values.append(np.nanmean(val_list) if val_list else np.nan)
+    return values
 
 # -------------------------
-# Zwei Plots erzeugen: UDP und TCP
+# Plot erstellen
 # -------------------------
-make_plot("udp")
-make_plot("tcp")
+fig, ax = plt.subplots(figsize=(14, 7))
+
+max_vals = get_curve("max")
+avg_vals = get_curve("avg")
+
+ax.plot(x, max_vals, marker="o", linestyle="-", color="tab:blue", label="Maximaler Jitter")
+ax.plot(x, avg_vals, marker="s", linestyle="--", color="tab:green", label="Durchschnittlicher Jitter")
+
+ax.set_xticks(x)
+ax.set_xticklabels(x_labels, rotation=45, ha="right")
+ax.set_ylabel("Jitter (µs)")
+ax.set_title("Maximaler und durchschnittlicher Jitter pro Protokoll / QoS")
+ax.grid(True, linestyle=":", linewidth=0.7)
+
+ax.legend()
+plt.tight_layout()
+plt.savefig("jitter_all_in_one.pdf")
+plt.savefig("jitter_all_in_one.png")
+plt.close()
+
+print("Fertig! Max- und Avg-Jitter wurden in einer Datei erstellt.")
