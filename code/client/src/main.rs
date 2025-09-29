@@ -372,7 +372,13 @@ fn main() -> Result<()> {
                                 Instant::now().duration_since(read_user_zero()).as_nanos() as u128;
 
                             if let Some(event) = wait_for_event(seq, MessageType::NtpResult, 2) {
-                                client_sent_time = (event.timestamp - get_kernel_zero()) as u128;
+                                let client_sent_time = match event.timestamp.checked_sub(get_kernel_zero()) {
+    Some(diff) => diff as u128,
+    None => {
+        eprintln!("Fehler: event.timestamp < get_kernel_zero(), Subtraktion nicht möglich!");
+        std::process::exit(1);
+    }
+};
                             }
                             //    println!("durchgekommen");
                         }
