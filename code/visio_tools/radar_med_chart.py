@@ -39,7 +39,7 @@ def load_latency_data(base_dir):
 
                 if rtts:
                     key = (std, freq, bw, qos, proto)
-                    data[key] = np.max(rtts)
+                    data[key] = np.mean(rtts)
     return data
 
 latency_data = load_latency_data(BASE_DIR)
