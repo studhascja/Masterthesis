@@ -142,12 +142,12 @@ This class is particularly designed for voice and video applications that requir
 
 Figure \ref{fig:tcp_low} presents the test cases using the \ac{TCP} protocol.  
 It can be observed that test cases with enabled \ac{QoS} consistently exhibit significantly lower maximum values. 
-An improvment of up to 70\% is achieved in some cases.
+An improvement of up to 70\% is achieved in some cases.
 The mean values are also lower in most cases, although the difference is comparatively small.  
 A similar behavior is observed in the \ac{UDP} test cases shown in Figure \ref{fig:udp_low}.  
 
 Among the phases described in Section \ref{sec:implementation}, Phases 3 and 6 account for the largest share of the cycle time, together exceeding 90~\% in nearly all cases.  
-These phases begin with the transfer of the packet to the driver queue vai the Tracepoint \texttt{net\_dev\_xmit} and end with the confirmation of reception at the target device via the Tracepoint \texttt{netif\_receive\_skb}.  
+These phases begin with the transfer of the packet to the driver queue via the Tracepoint \texttt{net\_dev\_xmit} and end with the confirmation of reception at the target device via the Tracepoint \texttt{netif\_receive\_skb}.  
 A finer subdivision is not possible within this part of the network stack since no additional tracepoints exist.  
 The significantly reduced jitter maxima in test cases with enabled \ac{QoS} affect only Phases 3 and 6.  
 This is due to the preferential treatment of packets with the \ac{DSCP} flag set in both the driver and the firmware.  
@@ -175,24 +175,58 @@ It was initially expected that test cases with lower bandwidth would show poorer
 This expectation is generally confirmed, as both the average and maximum jitter tend to decrease with increasing bandwidth.  
 However, the 80~MHz test cases form an exception to this trend.  
 
-A correlation between the factors standard and frequency in the testcases and the jitter could not be identified.  
+A correlation between the factors standard and frequency in the test cases and the jitter could not be identified.  
 
 Having established the behavior of the test system under ideal conditions, the following section examines the results in a more realistic environment.  
 
 \section{Average disturbance test}  \label{subsec:medium}
 
 \ref{fig:mid_tcp} and \ref{fig:mid_udp} illustrate the results of the test runs in an environment with average interference.
-\ac{TCP} Maxima höher, \ac{UDP} Mittelwert
-generell höherer Jitter, jedoch mit \ac{QoS} geringer, alle hohen Ausreiser ohne \ac{QoS}
-bei \ac{TCP} regelmäßig sogar leicht besser als ohne Inteferenzen.
-Frequenz 6 deutlicher vorteil,
-Standard 6 nicht, swohl bei \ac{TCP} 5-80, 5-40, als auch bei \ac{UDP} 5-40, 2.4-20 schlechter als bei anderen Standards -> höhere Anfälligkeit aufgrund der höheren Modulation
-5-5-40-0 bei \ac{TCP} ausreißer, bei \ac{UDP} 6-2.4-20-0 (Bandbreite)
-Ausreiser sind immer wieder festzustellen, vor allem bei längerem Laufen.
-Lediglich die Häufigkeit unterscheidet sich.
-Ausreißer immer in den Phasen 3 und 6, also im Treiber und der Firmware.
-Dabei ist die CLientseite stärker betroffen, diese sendet und empfängt Daten gleichzeitig, dies erklärt die stärkere Belastung und höheren Jitter.
- 
+Eine Umgebung mit mittleren Störungen entpricht einem typischen Büro- oder Wohnumfeld.
+In diesem existieren andere Netzwerke und elektrische Geräte, die Interferenzen verursachen können.
+Es existieren jedoch keien Geräte oder Netzwerke die speziell aufgestellt sind, um das testsystem zu stören.
+In den Grafiken \ref{fig:mid_tcp} und \ref{fig:mid_udp} sind die Ergebnisse der Testläufe für den maximalen und durchschnittlichen Jitter dargestellt.
+Dieser wird prozentual ins Verhötnis zum Jitter in der Umgebung mit geringen Störungen gesetzt.
+Dieser Test wurde bereits in Kapitel \ref{subsec:low} beschrieben.
+
+In den Ergebnissen ist generell zu erkennen, dass die Maxima bie den \ac{TCP} Testfällen stärker angestiegen ist, als die Testfälle mit \ac{UDP}.
+Der Mittelwert hingegen ist bei \ac{UDP} stärker angestiegen.
+Beide Protokolle zeigen jedoch generell einen höheren Jitter.
+Jedoch ist der Jitter im Mittel mit \ac{TCP} gleich geblieben.
+
+Es ist außerdem klar zu erkennen, dass die Testfälle mit \ac{QoS} generell einen geringeren Anstieg des Jitters aufweisen.
+Bei beiden Protokollen liegen sowohl im durchschnitt als auch im Maximum alle hohen Ausreißer bei den Testfällen ohne \ac{QoS}.
+Insbesondere in den Testfällen auf dem 6 GHz Band ist ein besonders geringer Anstieg des Jitters zu erkennen.
+Dies ist vor allem darauf zurückzuführen, dass in diesem Frequenzband zum Zeitpunkt dieser Arbeit nur wenige Geräte betrieben werden und somit kaum Interferenzen vorhanden sind.
+Der Wi-Fi Standard 6 zeigt jedoch höhere Anstiege des Jitters, sowohl im Maximum als auch im Durchschnitt, zu den Standarden 4 und 5.
+Dabei schneidet der Standard 4 am besten ab.
+In Grafik \ref{fig:mid_tcp} kann dies an den Testfällen 6-5-20-0-TCP und 6-5-80-0-TCP besonders gut erkannt werden. 
+In Grafik \ref{fig:mid_udp} ist besonders der Testfall 6-2.4-20-0-UDP auffällig.
+
+Es ist zu beobachten, dass im \ac{UDP} Testdurchgang der testfall 6-2.4-20-0-UDP besonders stark von den Störungen betroffen ist und eine 8x höhere maximale Ausprägung des Jitters aufweist, als die durchschnittliche Anstiegsrate im Maximum.
+Im \ac{TCP} Testdurchgang ist besonders der Testfall 5-5-40-0-TCP auffällig, welcher eine 7x höhere maximale Ausprägung des Jitters aufweist, als die durchschnittliche Anstiegsrate im Maximum.
+Diese Ausreißer geschehen in nahezu allen Testconfigurationen, augenommen davon ist ledigilich der Testfall 6-6-160-*-*.
+Jedoch sind die Ausreßger besonders im 2.4 GHz Band mit 20 MHz Bandbreite und in testdurchgägngen mit 80 MHz Bandbreite vertreten, daher repräsentiert der gezeigt Testlauf das allgemeinbild sehr gut.
+Des weiteren ist auffällig, dass Ausreißer bei Tsetdurchgängen mit \ac{QoS} deutlich seltender auftreten und des Weiteren eine geringere Ausprägung aufweisen.
+
+Ausreißer treten dabei immer in den Phasen 3 und 6 auf.
+In anderen Worten im Link- und Hardware-Layer des Netzwerkstacks.
+Dabei ist die Clientseite sowohl im Mittel, als auch in den Maxima stärker betroffen.
+Wie in Abbildung \ref{fig:pi_wifi_general} zu sehen müssen beide Geräte in der RT-Verbindung, sowohl Daten senden, als auch Empfangen.
+In der Bulk-Datenübertragung hingegen sendet nur der Client-Daten, der Server empfängt nur.
+Daraus kann geschlussfolgert werden, dass das Senden von Daten in einer Wi-Fi Verbindung störanfälliger ist, als das Empfangen.
+
+In dieser Arbeit werden fünf Stufen von \ac{QoS} betrachtet.
+\begin{itemize}
+    \item \textbf{\ac{QoS} 0} bedeutet, dass kein \ac{QoS} verwendet wird.
+    \item \textbf{\ac{QoS} 1} bedeutet, dass der \ac{DSCP} Wert 0xB8 verwendet wird, welcher der \ac{EF} Klasse entspricht und wie im RFC 3246 \cite{rfc3246} beschrieben, extra für latenzkritische Anwendungen vorgesehen ist.
+    \item \textbf{\ac{QoS} 2} bedeutet, dass die CS7 Klasse verwendet wird, welche in \cite[p. 27]{rfc4594} für Steuerungsanwendungen empfohlen wird.
+          Diese Klasse ist nicht für Nutzeranwendungen vorgesehen, sondern für Netzwerkmanagement und Steuerungsanwendungen.
+          Da diese jedoch mit einer höheren Priorität laufen, als Nutzer-Datenverkehr, wird in dieser Arbeit zur vollständigkeit, überprüft, ob diese Klasse Vorteile für eine Echtzeit-Wi-Fi Verbindung bringt.
+          Da im Testsystem, welches in dieser ARbeit verwendet wird, lediglich eine Peer-to Peer Verbindung besteht, kann mit dieser Priorisierung kein Netzwerkmanagement gestört werden und daher die Klasse CS7 gefahrlos benutzt werden.
+    \item In \textbf{\ac{QoS} 3} wird sowohl der \ac{DSCP} Wert 0xB8, als auch die \ac{qdisc} \ac{HTB} verwendet.  
+    \item 
+\end{itemize}
 
 \section{High disturbance test} \label{subsec:high}
 \section{Discussion} \label{subsec:disc}
