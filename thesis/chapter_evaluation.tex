@@ -225,8 +225,44 @@ In dieser Arbeit werden fünf Stufen von \ac{QoS} betrachtet.
           Da diese jedoch mit einer höheren Priorität laufen, als Nutzer-Datenverkehr, wird in dieser Arbeit zur vollständigkeit, überprüft, ob diese Klasse Vorteile für eine Echtzeit-Wi-Fi Verbindung bringt.
           Da im Testsystem, welches in dieser ARbeit verwendet wird, lediglich eine Peer-to Peer Verbindung besteht, kann mit dieser Priorisierung kein Netzwerkmanagement gestört werden und daher die Klasse CS7 gefahrlos benutzt werden.
     \item In \textbf{\ac{QoS} 3} wird sowohl der \ac{DSCP} Wert 0xB8, als auch die \ac{qdisc} \ac{HTB} verwendet.  
-    \item 
+          Diese ist in Abbildung \ref{fig:qdisc} zu sehen.
+          Dabei wird ein root Knoten im BIld als 1:1 gekennzeichnet, mit einer Datenrate und einem Burst anglegt.
+          Dies gleicht dem Token Bucket Filter, welcher in Kapitel \ref{subsec:qos} beschrieben wurde.
+          Dieser root Knoten wird in zwei Kindknoten aufgeteilt, zum einen 1:10 (RT-Daten) und zum anderen 1:30 (Bulk-Daten).
+          Des Weiteren kann, wie in \cite{htb} beschrieben eine Priorität pro Klasse, welche durch die einzelnen Kindknoten repräsentiert werden, vergeben werden.
+          In dieser Arbeit wird der RT-Klasse die Priorität 0 und der Bulk-Klasse die Priorität 5 zugewiesen.
+          Die Pakete werden je nach Klasse in eine der beiden, in Abbildung \ref{fig:qdisc} dargestellten, Warteschlangen einsortiert.
+          Der Round Robin Scheduler bevorzugt anschließend immer die Pakete aus Warteschlange 0, solagen dessen Rate und Burst nicht ausgeschöpft sind.
+          Daher ist es wichtig, dass die Rate und der Burst des RT-Knotens so gewählt werden, dass die RT-Pakete immer übertragen werden können.
+          Der Root Knoten erhält eine Rate und einen Burst von 500 Mbit/s, von denen 470 Mbit/s an die RT-Klasse und 30 Mbit/s an die Bulk-Klasse vergeben werden.
+          Somit kann sichergestellt werden, dass die Pakete der RT-Klasse immer übertragen werden können.
+          Nachdem die Pakete aus der \ac{qdisc} ausgelesen werden, werden sie der Treiber-Warteschlange übergeben.
+          Aus dieser werden die Pakete über \ac{DMA} der \ac{NIC} übergeben wobei im \ac{EDCA}-Verfahren die RT-Pakete, aufgrund der \ac{DSCP} Header in \ac{AC} 3 und die Bulk-Pakete in \ac{AC} 0 einsortiert werden.
+          Dies sorgt dafür, dass die \ac{AIFS} der RT-Pakete mit 2 Slotzeiten deutlich kürzer ist, als die der Bulk-Pakete mit 7 Slotzeiten.
+          Des Weiteren ist die Zufalls Backkoffzeit bei den RT-Paketen zwischen 7 - 15 $\mu$ s, wohingegen dies bei den Bulk-Paketen zwischen 31 - 1023 $\mu$ s liegt.
+    \item In \textbf{\ac{QoS} 4} wird erneut die Klasse \ac{EF} verwendet, jedoch wird zusätzlich die \ac{Qdisc} Prio verwendet.
+          Diese ist ebenfalls in Abbildung \ref{fig:qdisc} abgebidlet.
+          Der Unterschied zur \ac{HTB} ist, dass die Prio keine Raten und Bursts verwendet, sondern lediglich die Pakete, standardmäßig in drei Warteschlangen einsortiert.
+          Dabei wird die Warteschlange 0 immer bevorzugt, solange sie Pakete enthält.
+          In dieser Arbeit wird die Warteschlange 0 für die RT-Pakete und die Warteschlangen 2 für die Bulk-Pakete verwendet.
+          In der Funktionalität für die Echtzeitfähigkeit gleicht die Prio der \ac{HTB}, solange für \ac{HTB} ausreichend hohe Raten und Bursts für den RT-Verkehr vergeben werden.
+          Die Prio wird, wie in \cite{prio_qdisc} beschrieben, häufig verwendet um die Latenz von Netzwerkpaketen zu minimieren und wird daher in dieser Arbeit ebenfalls betrachtet.
+          Nach dem Abschlißen der \ac{qdisc} werden die Pakete, wie bei \ac{QoS} 3, der Treiber-Warteschlange übergeben und anschließend über \ac{DMA} der \ac{NIC}, wobei das \ac{EDCA} Verfahren das selbe ist.
 \end{itemize}
+
+Alle \ac{QoS} Stufen werden mittels tc und iptables realisiert und alle \ac{DSCP} Werte wurden pro Testfall mittesl Wireshark auf Korrektheit geprüft.
+Die Konfiguration ist in Anhang \ref{chap:appendix} zu finden.
+Um den Netzwerkverkehr unterscheiden zu können wurden die Pakete mittels --set-mark 1 markiert und anhand der Ports auseinandergehalten.
+Die Bulk-Datenübertragung wurde dabei immer auf Port 5202, wohingegen die RT-Datenübertragung auf Port 8080 durchgeführt wurde.
+Die \ac{DSCP} Werte wurden mittels --set-tos gesetzt.
+Die Prioritäten wurden dabei für Prio über tc filter und für \ac{HTB} über tc class gesetzt.
+
+\begin{figure}[ht]
+    \centering
+    \includegraphics[width=\textwidth]{figures/qdisc.drawio.pdf}
+    \caption{Presentation of the Prio and the HTB qdisc used in this work.}
+    \label{fig:qdisc}
+\end{figure}
 
 \section{High disturbance test} \label{subsec:high}
 \section{Discussion} \label{subsec:disc}
