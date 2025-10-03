@@ -161,6 +161,67 @@ int handle_net_dev_xmit(struct trace_event_raw_net_dev_xmit *ctx) {
     \caption{Presentation of the impact of the environment with high disturbance on the jitter of the UDP test cases.}
     \label{fig:high_udp}
 \end{figure}
+
+\begin{listing}[H]
+    \centering
+\begin{minted}[fontsize=\small, escapeinside=||, linenos]{rust}
+IFACE="wlan1"
+RT_PORT="8080"
+Non_RT_PORT="5202"
+SRC_IP="192.168.1.1"
+DST_IP="192.168.1.43"
+
+# Mark RT (1) and Bulk Traffic (3)
+iptables -t mangle -A PREROUTING -i $IFACE -p tcp --dport $RT_PORT  -j MARK --set-mark 1
+iptables -t mangle -A PREROUTING -i $IFACE -p tcp --sport $RT_PORT  -j MARK --set-mark 1
+iptables -t mangle -A PREROUTING -i $IFACE -p udp --dport $RT_PORT  -j MARK --set-mark 1
+iptables -t mangle -A PREROUTING -i $IFACE -p udp --sport $RT_PORT  -j MARK --set-mark 1
+
+iptables -t mangle -A OUTPUT -o $IFACE -p tcp --dport $RT_PORT  -j MARK --set-mark 1
+iptables -t mangle -A OUTPUT -o $IFACE -p tcp --sport $RT_PORT  -j MARK --set-mark 1
+iptables -t mangle -A OUTPUT -o $IFACE -p udp --dport $RT_PORT  -j MARK --set-mark 1
+iptables -t mangle -A OUTPUT -o $IFACE -p udp --sport $RT_PORT  -j MARK --set-mark 1
+
+iptables -t mangle -A PREROUTING -i $IFACE -m mark --mark 0 -j MARK --set-mark 3
+iptables -t mangle -A OUTPUT     -o $IFACE -m mark --mark 0 -j MARK --set-mark 3
+
+#Set DSCP value
+iptables -t mangle -A POSTROUTING -o $IFACE -p tcp --dport 8080 -j TOS --set-tos 0xB8
+iptables -t mangle -A POSTROUTING -o $IFACE -p tcp --sport 8080 -j TOS --set-tos 0xB8
+iptables -t mangle -A POSTROUTING -o $IFACE -p udp --dport 8080 -j TOS --set-tos 0xB8
+iptables -t mangle -A POSTROUTING -o $IFACE -p udp --sport 8080 -j TOS --set-tos 0xB8
+
+#QDisc: HTB
+tc qdisc add dev $IFACE root handle 1: htb default 30
+
+tc class add dev $IFACE parent 1: classid 1:1 htb rate 500mbit
+tc class add dev $IFACE parent 1:1 classid 1:10 htb rate 470mbit ceil 500mbit prio 0
+tc class add dev $IFACE parent 1:1 classid 1:30 htb rate 30mbit ceil 30mbit prio 5
+
+tc filter add dev $IFACE parent 1: protocol ip handle 1 fw flowid 1:10
+tc filter add dev $IFACE parent 1: protocol ip handle 3 fw flowid 1:30
+
+#QDisc: Prio
+tc qdisc add dev $IFACE root handle 1: prio bands 3
+
+tc qdisc add dev $IFACE parent 1:1 handle 10
+tc qdisc add dev $IFACE parent 1:2 handle 20
+tc qdisc add dev $IFACE parent 1:3 handle 30
+
+tc filter add dev $IFACE protocol ip parent 1: prio 1 u32 \
+    match ip dport 8080 0xffff flowid 1:1
+
+tc filter add dev $IFACE protocol ip parent 1: prio 1 u32 \
+    match ip sport 8080 0xffff flowid 1:1
+
+tc filter add dev $IFACE protocol ip parent 1: prio 5 u32 \
+    match ip protocol 0 0 flowid 1:3
+    
+\end{minted}
+\caption{QoS settings used in this work}
+\label{lst:qos}
+\end{listing}
+
 %%% Local Variables: 
 %%% mode: latex
 %%% TeX-master: "thesis.tex"

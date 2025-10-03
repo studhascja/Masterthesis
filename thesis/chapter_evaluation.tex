@@ -182,80 +182,77 @@ Having established the behavior of the test system under ideal conditions, the f
 \section{Average disturbance test}  \label{subsec:medium}
 
 \ref{fig:mid_tcp} and \ref{fig:mid_udp} illustrate the results of the test runs in an environment with average interference.
-Eine Umgebung mit mittleren Störungen entpricht einem typischen Büro- oder Wohnumfeld.
-In diesem existieren andere Netzwerke und elektrische Geräte, die Interferenzen verursachen können.
-Es existieren jedoch keien Geräte oder Netzwerke die speziell aufgestellt sind, um das testsystem zu stören.
-In den Grafiken \ref{fig:mid_tcp} und \ref{fig:mid_udp} sind die Ergebnisse der Testläufe für den maximalen und durchschnittlichen Jitter dargestellt.
-Dieser wird prozentual ins Verhötnis zum Jitter in der Umgebung mit geringen Störungen gesetzt.
-Dieser Test wurde bereits in Kapitel \ref{subsec:low} beschrieben.
+An environment with medium interference corresponds to a typical office or residential setting.  
+In such an environment, other networks and electrical devices exist that may cause interference.  
+However, there are no devices or networks deliberately deployed to disturb the test system.  
 
-In den Ergebnissen ist generell zu erkennen, dass die Maxima bie den \ac{TCP} Testfällen stärker angestiegen ist, als die Testfälle mit \ac{UDP}.
-Der Mittelwert hingegen ist bei \ac{UDP} stärker angestiegen.
-Beide Protokolle zeigen jedoch generell einen höheren Jitter.
-Jedoch ist der Jitter im Mittel mit \ac{TCP} gleich geblieben.
+Figures \ref{fig:mid_tcp} and \ref{fig:mid_udp} show the results of the test runs for the maximum and average jitter.  
+The jitter values are expressed as a percentage relative to the jitter observed in the low-interference environment.  
+This test was already described in Section \ref{subsec:low}.  
 
-Es ist außerdem klar zu erkennen, dass die Testfälle mit \ac{QoS} generell einen geringeren Anstieg des Jitters aufweisen.
-Bei beiden Protokollen liegen sowohl im durchschnitt als auch im Maximum alle hohen Ausreißer bei den Testfällen ohne \ac{QoS}.
-Insbesondere in den Testfällen auf dem 6 GHz Band ist ein besonders geringer Anstieg des Jitters zu erkennen.
-Dies ist vor allem darauf zurückzuführen, dass in diesem Frequenzband zum Zeitpunkt dieser Arbeit nur wenige Geräte betrieben werden und somit kaum Interferenzen vorhanden sind.
-Der Wi-Fi Standard 6 zeigt jedoch höhere Anstiege des Jitters, sowohl im Maximum als auch im Durchschnitt, zu den Standarden 4 und 5.
-Dabei schneidet der Standard 4 am besten ab.
-In Grafik \ref{fig:mid_tcp} kann dies an den Testfällen 6-5-20-0-TCP und 6-5-80-0-TCP besonders gut erkannt werden. 
-In Grafik \ref{fig:mid_udp} ist besonders der Testfall 6-2.4-20-0-UDP auffällig.
+In general, the results show that the maxima increased more strongly for the \ac{TCP} test cases than for the \ac{UDP} test cases.  
+By contrast, the mean jitter increased more strongly for \ac{UDP}.  
+Both protocols, however, exhibit an overall increase in jitter.  
+Nevertheless, the average jitter for \ac{TCP} remained unchanged.  
 
-Es ist zu beobachten, dass im \ac{UDP} Testdurchgang der testfall 6-2.4-20-0-UDP besonders stark von den Störungen betroffen ist und eine 8x höhere maximale Ausprägung des Jitters aufweist, als die durchschnittliche Anstiegsrate im Maximum.
-Im \ac{TCP} Testdurchgang ist besonders der Testfall 5-5-40-0-TCP auffällig, welcher eine 7x höhere maximale Ausprägung des Jitters aufweist, als die durchschnittliche Anstiegsrate im Maximum.
-Diese Ausreißer geschehen in nahezu allen Testconfigurationen, augenommen davon ist ledigilich der Testfall 6-6-160-*-*.
-Jedoch sind die Ausreßger besonders im 2.4 GHz Band mit 20 MHz Bandbreite und in testdurchgägngen mit 80 MHz Bandbreite vertreten, daher repräsentiert der gezeigt Testlauf das allgemeinbild sehr gut.
-Des weiteren ist auffällig, dass Ausreißer bei Tsetdurchgängen mit \ac{QoS} deutlich seltender auftreten und des Weiteren eine geringere Ausprägung aufweisen.
+It is also evident that test cases with \ac{QoS} generally show a smaller increase in jitter.  
+For both protocols, all high outliers in both average and maximum jitter occur in test cases without \ac{QoS}.  
+In particular, in the 6 GHz band, a notably small increase in jitter can be observed.  
+This can primarily be attributed to the fact that, at the time of this study, only few devices operated in this frequency band, resulting in minimal interference.  
+However, Wi-Fi Standard 6 shows higher increases in jitter, both in maximum and average values, compared to Standards 4 and 5.  
+Among these, Standard 4 performs best.  
+This can be seen clearly in Figure \ref{fig:mid_tcp}, particularly for test cases 6-5-20-0-TCP and 6-5-80-0-TCP.  
+In Figure \ref{fig:mid_udp}, the test case 6-2.4-20-0-UDP stands out.  
 
-Ausreißer treten dabei immer in den Phasen 3 und 6 auf.
-In anderen Worten im Link- und Hardware-Layer des Netzwerkstacks.
-Dabei ist die Clientseite sowohl im Mittel, als auch in den Maxima stärker betroffen.
-Wie in Abbildung \ref{fig:pi_wifi_general} zu sehen müssen beide Geräte in der RT-Verbindung, sowohl Daten senden, als auch Empfangen.
-In der Bulk-Datenübertragung hingegen sendet nur der Client-Daten, der Server empfängt nur.
-Daraus kann geschlussfolgert werden, dass das Senden von Daten in einer Wi-Fi Verbindung störanfälliger ist, als das Empfangen.
+In the \ac{UDP} test run, the test case 6-2.4-20-0-UDP is particularly affected by interference, showing a maximum jitter level eight times higher than the average maximum increase.  
+In the \ac{TCP} test run, the test case 5-5-40-0-TCP is most noticeable, exhibiting a maximum jitter level seven times higher than the average maximum increase.  
+Such outliers occur in almost all test configurations, with the sole exception of the test case 6-6-160-*-*.  
+Outliers are especially present in the 2.4 GHz band with 20 MHz bandwidth and in test runs with 80 MHz bandwidth, meaning the presented test runs represent the general trend well.  
+Furthermore, it is noticeable that outliers occur significantly less frequently in test runs with \ac{QoS} and exhibit lower magnitudes.  
 
-In dieser Arbeit werden fünf Stufen von \ac{QoS} betrachtet.
-\begin{itemize}
-    \item \textbf{\ac{QoS} 0} bedeutet, dass kein \ac{QoS} verwendet wird.
-    \item \textbf{\ac{QoS} 1} bedeutet, dass der \ac{DSCP} Wert 0xB8 verwendet wird, welcher der \ac{EF} Klasse entspricht und wie im RFC 3246 \cite{rfc3246} beschrieben, extra für latenzkritische Anwendungen vorgesehen ist.
-    \item \textbf{\ac{QoS} 2} bedeutet, dass die CS7 Klasse verwendet wird, welche in \cite[p. 27]{rfc4594} für Steuerungsanwendungen empfohlen wird.
-          Diese Klasse ist nicht für Nutzeranwendungen vorgesehen, sondern für Netzwerkmanagement und Steuerungsanwendungen.
-          Da diese jedoch mit einer höheren Priorität laufen, als Nutzer-Datenverkehr, wird in dieser Arbeit zur vollständigkeit, überprüft, ob diese Klasse Vorteile für eine Echtzeit-Wi-Fi Verbindung bringt.
-          Da im Testsystem, welches in dieser ARbeit verwendet wird, lediglich eine Peer-to Peer Verbindung besteht, kann mit dieser Priorisierung kein Netzwerkmanagement gestört werden und daher die Klasse CS7 gefahrlos benutzt werden.
-    \item In \textbf{\ac{QoS} 3} wird sowohl der \ac{DSCP} Wert 0xB8, als auch die \ac{qdisc} \ac{HTB} verwendet.  
-          Diese ist in Abbildung \ref{fig:qdisc} zu sehen.
-          Dabei wird ein root Knoten im BIld als 1:1 gekennzeichnet, mit einer Datenrate und einem Burst anglegt.
-          Dies gleicht dem Token Bucket Filter, welcher in Kapitel \ref{subsec:qos} beschrieben wurde.
-          Dieser root Knoten wird in zwei Kindknoten aufgeteilt, zum einen 1:10 (RT-Daten) und zum anderen 1:30 (Bulk-Daten).
-          Des Weiteren kann, wie in \cite{htb} beschrieben eine Priorität pro Klasse, welche durch die einzelnen Kindknoten repräsentiert werden, vergeben werden.
-          In dieser Arbeit wird der RT-Klasse die Priorität 0 und der Bulk-Klasse die Priorität 5 zugewiesen.
-          Die Pakete werden je nach Klasse in eine der beiden, in Abbildung \ref{fig:qdisc} dargestellten, Warteschlangen einsortiert.
-          Der Round Robin Scheduler bevorzugt anschließend immer die Pakete aus Warteschlange 0, solagen dessen Rate und Burst nicht ausgeschöpft sind.
-          Daher ist es wichtig, dass die Rate und der Burst des RT-Knotens so gewählt werden, dass die RT-Pakete immer übertragen werden können.
-          Der Root Knoten erhält eine Rate und einen Burst von 500 Mbit/s, von denen 470 Mbit/s an die RT-Klasse und 30 Mbit/s an die Bulk-Klasse vergeben werden.
-          Somit kann sichergestellt werden, dass die Pakete der RT-Klasse immer übertragen werden können.
-          Nachdem die Pakete aus der \ac{qdisc} ausgelesen werden, werden sie der Treiber-Warteschlange übergeben.
-          Aus dieser werden die Pakete über \ac{DMA} der \ac{NIC} übergeben wobei im \ac{EDCA}-Verfahren die RT-Pakete, aufgrund der \ac{DSCP} Header in \ac{AC} 3 und die Bulk-Pakete in \ac{AC} 0 einsortiert werden.
-          Dies sorgt dafür, dass die \ac{AIFS} der RT-Pakete mit 2 Slotzeiten deutlich kürzer ist, als die der Bulk-Pakete mit 7 Slotzeiten.
-          Des Weiteren ist die Zufalls Backkoffzeit bei den RT-Paketen zwischen 7 - 15 $\mu$ s, wohingegen dies bei den Bulk-Paketen zwischen 31 - 1023 $\mu$ s liegt.
-    \item In \textbf{\ac{QoS} 4} wird erneut die Klasse \ac{EF} verwendet, jedoch wird zusätzlich die \ac{Qdisc} Prio verwendet.
-          Diese ist ebenfalls in Abbildung \ref{fig:qdisc} abgebidlet.
-          Der Unterschied zur \ac{HTB} ist, dass die Prio keine Raten und Bursts verwendet, sondern lediglich die Pakete, standardmäßig in drei Warteschlangen einsortiert.
-          Dabei wird die Warteschlange 0 immer bevorzugt, solange sie Pakete enthält.
-          In dieser Arbeit wird die Warteschlange 0 für die RT-Pakete und die Warteschlangen 2 für die Bulk-Pakete verwendet.
-          In der Funktionalität für die Echtzeitfähigkeit gleicht die Prio der \ac{HTB}, solange für \ac{HTB} ausreichend hohe Raten und Bursts für den RT-Verkehr vergeben werden.
-          Die Prio wird, wie in \cite{prio_qdisc} beschrieben, häufig verwendet um die Latenz von Netzwerkpaketen zu minimieren und wird daher in dieser Arbeit ebenfalls betrachtet.
-          Nach dem Abschlißen der \ac{qdisc} werden die Pakete, wie bei \ac{QoS} 3, der Treiber-Warteschlange übergeben und anschließend über \ac{DMA} der \ac{NIC}, wobei das \ac{EDCA} Verfahren das selbe ist.
-\end{itemize}
+Outliers always occur in phases 3 and 6, i.e., in the link and hardware layers of the network stack.  
+In these cases, the client side is more strongly affected in terms of both average and maximum jitter.  
+As shown in Figure \ref{fig:pi_wifi_general}, both devices in the RT connection must send and receive data.  
+In contrast, during bulk data transmission, only the client sends data while the server only receives.  
+From this, it can be concluded that data transmission in a Wi-Fi connection is more susceptible to interference than data reception.  
 
-Alle \ac{QoS} Stufen werden mittels tc und iptables realisiert und alle \ac{DSCP} Werte wurden pro Testfall mittesl Wireshark auf Korrektheit geprüft.
-Die Konfiguration ist in Anhang \ref{chap:appendix} zu finden.
-Um den Netzwerkverkehr unterscheiden zu können wurden die Pakete mittels --set-mark 1 markiert und anhand der Ports auseinandergehalten.
-Die Bulk-Datenübertragung wurde dabei immer auf Port 5202, wohingegen die RT-Datenübertragung auf Port 8080 durchgeführt wurde.
-Die \ac{DSCP} Werte wurden mittels --set-tos gesetzt.
-Die Prioritäten wurden dabei für Prio über tc filter und für \ac{HTB} über tc class gesetzt.
+This work considers five levels of \ac{QoS}.  
+\begin{itemize}  
+    \item \textbf{\ac{QoS} 0} means that no \ac{QoS} is applied.  
+    \item \textbf{\ac{QoS} 1} uses the \ac{DSCP} value 0xB8, which corresponds to the \ac{EF} class and is, as described in RFC 3246 \cite{rfc3246}, specifically intended for latency-critical applications.  
+    \item \textbf{\ac{QoS} 2} uses the CS7 class, which \cite[p. 27]{rfc4594} recommends for control applications.  
+          This class is not intended for user applications, but for network management and control tasks.  
+          Since these run at a higher priority than user traffic, this work investigates whether this class provides advantages for real-time Wi-Fi connections.  
+          As the test system in this study is a peer-to-peer setup, network management traffic cannot be disturbed, making the use of CS7 safe.  
+    \item In \textbf{\ac{QoS} 3}, both the \ac{DSCP} value 0xB8 and the \ac{qdisc} \ac{HTB} are applied, as shown in Figure \ref{fig:qdisc}.  
+          A root node (1:1) is configured with a data rate and a burst size, similar to the Token Bucket Filter described in Section \ref{subsec:qos}.  
+          This root node is divided into two child nodes: 1:10 (RT data) and 1:30 (bulk data).  
+          As described in \cite{htb}, each class can be assigned a priority.  
+          In this work, as can be seen in Figure \ref{fig:qdisc} the RT class is assigned priority 0, and the bulk class priority 5.  
+          Packets are queued according to their class into the queues shown in Figure \ref{fig:qdisc}.  
+          The round-robin scheduler then always prioritizes packets from queue 0 as long as its rate and burst are not exceeded.  
+          Therefore, the rate and burst of the RT node must be configured to ensure RT packets are always transmitted.  
+          The root node is configured with 500 Mbit/s, of which 470 Mbit/s are allocated to the RT class and 30 Mbit/s to the bulk class.  
+          This ensures reliable transmission of RT packets.  
+          After being dequeued from the \ac{Qdisc}, packets are handed to the driver queue, and then via \ac{DMA} to the \ac{NIC}.  
+          Using \ac{EDCA}, RT packets are placed into \ac{AC} 3 based on the \ac{DSCP} header, while bulk packets are placed into \ac{AC} 0.  
+          This results in RT packets having an \ac{AIFS} of 2 slot times compared to 7 slot times for bulk packets.  
+          Furthermore, the random backoff time ranges from 7–15 $\mu$s for RT packets, while it ranges from 31–1023 $\mu$s for bulk packets.  
+    \item In \textbf{\ac{QoS} 4}, the \ac{EF} class is again used, but additionally the \ac{Qdisc} Prio is applied, also shown in Figure \ref{fig:qdisc}.  
+          Unlike \ac{HTB}, Prio does not use rates and bursts, but classifies packets into three queues by default.  
+          Queue 0 is always prioritized as long as it contains packets.  
+          In this work, queue 0 is used for RT packets and queue 2 for bulk packets.  
+          In terms of real-time performance, Prio functions similarly to \ac{HTB}, provided \ac{HTB} is configured with sufficiently high rates and bursts for RT traffic.  
+          As described in \cite{prio_qdisc}, Prio is often used to minimize packet latency and is therefore considered in this work as well.  
+          After leaving the \ac{Qdisc}, packets are handed to the driver queue and subsequently to the \ac{NIC} via \ac{DMA}, using the same \ac{EDCA} procedure as in \ac{QoS} 3.  
+\end{itemize}  
+
+All \ac{QoS} levels are implemented using \texttt{tc} and \texttt{iptables}, and all \ac{DSCP} values were verified per test case with Wireshark.  
+The full configuration can be found in Appendix \ref{lst:qos}.  
+To distinguish network traffic, packets were marked with \texttt{--set-mark 1} and separated by ports.  
+Bulk data transmission was always performed on port 5202, while RT data transmission was carried out on port 8080.  
+The \ac{DSCP} values were set using \texttt{--set-tos}.  
+Priorities were assigned via \texttt{tc filter} for Prio and \texttt{tc class} for \ac{HTB}.  
 
 \begin{figure}[ht]
     \centering
