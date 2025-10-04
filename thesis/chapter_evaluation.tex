@@ -261,5 +261,32 @@ Priorities were assigned via \texttt{tc filter} for Prio and \texttt{tc class} f
     \label{fig:qdisc}
 \end{figure}
 
+The results of the tests with different \ac{QoS} levels are presented in Figures \ref{fig:qos_tcp_avg}, \ref{fig:qos_udp_avg}, \ref{fig:qos_tcp_max} and \ref{fig:qos_udp_max}.  
+Here, a distinction is again made between \ac{UDP} and \ac{TCP}, as well as between maximum and average jitter.  
+
+For the average jitter, it can be observed that for both \ac{UDP} and \ac{TCP}, all values are below the average jitter without \ac{QoS}.  
+Furthermore, as shown in Figures \ref{fig:qos_udp_avg} and \ref{fig:qos_tcp_avg}, test cases with 20 MHz bandwidth and a frequency of 2.4 GHz perform the worst.  
+It is also noticeable that across all \ac{QoS} levels, the jitter behaves similarly, with \ac{QoS} 1 performing slightly worse and \ac{QoS} 3 performing best.  
+In general, a combination of \ac{DSCP} value and \ac{Qdisc} yields better results than using only a \ac{DSCP} value.  
+The difference between the average jitter of \ac{QoS} 3 and the other \ac{QoS} levels is most pronounced in the \ac{UDP} cases.  
+Overall, however, the jitter values are higher in the \ac{UDP} cases than in the \ac{TCP} cases.  
+
+Regarding the maximum jitter, shown in Figures \ref{fig:qos_udp_max} and \ref{fig:qos_tcp_max}, different characteristics can be observed.  
+As already noted in previous test runs, the \ac{UDP} and \ac{TCP} test cases are very similar in terms of maximum jitter.  
+\ac{TCP} even performs slightly worse regarding maximum jitter, particularly in test case 4-5-40-TCP, where the \ac{QoS} 3 configuration exhibits a very large maximum jitter, as seen in Figure \ref{fig:qos_tcp_max}.  
+In general, no clear patterns can be identified in the evaluation of the test cases with respect to maximum jitter.  
+It is only noticeable that both \ac{TCP} and \ac{UDP} show distinct outliers in the measurement data, especially for the \ac{QoS} 3 configuration and to a lesser extent for \ac{QoS} 1.  
+Interestingly, in both \ac{TCP} and \ac{UDP}, the test case 4-5-20 stands out as particularly affected.  
+It is also evident that in the maximum jitter, all curves converge at test case 6-6-160-*, where the jitter is generally very low.  
+This indicates that during this test case, no outliers occurred in any of the \ac{QoS} configurations.  
+
+From the \ac{QoS} tests, it can therefore be concluded that for average jitter, \ac{QoS} 3 provides the best performance.  
+However, for maximum jitter, no definitive conclusion can be drawn regarding the optimal \ac{QoS} configuration, except that a combination of \ac{Qdisc} and \ac{DSCP} value produces better results than using only a \ac{DSCP} value.  
+It is also noticeable that tests using Wi-Fi 6 in the 6 GHz band with a bandwidth of 160 MHz perform particularly well.  
+
+After discussing in this chapter how an environment with medium interference affects the real-time capability of Wi-Fi and how \ac{QoS} influences it, the following section examines how the real-time performance of Wi-Fi behaves in an environment with high interference.  
+
 \section{High disturbance test} \label{subsec:high}
+
+
 \section{Discussion} \label{subsec:disc}
