@@ -287,6 +287,27 @@ It is also noticeable that tests using Wi-Fi 6 in the 6 GHz band with a bandwidt
 After discussing in this chapter how an environment with medium interference affects the real-time capability of Wi-Fi and how \ac{QoS} influences it, the following section examines how the real-time performance of Wi-Fi behaves in an environment with high interference.  
 
 \section{High disturbance test} \label{subsec:high}
+In the high-interference test, the same test cases are conducted as before, but an additional pair of Raspberry Pis is introduced.  
+This second pair operates on the same frequency and with the same bandwidth, transmitting as many packets as possible via \texttt{iperf3}.  
+The second pair of Raspberry Pis, referred to in the following as the \emph{noisy neighbour}, is equipped with an Atheros AR5BXB92 Wi-Fi card, as described in Section \ref{sec:used_hardware}.  
+However, since this card only supports Wi-Fi 4, only test cases in the 2.4 GHz and 5 GHz bands are considered.  
+For the test cases with 80 MHz bandwidth, the noisy neighbour uses only 40 MHz channels, as Wi-Fi 4 does not support wider channels.  
+This setup allows the simulation of a worst-case scenario for the 2.4 GHz and 5 GHz bands, in which another Wi-Fi network in close proximity fully occupies the same channel on the same frequency band.  
 
+The results are shown in Figures \ref{fig:high_udp} and \ref{fig:high_tcp}, again distinguishing between \ac{UDP} and \ac{TCP} test cases.  
+For the \ac{QoS} test cases, \ac{QoS} level 3 was applied, since, as discussed in Section \ref{subsec:medium}, it produced the best results for average jitter and exhibited outliers in the maximum jitter only in isolated cases.  
+In both figures, the maximum jitter is shown in blue and the average jitter in green.  
+The average of the maximum jitter values is shown in red and the average of the mean jitter values in yellow.  
+It can be observed that the \ac{TCP} and \ac{UDP} values are much closer together than in the low-interference scenario described in Section \ref{subsec:low}.  
+It is also evident that the test cases with \ac{QoS} perform significantly better than those without \ac{QoS}.  
+Compared to the laboratory experiment, the jitter increased by a factor of 10–20 in both average and maximum values.  
+
+Furthermore, it is noticeable that the test case 6-6-160-1-* remained almost unchanged.  
+This is because this test run was recorded as a reference and was not affected by interference in its frequency band.  
+Accordingly, it can be seen that the test cases are not disturbed across frequency bands, which was expected.  
+Surprisingly, however, the test cases with 80 MHz bandwidth did not perform better but often worse than the 40 MHz test cases.  
+Since the noisy neighbour was operated only on a 40 MHz channel, only half of the frequency spectrum of the 80 MHz channels was interfered with, yet no improvement was observed.  
+
+As this chapter has examined how Wi-Fi behaves under heavy load in the worst possible interference scenario, the following section discusses the results of all three test series across the three environments and compares them with the findings of other studies.  
 
 \section{Discussion} \label{subsec:disc}
