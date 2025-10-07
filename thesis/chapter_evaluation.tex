@@ -311,3 +311,33 @@ Since the noisy neighbour was operated only on a 40 MHz channel, only half of th
 As this chapter has examined how Wi-Fi behaves under heavy load in the worst possible interference scenario, the following section discusses the results of all three test series across the three environments and compares them with the findings of other studies.  
 
 \section{Discussion} \label{subsec:disc}
+
+\begin{figure}[ht]
+    \centering
+    \includegraphics[width=\textwidth]{figures/latency_cdf_all.pdf}
+    \caption[Visualization of cumulative probability at cycle time for different test runs.]{Representation of the percentage number of cycles that meet real time at a certain rate for chosen test runs.}
+    \label{fig:percent}
+\end{figure}
+
+
+\begin{table}
+\begin{tabular}{||p{3.5cm}|p{2.5cm}|p{2.5cm}|p{2.5cm}|p{2.5cm}||}
+\hline\hline
+\textbf{Testcase} & \textbf{\ac{WCET} \newline Application} & \textbf{\ac{WCET} \ac{Qdisc}} & \textbf{\ac{WCET} Driver and MAC} & \textbf{\ac{WCET} whole} \\
+\hline\hline
+$C_{24}$-6-6-160-1-tcp & 2.19 ms & 0.14 ms & 703.56 ms & 705.89 ms \\
+\hline
+$C_{mid}$-6-6-160-1-tcp & 0.22 ms & 0.05 ms & 2.27 ms & 2.54 ms \\
+\hline
+$C_{high}$-6-5-40-1-tcp & 2.15 ms & 0.05 ms & 39.26 ms & 41.46 ms \\
+\hline
+$C_{labor}$-6-6-160-1-tcp & 0.15 ms & 0.02 ms & 1.56 ms & 1.73 ms \\
+\hline
+$C_{ath9k}$-4-5-40-1-tcp & 0.14 ms & 0.03 ms & 6.16 ms & 6.33 ms  \\
+\hline
+$C_{mt7925e}$-4-5-40-1-tcp & 0.34 ms & 0.04 ms & 6.31 & 6.69 ms  \\
+\hline\hline
+\end{tabular}
+\caption{Comparison of the WCET of different test runs}
+\label{tab:wcet}
+\end{table}
