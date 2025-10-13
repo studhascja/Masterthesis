@@ -300,7 +300,7 @@ In both figures, the maximum jitter is shown in blue and the average jitter in g
 The average of the maximum jitter values is shown in red and the average of the mean jitter values in yellow.  
 It can be observed that the \ac{TCP} and \ac{UDP} values are much closer together than in the low-interference scenario described in Section \ref{subsec:low}.  
 It is also evident that the test cases with \ac{QoS} perform significantly better than those without \ac{QoS}.  
-Compared to the laboratory experiment, the jitter increased by a factor of 10–20 in both average and maximum values.  
+Compared to the laboratory experiment, the jitter increased by a factor of 10-20 in both average and maximum values.  
 
 Furthermore, it is noticeable that the test case 6-6-160-1-* remained almost unchanged.  
 This is because this test run was recorded as a reference and was not affected by interference in its frequency band.  
@@ -308,9 +308,58 @@ Accordingly, it can be seen that the test cases are not disturbed across frequen
 Surprisingly, however, the test cases with 80 MHz bandwidth did not perform better but often worse than the 40 MHz test cases.  
 Since the noisy neighbour was operated only on a 40 MHz channel, only half of the frequency spectrum of the 80 MHz channels was interfered with, yet no improvement was observed.  
 
-As this chapter has examined how Wi-Fi behaves under heavy load in the worst possible interference scenario, the following section discusses the results of all three test series across the three environments and compares them with the findings of other studies.  
+This chapter has examined how Wi-Fi behaves under heavy load in the worst possible interference scenario, the following section discusses the results of all three test series.  
 
 \section{Discussion} \label{subsec:disc}
+Nachdem in den zuvor beschriebenen Kapiteln die Messwerte und die Auswertung der Testdurchgänge in drei verschiedenen Umgebungen (Labor, Büro und mit Nachbarverbindung) dargestellt wurden, werden im Folgenden die Ergebnisse zusammengefasst und diskutiert.
+Um die Ergebnisse, bzw die Auswirkungen der einzelnen Faktoren auf den maximalen Jitter darzustellen wird für jeden Testdurchgang ein Spinnen-Radar-Diagramm sowohl für den maximalen, als auch für den durchschnittlichen Jitter gezeigt.
+Somit wird in Abbidung \ref{fig:r_mid} die Auswirkungen im Testlauf mit durchschnittlicher Belastung dargestellt.
+Dabei wird in Abbildung \ref{fig:r_mid_max} die Auswirkungen auf den maximalen Jitter und in Abbildung \ref{fig:r_mid_med} die Auswirkungen auf den durchschnittlichen Jitter dargestellt.
+
+\begin{figure}[h]
+  \centering
+  \begin{subfigure}{0.49\textwidth}
+    \centering
+    \includegraphics[width=\textwidth]{figures/radar_mid_max.pdf}
+    \caption{Presentation of the weighting of influencing factors on the maximum jitter in the test run with average disturbance.}
+    \label{fig:r_mid_max}
+  \end{subfigure}
+\hfill
+  \begin{subfigure}{0.49\textwidth}
+    \centering
+    \includegraphics[width=\textwidth]{figures/radar_mid_med.pdf}
+    \caption{Presentation of the weighting of influencing factors on the average jitter in the test run with average disturbance.}
+    \label{fig:r_mid_med}
+  \end{subfigure}
+  \caption{Presentation of the weighting of influencing factors on the maximum and average jitter in the test run with average disturbance.}
+  \label{fig:r_mid}
+\end{figure}
+
+Die Auswirkungen werden berechnet indem Testfälle it nur einem unterschiedlichen Parameter verglichen werden.
+Wenn zum Beispiel der Einfluss des Faktor \ac{QoS} berechnet werden soll, werden die Testdurchgänge std:a-freq:b-bandwitdth:c-qos:0-prot:d ($config_1$) mit std:a-freq:b-bandwitdth:c-qos:1-prot:d ($config_2$) verglichen.
+Dabei existiert für jeden Faktor eine Variable auf die der Einfluss pro Testfall addiert wird.
+Der Einfluss auf den maximalen Jitter wird mittels $\frac{|max(config_1) - max(config_2)|}{\frac{max(config_1) + max(config_2)}{2}} \times 100$ berechnet. 
+Somit wird der mittlere prozentuale Unterschied zwischen den beiden Testdurchgängen berechnet und anschließend auf die Varaible addiert.
+Im Falle das \ac{QoS} 1 besser abschneidet, als \ac{QoS} 0 wird das Ergebnis auf die Variable von \ac{QoS} 1 mit minus addiert, als subtrahiert.
+Dies wird für alle vergleichbaren Kombinationen durchgeführt.
+Teilweise sind nicht alle Kombinationen vergleichbar, wie beispeisleweise beim Faktor Standard können nur begrenzte Standard 6 Testfälle verglichen werden, da alle anderen Faktoren gelcih sein müssen.
+Da nur Standard 6 die Frequenz 6 GHz bietet sind all diese Testfälle nicht vergleichbar.
+
+In der Abbildung \ref{fig:r_mid} besteht das Radardiagramm aus fünf Parametern, welche den fünf Faktoren entsprechen.
+Somit wird Frequenz in blau, der Standard in gelbe, die Bandbreite in orange, \ac{QoS} in grün und das Protokoll in Türkis dargestellt.
+Zudem werden innerhalb jeder der Kategorien die verschiedenen Parameter dargestellt.
+Also für den Standard 2.4 GHz, 5 GHz und 6 GHz, für die anderen Faktoren ist dies äquivalent mit deren Parametern.
+Jeder der Parameter hat einen Wert, dieser entspricht dem prozentualen Verhältnis zu den anderen Parametern.
+In Abbildung \ref{fig:r_mid_max} wäre dies bei der 6 GHz Frequenz -81.7.
+Das heißt dass im Durchschnitt die Testkonfigurationen mit 6 GHz 81.7 \% geringere Jitter aufwiesen, als die restlichen Frequenzen.
+Somit ist ein negativer Wert (in grün dargesetllt) besser, als ein positiver (in rot dargestellt).
+Das Netzdiagramm, welches über das Radardiagramm gelegt wurde, bemisst sich an der Addition der Beträge der Werte der einzelnen Parameter.
+
+Es fällt in allen drei Testdurchgängen auf, welche in den Abbildungen \ref{fig:r_labor}, \ref{fig:r_mid} und \ref{fig:r_high} dargesetllt sind, dass für den maximalen Jitter der stärkste Faktor \ac{QoS} und für den mittleren Jitter das Protokoll ist, wobei \ac{TCP} dabei besser abschneidet.
+Es ist überraschend, dass \ac{TCP} einen geringeren durchschnittlichen Jitter aufweist, als \ac{UDP}, da der Overhead von \ac{TCP} aufgrund der Conjestion Control und dme Acknoledgement Mechanismus einen größeren Overhead als \ac{UDP} besitzt.
+Jedoch ist dieses Verhalten auch in anderen wissenschaftlichen Arbeiten aufgefalle.
+Somit beschreibt Simon et al. in \cite[p. 227, 228]{tcp_vs_udp}, dass in seinen Ergebnissen \ac{UDP} eine doppelt so große Latenz besitzt, wie \ac{UDP}.
+Auch Gaoyang et al. beschreiben in \cite[p. 11]{tcp_vs_ud}, dass vor allem bei größeren Datenpaketen \ac{TCP} niedrigere Latenzen aufweisen.
 
 \begin{figure}[ht]
     \centering
