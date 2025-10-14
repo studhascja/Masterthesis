@@ -355,11 +355,32 @@ Das heißt dass im Durchschnitt die Testkonfigurationen mit 6 GHz 81.7 \% gering
 Somit ist ein negativer Wert (in grün dargesetllt) besser, als ein positiver (in rot dargestellt).
 Das Netzdiagramm, welches über das Radardiagramm gelegt wurde, bemisst sich an der Addition der Beträge der Werte der einzelnen Parameter.
 
+Rojers et al. \cite[p. 2627]{ROIJERS20062621}
 Es fällt in allen drei Testdurchgängen auf, welche in den Abbildungen \ref{fig:r_labor}, \ref{fig:r_mid} und \ref{fig:r_high} dargesetllt sind, dass für den maximalen Jitter der stärkste Faktor \ac{QoS} und für den mittleren Jitter das Protokoll ist, wobei \ac{TCP} dabei besser abschneidet.
 Es ist überraschend, dass \ac{TCP} einen geringeren durchschnittlichen Jitter aufweist, als \ac{UDP}, da der Overhead von \ac{TCP} aufgrund der Conjestion Control und dme Acknoledgement Mechanismus einen größeren Overhead als \ac{UDP} besitzt.
 Jedoch ist dieses Verhalten auch in anderen wissenschaftlichen Arbeiten aufgefalle.
 Somit beschreibt Simon et al. in \cite[p. 227, 228]{tcp_vs_udp}, dass in seinen Ergebnissen \ac{UDP} eine doppelt so große Latenz besitzt, wie \ac{UDP}.
 Auch Gaoyang et al. beschreiben in \cite[p. 11]{tcp_vs_ud}, dass vor allem bei größeren Datenpaketen \ac{TCP} niedrigere Latenzen aufweisen.
+
+Neben der Erkenntnis, dass \ac{QoS} besonders für den maximalen Jitter und das Protokoll für den durchschnittlichen Jitter ausschlaghebend ist, fällt zudem auf, dass im Durchgang mit durchschnittlicher Inteferenz insbesondere die \textbf{Frequenz} eine größere Rolle spielt, als beim Labor Testgang.
+Dabei schneidet die 6 GHz Frequenz mit Abstand am besten ab. 
+Dies ist darauf zurückzuführen, dass zum Zeitpunkt der Arbeit das 6 GHz Band erst vor kurzem mittels des Wi-FI Standards 6e verwendet wird und daher noch nciht viele Geräte diesen benutzen.
+Die selbe Erkenntniss wurde ebenfalls von Bartolin-Arnau et al. in \cite[p. 14 - 17]{telecom6020040} erarbeitet.
+In dessen Arbeit wird ebenfalls deutlich, dass insbesonders die 6 GHz Frequenz in Umgebungen mit mehreren Inteferenzen vorteile genießt.
+Bartolin et al. konnten beweisen dass dies auf ein freieres Medium im 6 GHz Bereich zurückzuführen ist. 
+
+Für den \textbf{Standard} als Einflussfaktor fällt auf, dass besonders in den Testläufen mit mittlerer und hoher Inteferenz, welche in Abbildung \ref{fig:r_mid_max} und \ref{fig:r_high_max} dargestllt sind, der Wi-Fi Standard 6 schlechter abschneidet.
+Eine mögliche Ursaceh dafür ist, dass mittels der \ac{OFDMA} Modulation zwar mehr Daten versendet werden können diese jedoch anfälliger für Inteferenzen sind, aufgrund der erhöhten Datendichte, wie in Kapitel \ref{subsec:stand} beschrieben.
+In den Ergebnissen von Bartolin-Arnau et al. in \cite[p. 15]{telecom6020040} spiegelt sich dies jedoch nicht wieder.
+Sie kommen in ihrere Arbeit zu dem Entschluss dass Wi-Fi 6 eine bessere Echtzeitfähigkeit in Umgebungen mit viel Inteferenz bietet, als die anderen Standards.
+Jedoch begründen sie ihre Messergebnisse nicht.
+Auch Salam et al. berichten in \cite[p. 3]{10815245}, dass die Echtzeitfähigkeit von Wi-Fi 6 besser als die von Wi-Fi 5 ist.
+In diesem Fall werden die Ergebnisse auch nicht erklärt, und die Umgebung, in der die Tests aufgenommen wurden, ist unbekannt.
+Somit sind die Ergebnisse dieser Arbeit sher konträr zu den aktuell bekannten Messergebnissen.
+Der Standard ist jedoch der Faktor welcher in dieser Arbeit den geringsten Unterschied ausmacht, somit leigend die Messwerte der Standards allgemein recht eng beisammen.
+
+\textbf{Bandbreite} Sampath et al. \cite[p. 279]{network3020014} höhere Bandbreite, geringerer Jitter, Bartolin-Arnau et al. in \cite[p. 15]{telecom6020040} ebenfalls, aber keine 80 MHz.
+40 MHz sehr gut und 160 MHz sehr gut, 80 MHz schlecht
 
 \begin{figure}[ht]
     \centering
