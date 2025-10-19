@@ -1,1 +1,111 @@
-\chapter{Conclusion}\label{sec:conc}
+\chapter{Conclusion and outlook}\label{sec:conc}
+In this chapter, the degree of real-time capability of Wi-Fi is discussed.  
+The focus lies primarily on summarizing the results presented in Chapter~\ref{sec:eval} and correlating them with the research question of this thesis.  
+Subsequently, open research suggestions derived from the findings of this work are presented.  
+Furthermore, an outlook on the future development of Wi-Fi's real-time capability is provided.  
+
+\section{Conclusion}
+The research question formulated in Chapter~\ref{subsec:problem} was:
+\textit{"What options exist to improve the real-time capability of Wi-Fi, which factors influence it and to what degree can real-time capability be achieved?"}  
+To address this research question, it was divided into three sub-questions.  
+
+The first sub-question, \textit{"What options exist to improve the real-time capability?"}, was examined in Chapters~\ref{sec:implementation} and~\ref{sec:eval}.  
+Three main approaches to enhance real-time capability were identified:  
+\begin{enumerate}
+    \item \textbf{Wi-Fi configuration:}  
+    Optimization can be achieved by adjusting the factors standard, frequency and bandwidth.  
+    The best results were obtained using the 6\,GHz band with a bandwidth of 160\,MHz, which corresponds to the Wi-Fi~6 standard.  
+
+    \item \textbf{\ac{QoS}:}  
+    Real-time capability can be significantly improved by implementing \ac{QoS}.  
+    In this work, \ac{DSCP} values and a \ac{Qdisc} implementation were utilized.  
+    The \ac{DSCP} class \ac{EF} combined with a prioritized \ac{HTB} as \ac{Qdisc} achieved the best results.  
+
+    \item \textbf{Environment:}  
+    The test environment also plays a decisive role.  
+    Wi-Fi's real-time capability can be improved by up to a factor of 40 in interference-free or low-interference environments, although such conditions are typically limited in practice.  
+\end{enumerate}
+
+The second sub-question, \textit{"Which factors influence the real-time capability of Wi-Fi?"}, was partly addressed in the discussion of the first.  
+In this study, the influencing factors Wi-Fi standard, frequency, bandwidth, \ac{QoS}, and protocol were identified and analyzed.  
+The degree to which each factor affects capability varies across test runs and is presented in Table~\ref{tab:eval}.  
+In the Table the results presented as radar charts in Figures~\ref{fig:r_mid_max}, \ref{fig:r_labor_max} and~\ref{fig:r_high_max} are illustrated as influences in percentage form.  
+In other words, the magnitude of each influencing factor is represented as a percentage and the sum of all five factors equals 100\%.  
+
+\begin{table}
+\begin{tabular}{||c||c|c|c||}
+\hline
+\textbf{Factors} & \textbf{Low inteference} & \textbf{Medium inteference} & \textbf{High inteference}\\
+\hline\hline
+Standard & 4.3 & 9.7 & 6.0  \\
+\hline
+Frequency & 16.7 & 33.6 & 10.5  \\
+\hline
+Bandwidth & 18.2 & 8.2 & 19.5  \\
+\hline
+\ac{QoS} & 49.1 & 37.8 & 61.4  \\
+\hline
+Protocol & 10.8 & 10.5 & 2.6   \\
+\hline
+\end{tabular}
+\caption{Presentation of the weighting of the influencing factors on real-time capability in the three different test runs}
+\label{tab:eval}
+\end{table}
+
+For the evaluation of the strength of the influencing factors, only the impact on the maximum jitter is considered, since the average jitter is not relevant for hard real-time capability.  
+It becomes evident that \ac{QoS} represents the most significant influencing factor, while the Wi-Fi standard has the least impact.  
+Furthermore, it is notable that the frequency exerts a particularly strong influence under medium interference conditions.  
+
+As a sixth influencing factor, the \textbf{environment} can be taken into account.  
+The test run conducted without interference exhibits, on average, only half the maximum jitter compared to the run with medium interference.  
+In the high-interference scenario, the maximum jitter is, on average, twenty times higher than under low-interference conditions.  
+Although this factor cannot be easily controlled, or in most cases, cannot be influenced at all, it has a stronger impact on real-time capability than any of the other factors discussed and should therefore be also considered as an influencing factor. 
+
+The third sub-question, \textit{"To what degree can real-time capability be achieved in Wi-Fi?"}, is challenging to answer conclusively.  
+As described in Section~\ref{subsec:disc}, a 99.999\% deadline compliance probability can already be achieved for a deadline of 3.7\,ms.  
+However, the corresponding \ac{WCET} exceeds 700\,ms for this test run.  
+Therefore, it can be concluded that Wi-Fi may be suitable for \textbf{soft real-time} and potentially for \textbf{firm real-time} systems, but for \textbf{hard real-time} applications, the deadlines would need to be set significantly higher.  
+It must also be ensured that interference is minimized, as interference can increase the \ac{WCET} by up to a factor of 24, as indicated by the results in Table~\ref{tab:wcet}.  
+
+The following section discusses the future development of Wi-Fi's real-time capability and explores possible methods to further enhance it.  
+
+\section{Outlook}
+Future research building upon this work could extend the experiments conducted here or implement additional methods to further improve real-time capability.  
+To extend the experiments of this work, the presented test runs could be repeated in larger network environments instead of a simple peer-to-peer connection, introducing more interference and higher server load.  
+Additionally, test runs could be carried out in different physical environments to analyze the effect of surrounding objects on real-time capability, while also varying the communication distance between nodes.  
+
+To improve the real-tim capbility, one possible approach is, to use Wi-Fi cards that support multiple driver queues.  
+This would allow the prioritization mechanism, implemented in this work via the \ac{Qdisc}, to be extended.  
+All Wi-Fi cards used in this study support only a single driver queue, which is why this approach could not be investigated.  
+
+Based on this idea, a scheduler could be developed that dynamically distributes real-time and non-real-time packets according to specific application requirements.  
+Such a mechanism could enhance real-time capability for particular use cases without modifying the Wi-Fi standard itself, although it would still constitute a significant modification of the network stack.  
+
+Another possibility to enhance the real-time capability of Wi-Fi is the use of \ac{TDMA} or similar methods to make the \ac{MAC} layer deterministic.  
+Such approaches have already been studied and evaluated, as demonstrated by Robson et~al.~\cite{8725178} and Avdotin et~al.~\cite{Avdotin_2019}.  
+However, these studies neglected the other influencing factors identified in this work and did not consider different environmental conditions.  
+Therefore, a valuable extension of this study would be to repeat all measurements using a deterministic \ac{MAC} and to correlate those results with the findings presented here.  
+This would, however, involve a modification of the Wi-Fi standard, which was intentionally avoided in this work and considered undesirable, as discussed in Chapter~\ref{sec:related}.  
+
+In the future, adapting the standard may no longer be necessary.  
+As Bartolin-Arnau et~al.~\cite[p.~15]{telecom6020040} note, the real-time capability of Wi-Fi tends to increase with each new standard generation.  
+This observation has also been confirmed by the results of this study\footnote{Even though, as described in Chapter~\ref{subsec:disc}, the real-time capability was lowest for the Wi-Fi~6 standard (newes used standard), newer standards inherently introduce improvements in bandwidth and frequency range.
+When these accompanying enhancements are taken into account, the statement that real-time capability increases with newer Wi-Fi standards remains valid.}.  
+With each new Wi-Fi standard, wider channel bandwidths and sometimes even additional frequency bands are introduced.
+Both of these have a positiv impact on the real-time capability.  
+Therefore, it can be expected that Wi-Fi~7 will continue this trend and further improve real-time capability.  
+
+Liu et~al.~\cite[p.~3--5]{liu2025ieee80211bewifi7} describe that Wi-Fi~7, also known as IEEE~802.11be, can achieve better real-time capabilities than Wi-Fi~6 due to the introduction of the \ac{MLO} technology, as explained in Chapter~\ref{sec:basics}.  
+Moreover, Wi-Fi~7 supports channel bandwidths of up to 320\,MHz, which reduces channel utilization and thus further enhances real-time capability.  
+
+At the time of this study, Wi-Fi~7 has already been released but is not yet widely supported by drivers, such as the \texttt{mt7925e}.  
+Consequently, a promising extension of this research would be to replicate the experiments presented in this thesis using Wi-Fi~7, in order to evaluate the individual configuration factors for the new standard.  
+
+Currently, Wi-Fi~8, also referred to as IEEE~802.11bn, is under development.  
+Charfi et~al.~\cite[p.~1]{CHARFI2025111590} describe that Wi-Fi~8 aims to improve the \ac{MLO} mechanism and introduce machine learning techniques for optimized scheduling.  
+These advancements are expected to further enhance the real-time capability of Wi-Fi.  
+
+In summary, it can be concluded that, as of the time of this work, Wi-Fi without modifications to the standard is not suitable for hard real-time applications.  
+Nevertheless, the real-time capability of Wi-Fi continues to improve with each new generation of the standard.  
+It is therefore plausible that in the future, even unmodified Wi-Fi systems may be capable of meeting hard real-time requirements.  
+
