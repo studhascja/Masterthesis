@@ -870,20 +870,10 @@ In contrast, \acp{kretprobe} take between 0.75 and 1.75 $\mu$s.
 Optimized \acp{kprobe} achieve significantly better results on the same hardware.  
 For \acp{kprobe}, execution times range between 50 and 60 ns, while \acp{kretprobe} require between 300 and 400 ns.  
 Babrou presents measurements of \acp{kprobe} on an Apple M1 processor in \cite{k_probe_benchmark}, yielding results between 110 and 350 ns.  
-These results suggest that the \acp{kprobe} were not optimized, because the M1 \ac{CPU} for Apple is about 10 years younger and contains more cores and a higher frequency, as described later.
 
 In this work, a Raspberry Pi 5 is used.  
 The performance of its quad-core ARM Cortex-A76 processor is closer to that of the Intel Xeon E5410 than to the Apple M1.  
 This is due to both the number of cores and the clock frequency.  
-The M1 chip has 8 cores and a clock frequency of 3.2 GHz, as described by Hübner in \cite[p. 3]{m1}.  
-In contrast, the Intel Xeon E5410 has 4 cores and a clock frequency of 2.3 GHz, as can be seen in \cite{xeone5410}.  
-As described in \cite{Pi5} the BCM2712 chip in the Raspberry Pi 5 also has 4 cores and a clock frequency of 2.4 GHz.  
-Even though the Intel and Broadcom chips have similar specifications, this does not necessarily imply equal \ac{kprobe} performance.  
-The Broadcom chip is approximately 15 years newer, while the Intel chip is designed as a desktop CPU.  
-This is reflected in the \ac{TDP}.
-The Intel CPU has a \ac{TDP} of 80 W, and is in this way capable to use about seven times more ressources than the Broadcom chip with a \ac{TDP} of 12 W.  
-Additionally, the Intel CPU is based on the x86\_64 architecture, whereas the Broadcom chip uses an ARM architecture.  
-Nevertheless, the Intel CPU’s performance metrics are much closer to the Raspberry Pi 5 CPU than to the Apple M1.
 It can therefore be assumed that the overhead of an optimized \ac{kprobe} on the Raspberry Pi 5 is approximately 50--100~ns, whereas a \ac{kretprobe} requires around 250--500~ns.
 
 As previously described, the probes consist not only of \acp{kprobe} but also of \acp{uprobe}. 
@@ -1552,27 +1542,27 @@ For the measurements, tracepoints are used, since they provide the advantages de
 \end{figure}
 
 \begin{itemize}
-    \item Interval $t_1$ starts in the application on the server, i.e., at position \circnum{1} in Figure~\ref{fig:application}.  
+    \item \textbf{Interval $t_1$} measures the time the application requires to compute the X-coordinate and to transfer the packet from user space to kernel space.  
+          Therfore it starts in the application on the server, i.e., at position \circnum{1} in Figure~\ref{fig:application}.  
           It ends at the tracepoint \texttt{net\_dev\_queue}, which marks the entry into the \ac{Qdisc} and thus the TX-API.  
           The TX-API is described in detail in Section~\ref{subsec:linux_stack}.  
-          This interval therefore measures the time the application requires to compute the X-coordinate and to transfer the packet from user space to kernel space.  
           As shown in Figure~\ref{fig:tx}, the packet already traverses the transport and network layers and ends at the entry into the link layer.  
           This point is of particular interest, since packets can accumulate in the \ac{Qdisc} and an unfavorable scheduler may delay real-time packets.  
           Therefore, this point is also relevant to enable the measurement of the \ac{Qdisc}.  
           Moreover, it includes a context switch which, as described in Section~\ref{subsec:monitoring}, introduces a non-negligible latency.  
 
-    \item Interval $t_2$ begins at the end of $t_1$, at the tracepoint \texttt{net\_dev\_queue} and ends at the tracepoint \texttt{net\_dev\_xmit}, which marks the exit from the \ac{Qdisc} and thus the entry into the TX ring buffer of the driver.  
+    \item \textbf{Interval $t_2$} measures the time the packet spends inside the \ac{Qdisc}.  
+          This is particularly relevant to detect potential congestion in the \ac{Qdisc}. 
+          It begins at the end of $t_1$, at the tracepoint \texttt{net\_dev\_queue} and ends at the tracepoint \texttt{net\_dev\_xmit}, which marks the exit from the \ac{Qdisc} and thus the entry into the TX ring buffer of the driver.  
           This tracepoint represents the last measurement point on the server side before a network packet leaves the server.  
-          Hence, interval $t_2$ measures the time the packet spends inside the \ac{Qdisc}.  
-          This is particularly relevant to detect potential congestion in the \ac{Qdisc}.  
           Furthermore, it allows the offset introduced by specific queuing strategies to be determined.  
           As reported by Corbet in \cite{qdisc}, the locking mechanisms of the \ac{Qdisc} alone introduce a delay of 48 ns.  
           He further states that the average delay caused by the \ac{Qdisc} is in the range of 58--68 ns.  
 
-    \item Interval $t_3$ starts at the end of $t_2$, i.e., at the tracepoint \texttt{net\_dev\_xmit}, and ends at the tracepoint \texttt{consume\_skb} on the client.  
-          This interval therefore includes the time required for a packet to be transferred from the TX ring buffer of the server via \ac{DMA} to the server's \ac{NIC}, to be processed there, transmitted over the medium, and received by the client.  
+    \item \textbf{Interval $t_3$} includes the time required for a packet to be transferred from the TX ring buffer of the server via \ac{DMA} to the server's \ac{NIC}, to be processed there, transmitted over the medium, and received by the client.
           On the client side, the packet must be received by the \ac{NIC}, transferred again via \ac{DMA} into the RX ring buffer, and then passed into kernel space.  
-          As soon as a new packet is available in the RX ring buffer, an interrupt is triggered, as illustrated in Figure~\ref{fig:tx}.  
+          As soon as a new packet is available in the RX ring buffer, an interrupt is triggered, as illustrated in Figure~\ref{fig:tx}. 
+          The interval starts at the end of $t_2$, i.e., at the tracepoint \texttt{net\_dev\_xmit}, and ends at the tracepoint \texttt{consume\_skb} on the client.    
           This interrupt activates the client's poll queue via the soft IRQ \texttt{net\_rc\_action}.  
           A device in this queue triggers the tracepoint \texttt{consume\_skb} to read the packet from the buffer. 
           This is the first tracepoint which is triggered when a network packet arrives at a device. 
@@ -1581,18 +1571,18 @@ For the measurements, tracepoints are used, since they provide the advantages de
           This interval involves multiple layer transitions of the \ac{OSI-model}, as well as critical points such as the RX and TX ring buffers of the drivers and the processing in both \acp{NIC}.  
           However, no further tracepoints exist in these areas to allow finer-grained monitoring.  
 
-    \item Interval $t_4$ starts at the client's \texttt{consume\_skb} tracepoint and ends when the packet reaches the application in the client.  
-          Thus, it covers the time from the client's link layer, through the network and transport layers, into the application.  
+    \item \textbf{Interval $t_4$} covers the time from the client's link layer, through the network and transport layers, into the application.
+          Thus it starts at the client's \texttt{consume\_skb} tracepoint and ends when the packet reaches the application in the client.    
           In this phase, a context switch from kernel space to user space and a system call are required.  
           Both the context switch and the system call may vary in duration depending on system load.  
 
     \item With this interval, half of the application flow is completed, and the intervals repeat, but this time from client to server.  
-          Interval $t_5$ corresponds to interval $t_1$ and begins in the client application as soon as computation starts.  
+          \textbf{Interval $t_5$} corresponds to interval $t_1$ and begins in the client application as soon as computation starts.  
           This interval ends at the client's tracepoint \texttt{net\_dev\_queue}.  
-          Interval $t_6$ also takes place entirely on the client side, ranging from \texttt{net\_dev\_queue} to \texttt{net\_dev\_xmit}, thus measuring the client's \ac{Qdisc} delay.  
-          Interval $t_7$ starts at \texttt{net\_dev\_xmit} on the client and ends at \texttt{consume\_skb} on the server.  
+          \textbf{Interval $t_6$} also takes place entirely on the client side, ranging from \texttt{net\_dev\_queue} to \texttt{net\_dev\_xmit}, thus measuring the client's \ac{Qdisc} delay.  
+          \textbf{Interval $t_7$} starts at \texttt{net\_dev\_xmit} on the client and ends at \texttt{consume\_skb} on the server.  
           Hence, it measures the time required to transfer the packet from the client's link layer to the server's link layer.  
-          Interval $t_8$ closes the cycle by measuring the time from \texttt{consume\_skb} to the application on the server, thereby reflecting the time from the link layer to the application.  
+          \textbf{Interval $t_8$} closes the cycle by measuring the time from \texttt{consume\_skb} to the application on the server, thereby reflecting the time from the link layer to the application.  
           From this point, the measurement cycle restarts with interval $t_1$.  
 \end{itemize}
 
@@ -1604,6 +1594,9 @@ It is furthermore necessary to synchronize time measurement between kernel space
 This is required for the intervals $t_1$, $t_4$, $t_5$, and $t_8$, since in these intervals measurements are taken on both the client and the server, from the application to the tracepoint \texttt{net\_dev\_queue} and from the tracepoint \texttt{consume\_skb} back to the application.  
 Thus, for all four intervals, a time measurement in the kernel at the tracepoint and a time measurement in user space within the application are required.  
 
+How this synchronization is implemented is described in the following.
+
+\subsection{Testenvorioinment Synchronizations} \label{subsec:impl_uprobe}
 The synchronization between user space and kernel space is addressed first, since it is relevant for the subsequent synchronization between client and server.  
 In \ac{BPF}, that is, in the code of the application executed within the kernel, time can only be measured using the function \texttt{bpf\_ktime\_get\_ns()}.  
 This function returns the time in nanoseconds since system start, as described in \cite{bpf_ktime_get_ns}.  
@@ -1719,7 +1712,7 @@ In addition, the experiments were carried out once with real-time priority enabl
  Avg Jitter & 380 ns & 350 ns & 320 ns & 280 ns \\ 
  \hline
 \end{tabular}
-\caption{Comparison of the timesynchronization between User- and Kernelspace with different timer and priority}
+\caption{Comparison of the time synchronization between User- and Kernelspace with different timer and priority}
 \label{tab:timer_comparison}
 \end{table}
 
@@ -2048,8 +2041,8 @@ In both test suites, the next step is the selection of the test run.
 For this purpose, the status file is first checked, which contains a digit specifying which test run should be executed next.  
 Afterwards, the configuration file is opened, which contains the different configurations.  
 Each configuration corresponds to one line in this file, specifying the Wi-Fi standard, frequency, bandwidth, \ac{QoS} status, protocol and \ac{AP} configuration name.  
-For instance, the line \texttt{4 2.4 20 0 udp wifi4} specifies that the Wi-Fi connection should use standard 4, a frequency of 2.4 GHz, and a bandwidth of 20 MHz.  
-Moreover, no \ac{QoS} parameters should be applied, the application should use \ac{UDP}, and the corresponding hostapd configuration for the Wi-Fi parameters is included in the config file \texttt{wifi4}.  
+For instance, the line \texttt{4 2.4 20 0 udp wifi4} specifies that the Wi-Fi connection should use standard 4, a frequency of 2.4 GHz and a bandwidth of 20 MHz.  
+Moreover, no \ac{QoS} parameters should be applied, the application should use \ac{UDP} and the corresponding hostapd configuration for the Wi-Fi parameters is included in the config file \texttt{wifi4}.  
 The last parameter is not relevant for the client test suite since it has not to start an \ac{AP} with hostapd.  
 
 The next step on the server side is to start the \ac{AP} with the respective hostapd configuration.  
@@ -2064,7 +2057,7 @@ On the server side, only the application priority is checked to ensure that it i
 This is achieved by executing the shell command \texttt{ps -eLo comm,pri | grep server/iperf} in Python and verifying that the server process runs at priority 139, whereas the iperf process does not.  
 As described in~\cite{ps}, this command lists all processes including threads and outputs only the name and the priority.  
 On the client side, the priorities are checked in the same way.  
-Additionally, it is verified that Wi-Fi version, bandwidth, and frequency match the values specified in the configuration.  
+Additionally, it is verified that Wi-Fi version, bandwidth and frequency match the values specified in the configuration.  
 In other words, the client test suite checks that the server's \ac{AP} configuration is correct and actually usable\footnote{The fact that an \ac{AP} provides certain features, such as Wi-Fi standard 6, does not automatically imply that these features are active in the client connection.  
 For example, if the client connects to the \ac{AP} with an incompatible \ac{WPA} configuration, the Wi-Fi standard may be downgraded.  
 Therefore, it is necessary to perform the verification on the client side to guarantee that all configurations are applied correctly.}.  
