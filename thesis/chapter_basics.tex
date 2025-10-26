@@ -209,7 +209,7 @@ For this reason, the term Wi-Fi standards is often used synonymously with IEEE 8
 
 In the following, the fundamental aspects of the Wi-Fi standard are discussed before the characteristics of the individual versions are explained in detail.  
 
-\subsection{Basical Mechanisms of Wi-Fi}
+\subsection{Wi-Fi Frequency Bands}
 Before discussing the specific standards and their characteristics, the frequency properties of Wi-Fi must first be explained.
 These are illustrated in Figure \ref{fig:channel}.
 It can be observed that Wi-Fi operates on the three frequency bands 2.4 GHz, 5 GHz and 6 GHz.
@@ -257,10 +257,10 @@ Thus, in the European Union, 500 MHz—corresponding to the frequencies 5.925-6.
 In contrast, in the United States, channels up to 7.125 GHz can be used.
 Unlike the 5 GHz band, no \ac{DFS} channels exist in the 6 GHz band.
 
-Having now described the fundamentals of Wi-Fi frequency bands, the following section addresses the major innovations introduced in standards 4 through 7.
-
 Before addressing the specific characteristics of the Wi-Fi standards fundamental technologies must first be introduced.
 These technologies will be described at the example of Wi-Fi 4.
+
+\subsection{OFDM Modulation}
 As described in \cite[p. 20]{ofdm}, one of the essential components of IEEE 802.11 is the modulation and multiplexing scheme \ac{OFDM}.
 This principle is illustrated in Figure \ref{fig:ofdm}.
 
@@ -349,6 +349,9 @@ For Wi-Fi 4, these techniques result in a data rate of 72 Mbit/s, as shown in Eq
 \frac{48 Datasubacarries \times 6 Bits}{4 \mu s} = 72 Mbit/s
 \end{equation}
 
+A further fundamental technology of the newer Wi-Fi Standards is \ac{MIMO}, which is explained in the following section.
+
+\subsection{MIMO}
 New to Wi-Fi 4, which was released in 2009, is primarily the introduction of \ac{MIMO} technology.
 In addition to this technology, Wi-Fi 4 also allowed the use of the 5 GHz frequency band for the first time.
 Moreover, channel bandwidths of up to 40 MHz were supported.
@@ -382,7 +385,7 @@ These include \ac{MIMO}, \ac{OFDM} optimizations\footnote{For 40 MHz channels, 5
 
 The following section discusses the innovations introduced in the different Wi-Fi standards 5 - 7.
 
-\subsection{Features of the Wi-Fi Standards}
+\subsection{Standards}
 In Wi-Fi 5, also known as IEEE 802.11ac, only the 5 GHz band is used, in contrast to Wi-Fi 4, as described in \cite[p. 808]{IEEE80211ac2020}.
 Furthermore, the maximum data rate is increased through 8x8 \ac{MIMO}, 160 MHz channels and \ac{QAM}-256 modulation, i.e., 8 bits per symbol.
 For 160 MHz channels in Wi-Fi 5, 234 data subcarriers exist.
@@ -534,12 +537,12 @@ As described in \cite[p. 2]{8002923}, this allows classification into 22 differe
 Since this chapter has explained the fundamentals of \ac{QoS}, all network-relevant foundations have now been covered.  
 The only remaining background required for this work concerns real-time aspects, which will be discussed in the following chapter.  
 
-\section{Real Time} \label{sec:real_time}
+\section{Real Time Systems} \label{sec:real_time}
 In this chapter, the fundamentals of real-time systems are explained.  
 First, Chapter \ref{subsec:rts} introduces the foundations of real-time capability and provides definitions of key terms.  
 Afterwards, Chapter \ref{subsec:real_time_kernel} discusses how real-time capability can be ensured or improved in Linux.  
 
-\subsection{Real Time Systems} \label{subsec:rts}
+\subsection{Real Time Basics} \label{subsec:rts}
 As Mächtel and Quade describe in \cite[Chap. 1]{Quade_Maechtel_2012}, the result of a real-time system depends not only on correctness but also on a temporal component.  
 A real-time task has a time window in which the result must be delivered.  
 Otherwise, the result loses its value.  
