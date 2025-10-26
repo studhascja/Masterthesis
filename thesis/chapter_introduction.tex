@@ -1,14 +1,6 @@
 \chapter{Introduction}
 ``The digital revolution is far more significant than the invention of writing or even of printing.'' stated Douglas Engelbart once \cite{forbes}: 
 He thereby classified the invention of the Internet, similarly to Floridi \cite{Floridi12052009}, as the fourth scientific revolution.  
-Accordingly, the invention of the Internet and the idea of the ``Galactic Network,'' described by Licklider in 1963, are placed on the same level as the Copernican revolution of 1543 \cite{Kuhn_1959}, in which the Earth was no longer regarded as the center of the universe.  
-It is also equated with Darwin's revolution of 1859 \cite{bhl122307}, in which he explained evolution by natural selection rather than divine creation.  
-Furthermore, it is compared with Einstein's theory of relativity, which he introduced in 1905 \cite{https://doi.org/10.1002/andp.19053221004}.  
-
-In 1969, the ARPANET was launched \cite[p. 77]{arpanet}, representing the predecessor of the modern Internet and functioning as a wide-area packet-switching network.  
-The first intended transmission was the word \textit{LOGIN}, but the connection failed after the first two letters.  
-Thus, the very first transmitted packet in history was simply \textit{LO}.  
-The Internet in its modern form, namely the World Wide Web, was developed in 1989 by Berners-Lee \cite{www}.  
 
 A significant milestone in the dissemination of the Internet was the development of WaveLAN in 1992 by NCR \cite{6771439}.  
 This technology served as the predecessor of \ac{WLAN}, which was standardized in 1997 through IEEE 802.11 \cite{IEEE}.  
@@ -41,6 +33,9 @@ Nevertheless, there are approaches that fulfill these criteria.
 For example, \cite{fi16090345} presents 5G and Wi-Fi 7 and discusses their suitability for applications in Industry 4.0.  
 In this context, the requirement for real-time capability is also taken into account.  
 
+The following section outlines the methodology used in this work and delimits its scope.  
+
+\section{Objective} \label{subsec:objective}
 The present work addresses the problem that different standards are used for various application areas.  
 Since \ac{WLAN} is one of the most widely deployed wireless protocols in the world and as previously mentioned, is already established in Industry 4.0, this standard is chosen for this study.  
 Moreover, access to \ac{WLAN} in industrial environments is easy and cost-effective, as most companies already use \ac{WLAN}.  
@@ -48,16 +43,14 @@ As shown in \cite{statista-wifi-indsutry}, in 2023 it accounted for nearly half 
 
 One requirement that Wi-Fi does not inherently possess, but which is partly necessary in Industry 4.0, is hard real-time capability.  
 
-The present work therefore addresses the problem of whether \ac{WLAN} technology is suitable for real-time applications.  
+The present work therefore addresses the problem in which degree \ac{WLAN} technology is suitable for real-time applications.  
 In particular, it investigates to what extent Wi-Fi meets the necessary requirements for reliable communication in industrial environments.  
 
 Thus, this work focuses on the research question:  
 What options exist to improve the real-time performance of Wi-Fi, which factors influence it and to what degree can real-time capability be achieved?
 
-The following section outlines the methodology used in this work and delimits its scope.  
-
-\section{Objective} \label{subsec:objective}
-In this work, a test system is developed that can be used to verify whether Wi-Fi meets specific real-time requirements.  
+\section{methodology} \label{subsec:meth}
+In this work, a test system is developed that can be used to verify that Wi-Fi guarantees that messages can be delivered in x ms in y\% of the cases.  
 With this system, it is also evaluated which effects certain adjustments and configurations have on the real-time capability of Wi-Fi.  
 Furthermore, this work evaluates the degree of real-time capability that can be achieved with Wi-Fi.  
 In other words, it examines which temporal requirements can be fulfilled in a real-time manner using Wi-Fi.  
