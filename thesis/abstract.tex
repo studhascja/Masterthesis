@@ -1,9 +1,24 @@
 \chapter*{Abstract}
-\thispagestyle{empty}
-text
+In this work, the suitability of Wi-Fi for real-time applications, particularly for systems with hard real-time requirements, is investigated.  
+The study considers a time threshold \( x \, \text{ms} \) within which messages can be delivered with a probability of 99.999\%.  
+In addition, the WCET of the Wi-Fi connection is examined in order to assess its capability to meet hard real-time constraints.  
+Furthermore, the Wi-Fi connection is not intended solely for real-time communication but is also used for the transmission of non-real-time data.
+
+The factors Wi-Fi standard, frequency, bandwidth, QoS and communication protocol are considered in this work to improve the real-time performance of Wi-Fi.  
+All tests are conducted on a Raspberry Pi 5 equipped with a MediaTek MT7925B22M Wi-Fi card.  
+Wi-Fi standards from Wi-Fi 4 to Wi-Fi 6E are evaluated using a full factorial design.  
+The experiments are carried out in three different environments with varying interference levels and an additional long-term test is performed.  
+In total, more than 150 different test configurations are examined across the three environments.
+
+The results show that the QoS configuration has the greatest influence on the real-time performance of Wi-Fi.  
+The best performance is achieved using DSCP EF in combination with HTB as the queuing discipline.  
+It is also observed that configurations using the Wi-Fi 6 standard provide the best real-time capabilities.  
+This is mainly attributed to the utilization of the 6 GHz frequency band and the 160 MHz channel bandwidth.  
+Finally, it is shown that for a deadline of 3.7 ms, messages can be delivered on time with a probability of 99.999\%.  
+However, the WCET of the connection in this case exceeds 700 ms, which makes Wi-Fi only marginally suitable for hard real-time applications.
 
 \bigskip
 
 \noindent
-Schlagworte: 
+Keywords: IEEE 802.11n, IEEE 802.11ac, IEEE 802.11ax, Real-Time Systems, Quality of Service, Berkley Packet Filter 
 
