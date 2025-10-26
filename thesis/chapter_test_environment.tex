@@ -17,7 +17,7 @@ The discussion begins with a description of the system architecture, followed by
 These are then used to define the specific requirements applicable to the test system.
 
 The test environment is illustrated in Figure \ref{fig:pi_wifi_general}. 
-It consists of two Raspberry Pi 5 devices, whose exact composition is described in detail in Chapter \ref{sec:used_hardware}. 
+It consists of two Raspberry Pi 5 devices, as described in \ref{sec:used_hardware}. 
 One Raspberry Pi acts as the server, while the other functions as the client. 
 Both devices run the same \ac{OS}.
 
@@ -32,9 +32,10 @@ There are two communication links between the server and the client.
 One link which transfers \ac{rt-data} and another one for transferring \ac{non-rt-data}.
 These two links are illustrated in Figure \ref{fig:pi_wifi_general} in blue and red.
 These connections are handled by separate processes but operate within the same network. 
-The server provides an access point to which the client connects, thereby establishing a peer-to-peer connection.
+The server provides an access point to which the client connects.
+So an exclusive Wi-Fi network is used in this work.
 
-In summary, the goal of the test environment is to transmit both \ac{rt-data} and \ac{non-rt-data} data over the same wireless network interface. 
+In summary, the goal of the test environment is to transmit both \ac{rt-data} and bulk-data\footnote{The bulk-data does not have any real-time constraints.} over the same wireless network interface. 
 While the bulk data throughput should be maximized, the primary focus is to ensure that no \ac{rt} violations occur on the \ac{rt} connection.
 
 Since the test system is intended to transmit \ac{rt-data} among normal data, it must fulfill the requirements of a \ac{rt-system}. 
@@ -43,7 +44,8 @@ Subsequently, additional requirements that go beyond standard \ac{rt} criteria a
 
 \subsection{Requirements Real Time}
 To enable a system to achieve \ac{rt} capability, numerous factors must be considered. 
-Since this work aims to evaluate the \ac{rt} capabilities of Wi-Fi, an interface that is not inherently \ac{rt} capable—and given that hardware-based requirements would have little impact in this context while significantly broadening the scope of this thesis, only software-related requirements will be addressed.
+In this work, only software-related requirements are considered.
+Since Wi-Fi is an interface that is not inherently real-time capable, hardware-related requirements would have minimal impact in this context while significantly broadening the scope of the thesis.
 
 As previously mentioned in Chapter \ref{sec:real_time}, the primary objective of a \ac{rt} system is predictability. 
 According to Buttazzo \cite[p. 10]{Buttazzo_2024}, predictability can only be achieved if the system ensures timeliness, meaning that the value of a process depends not only on its correct output but also on its timely execution—specifically, meeting deadlines.
@@ -134,7 +136,8 @@ The following section compares the advantages, disadvantages and performance cha
 Furthermore, their suitability for the purpose of this work is evaluated.
 
 \subsection{Selection of Operating System}
-One \ac{RTOS} that imposes almost no restrictions in terms of performance and compatibility compared to a general-purpose \ac{OS} is RT-Linux. 
+The \ac{RTOS} that is used in this work is RT-Linux.
+It is one of the \acp{RTOS} that imposes almost no restrictions in terms of performance and compatibility compared to a general-purpose \ac{OS}.
 As described by Sampath et al. in \cite{Sampath_2007}, RT-Linux is a Linux-based system enhanced through the PREEMPT\_RT patch, which equips it with \ac{rt} capabilities. 
 The authors examine the use of RT-Linux on an industrial controller with strict \ac{rt} requirements and additional \ac{rt} Ethernet demands. 
 Their study demonstrates the suitability of RT-Linux for such applications, reporting a maximum jitter of 380 microseconds over a 24-hour endurance test.
@@ -207,7 +210,7 @@ It is open-source and comes with excellent documentation, making it a suitable c
 The technical details of how the Yocto Project functions were already covered in Chapter \ref{subsec:yocto}. 
 Since all technologies used in the test system must be known for proper \ac{OS} configuration, the following chapter will provide a more detailed overview of the test setup.
 
-\subsection{Structure of Test Environment}
+\section{Structure of Test Environment}
 Figure \ref{fig:technologies} illustrates the test environment along with all relevant components and technologies. 
 As previously described, it consists of a server and a client. 
 First, the structure of the test system is explained in more detail, followed by an analysis of how it satisfies the requirements defined in Section \ref{subsec:requirements}.
@@ -216,8 +219,11 @@ The test environment in Figure \ref{fig:technologies} is divided into several el
 The \ac{OS} is excluded from the discussion and the focus is placed solely on the components of the test system.
 
 The server part of the test system is controlled via the \textbf{Server Test Suite}, which is responsible for executing test runs and automating the overall testing process. 
-For each combination of access point configuration and QoS level, the test suite performs a complete test run, so with the Test Suits a factorial design can be assured.
-Therefore, the total number of test runs is defined as $N_T = N_{AP} \times N_{QoS}$, where $N_T$ is the total number of test runs, $N_{AP}$ is the number of different access point configurations and $N_{QoS}$ is the number of different considered QoS levels. 
+For the evaluation of real-time performance, the factors \textbf{Wi-Fi standard, frequency, bandwidth, \ac{QoS} and protocol} are considered in Chapter~\ref{sec:eval}.
+Therefore, these factors must be configurable within the test suite.
+The Wi-Fi standard, frequency and bandwidth are set through the access point configuration, whereas \ac{QoS} and the protocol type are configured within the test suite itself.
+Thus it follows that for each combination of access point configuration, QoS level and protocol type, the test suite performs a complete test run, so with the Test Suits a factorial design can be assured.
+Therefore, the total number of test runs is defined as $N_T = N_{AP} \times N_{QoS} \times N_{Prot}$, where $N_T$ is the total number of test runs, $N_{AP}$ is the number of different access point configurations, $N_{QoS}$ is the number of different considered QoS levels and $N_{Prot}$ is the number of different protocols used in this work. 
 The Server Test Suite is essential for the automated execution of these test runs, thereby fulfilling the previously specified requirement for test automation.
 
 \begin{figure}[ht]
@@ -259,7 +265,7 @@ The reason for this design choice is explained in more detail in Section \ref{su
 
 After describing the architecture and functionality of the test system and how it satisfies the specified requirements, the following section discusses the selection of technologies and their configuration within the Yocto environment.
 
-\subsection{Used Technologies} \label{subsec:used_technologies}
+\section{Used Technologies} \label{subsec:used_technologies}
 To create an access point on the server, the software \texttt{hostapd} is used, as previously described.  
 As Anderson states in \cite{hostapd}, this is one of the most widely used tools to create an AP that can be configured in detail.  
 With this software, the Wi-Fi standard, frequency, bandwidth and encryption can be configured, as shown in \cite{hostapd2}.  
@@ -289,24 +295,29 @@ As described by DLR in \cite[p. 86]{dlr212971}, most embedded real-time applicat
 Nevertheless, Rust was chosen for the RT application in this work.  
 This decision is based on the fact that DLR also states in \cite{dlr212971} that Rust is more suitable for RT applications due to its memory and thread safety.  
 However, the language is still too young to be fully established for hard real-time systems.  
+
 Rust does not use a garbage collector, as explained in \cite[p. 2]{10.5555/3563572.3563603}.  
 Nevertheless, it prevents issues such as use-after-free, null pointer dereferencing and data races.  
 This is achieved through Rust's ownership system.  
 Ownership in Rust means that each value has exactly one owner, which becomes invalid once the owner goes out of scope.  
 An owner can be a variable, function, or data structure that holds the exclusive right to access or modify a value.  
 This mechanism also prevents undefined behavior.  
+
 Furthermore, as described in \cite[p. 1]{10.5555/3563572.3563603}, Rust offers better development capabilities due to \texttt{rustc} and zero-cost abstractions.  
 \texttt{rustc} allows better debugging and significantly eases troubleshooting.  
 Rust provides better error messages than C and benefits from zero-cost abstractions.  
 Additionally, as shown in \cite[p. 1]{10321761}, Rust performs similarly to C.  
+
 Rust is also becoming increasingly popular, as noted in \cite[p. 2]{dlr212971}.  
 This is also evident in its adoption into the Linux kernel due to its strong memory safety.  
 As described by Panter in \cite{10.1145/3674805.3690756}, this integration has already shown promising results.  
 Rust has also been integrated into Android for memory safety reasons.  
 As described in \cite[p. 1]{seidel2024bringingrustsafetycriticalsystems}, the share of safety vulnerabilities was reduced from 76\% to 35\%.  
+
 Moreover, increasing progress is being made in the field of real-time applications with Rust.  
 As shown in \cite{Rust_Foundation}, the Safety-Critical Rust Consortium was founded in 2024 with the goal of using Rust in DO-178C-certified products.  
 As described in \cite{do178} and \cite[p. 4]{seidel2024bringingrustsafetycriticalsystems}, this is one of the strictest certifications for airborne systems.  
+
 In summary, Rust is well-suited for real-time applications and offers better development capabilities than C and C++.  
 It is also becoming increasingly popular and has almost no performance disadvantages compared to C.  
 Accordingly, the RT application in this work is written in Rust.  
@@ -324,7 +335,7 @@ BPF supports more event sources such as tracepoints, kprobes, uprobes and perfor
 In summary, the programming languages Python, Rust and BPF, as well as the tools \texttt{hostapd}, \texttt{iperf3} and \texttt{wpa\_supplicant}, must be provided by the operating system for the test system.  
 The following section describes how this can be realized using the Yocto Project.
 
-\subsection{Implementation}
+\section{Implementation}
 The background and functionality of the Yocto Project have already been described in Section \ref{subsec:yocto}.  
 Therefore, this section does not elaborate on them further and proceeds directly with the specific implementation within the context of this thesis.  
 
