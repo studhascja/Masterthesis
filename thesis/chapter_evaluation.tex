@@ -105,16 +105,26 @@ However, it is noticeable that larger packet sizes perform better than smaller o
 
 Based on the results of the preliminary experiments, this study employs a data rate of 30~Mbit/s with a packet size of 4096~Bytes for the bulk data.  
 
-The test cases are defined as combinations of Wi-Fi standard, frequency, bandwidth, \ac{QoS}, and transport protocol.  
-For Wi-Fi~4, three combinations exist: the 2.4 GHz band and in the 5 GHz band both 20 MHz and 40 MHz channel widths.  
+The test cases are defined as combinations of the influencing factors shown in Figure \ref{fig:factors}.
+They can be divided in Wi-Fi standard, frequency, bandwidth, \ac{QoS} and transport protocol.  
+These factors are chosen as influencing parameters, as they encompass all adjustable variables within a Wi-Fi system that can affect its real-time performance.
+
+As shown in FIgure \ref{fig:factors}, or Wi-Fi~4, three combinations exist: the 2.4 GHz band and in the 5 GHz band both 20 MHz and 40 MHz channel widths.  
 For Wi-Fi~5, the 5 GHz band with 20 MHz, 40 MHz and 80 MHz channel widths yields three combinations.  
 Wi-Fi~6 supports all three frequency bands.  
 In the 2.4 GHz and 5 GHz bands, four combinations arise, while in the 6 GHz band, the available channel widths of 20, 40, 80 and 160 MHz yield four more combinations.  
 In total, Wi-Fi~6 therefore contributes eight combinations.  
-Together, across all standards, 14 unique combinations of standards, frequency bands, and bandwidths are considered.  
+Together, across all standards, 14 unique combinations of standards, frequency bands and bandwidths are considered.  
 
 Each of these 14 combinations is tested with four differnet levels of \ac{QoS} and with both \ac{TCP} and \ac{UDP}.  
 This results in a total of $8 \times 14 = 112$ test cases.  
+
+\begin{figure}[ht]
+    \centering
+    \includegraphics[width=0.7\textwidth]{figures/Factors.drawio.pdf}
+    \caption{Presentation of the influencing factors of Wi-Fi.}
+    \label{fig:factors}
+\end{figure}
 
 In the following, the test runs in an environment with low interference are discussed first.  
 
@@ -412,7 +422,7 @@ In Figure~\ref{fig:percent}, the Y-axis shows the number of repetitions that fal
 The figure contains four curves, each representing the best-performing test configuration for a given test environment, as well as the 24-hour test.  
 Avdotin et~al.\ state in~\cite[p.~1]{Avdotin_2019} that a reliability level of 99.999\% is a common requirement for many real-time systems.
 Therefore, this value is also adopted for the subsequent analysis.  
-Furthermore, Table~\ref{tab:wcet} references the \ac{WCET}, and both values are compared to each other.  
+Furthermore, Table~\ref{tab:wcet} references the \ac{WCET} and both values are compared to each other.  
 
 It can be observed in Figure~\ref{fig:percent} that the test runs conducted in the laboratory (blue) and under medium interference (yellow) perform best, achieving the 99.999\% threshold at 0.5\,ms and 2\,ms, respectively.  
 As expected, the laboratory tests yield superior results.  
