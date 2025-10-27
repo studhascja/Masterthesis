@@ -49,16 +49,24 @@ In particular, it investigates to what extent Wi-Fi meets the necessary requirem
 Thus, this work focuses on the research question:  
 What options exist to improve the real-time performance of Wi-Fi, which factors influence it and to what degree can real-time capability be achieved?
 
-\section{methodology} \label{subsec:meth}
+\section{Methodology} \label{subsec:meth}
 In this work, a test system is developed that can be used to verify that Wi-Fi guarantees that messages can be delivered in x ms in y\% of the cases.  
 With this system, it is also evaluated which effects certain adjustments and configurations have on the real-time capability of Wi-Fi.  
 Furthermore, this work evaluates the degree of real-time capability that can be achieved with Wi-Fi.  
 In other words, it examines which temporal requirements can be fulfilled in a real-time manner using Wi-Fi.  
 
 To investigate this, the \ac{RTT} between server and client is measured.  
-In addition to real-time data, regular data must also be transmitted.  
+This method is illustrated in Figure \ref{fig:method}.
+In addition to real-time data, regular data must also be transmitted, as shown in Figure \ref{fig:method}.  
 Thus, this work analyzes not only the real-time capability of Wi-Fi but also its ability to handle concurrent best-effort traffic.  
 The target in this work is at \ac{RTT} of 3 ms, because as is carried out in more detail in Chapter \ref{subsec:real_time_kernel}, this time is an important time in industry 4.0.
+
+\begin{figure}[ht]
+    \centering
+    \includegraphics[width=0.8\linewidth]{figures/introduction.drawio.pdf}
+    \caption{Illustration of the evaluation method, used in this work.}
+    \label{fig:method}
+\end{figure}
 
 This work considers only a single connection between server and client and therefore does not analyze complete \ac{WLAN} networks.  
 Moreover, no modifications to the protocol itself are performed.  
