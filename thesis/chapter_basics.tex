@@ -379,6 +379,7 @@ The streams are transmitted in different spatial directions and are decoded agai
 Thus, the throughput increases proportionally with the number of streams.
 Specifically, for Wi-Fi 4, a 2x2 \ac{MIMO} configuration achieves a maximum data rate of 144 Mbit/s, while a 4x4 configuration achieves 388 Mbit/s.
 For 40 MHz channels, the maximum data rate reaches 600 Mbit/s in Wi-Fi 4.
+In Table \ref{tab:standards} all mentioned key characteristics for Wi-Fi 4 and further stadards are summarized.
 
 In Linux, the HT mode (High Throughput) enables Wi-Fi 4-specific features.
 These include \ac{MIMO}, \ac{OFDM} optimizations\footnote{For 40 MHz channels, 56 instead of 52 data subcarriers are used.}, and shorter guard intervals, allowing \ac{OFDM} symbols to be transmitted at a higher frequency.
@@ -449,8 +450,27 @@ This is shown in Figure \ref{fig:mlo}, where \ac{MLO} is shown.
 There also can be seen that in each \ac{MLO} Link \ac{OFDMA} is used.
 This provides both redundancy and load balancing.  
 In addition, the standard promises lower latency, though Liu et al. report in \cite[p. 5]{liu2025ieee80211bewifi7} that this improvement is only partially confirmed by measurements.  
+To summarize this chapter in Table \ref{tab:standards}, all mentioned key characteristics of the four considered Wi-Fi standards are summarized.
 
-In this chapter, the key characteristics of the individual Wi-Fi standards have been presented.  
+\begin{table}
+\begin{tabular}{||p{1.5cm}||p{2cm}|p{2cm}|p{2cm}|p{2.5cm}|p{2.7cm}||}
+\hline
+$Wi-Fi$ $Version$ & $Modulation$ & $Frequencies$ & $\ac{MIMO}$ & $Bandwidth_{max}$ & $Throughput_{max}$\\
+\hline\hline
+4 & \ac{OFDM} (64\nobreakdash-\ac{QAM}) & 2.4 GHz, 5 GHz & 4x4 & 40 MHz & 600 Mbit/s \\
+\hline
+5 & \ac{OFDM} (256\nobreakdash-\ac{QAM}) & 5 GHz & 8x8 & 160 MHz & 6.9 Gbit/s \\
+\hline
+6 & \ac{OFDMA} (1024\nobreakdash-\ac{QAM}) & 2.4 GHz, 5 GHz, 6 GHz & 8x8 & 160 MHz & 9.6 Gbit/s \\
+\hline
+7 & \ac{OFDMA}/ \ac{MLO} (4096\nobreakdash-\ac{QAM}) & 2.4 GHz, 5 GHz, 6 GHz & 16x16 & 320 MHz & 40 Gbit/s \\
+\hline
+\end{tabular}
+\caption{Presentation of key characteristics of Wi-Fi standards 4 to 7.}
+\label{tab:standards}
+\end{table}
+
+
 The following section will address the concept of the medium access mechanism and the different types that exist.  
 
 \subsection{Medium Access Control} \label{subsec:mac}
