@@ -2,13 +2,12 @@
 In this chapter, the necessary fundamentals are established in order to provide the basis for the following chapters.  
 First, Chapter \ref{sec:used_hardware} describes and justifies the hardware used in this work.  
 Subsequently, Chapters \ref{subsec:yocto} and \ref{subsec:linux_stack} introduce the basics of Yocto Linux and explain how \ac{WLAN} is implemented in Linux.  
-Chapters \ref{subsec:qos} through \ref{subsec:mac} then cover \ac{QoS}, the characteristics of Wi-Fi 4 to 7 and the different types and functionalities of \ac{MAC}.  
+Chapters \ref{subsec:mac} through \ref{subsec:qos} then cover \ac{QoS}, the characteristics of Wi-Fi 4 to 7 and the different types and functionalities of \ac{MAC}.  
 Finally, the fundamentals of real-time are presented in Chapter \ref{sec:real_time}.  
 As mentioned above, the next section focuses on the selected hardware.  
 
 \section{Used Hardware} \label{sec:used_hardware}
-First, the requirements for the hardware, particularly for the Wi-Fi cards, are discussed in order to provide the basis for the subsequent explanation of the hardware selection.  
-The requirements apply especially to the Wi-Fi card.  
+First, the requirements for the hardware, particularly for the Wi-Fi cards, are discussed in order to provide the basis for the subsequent explanation of the hardware selection.   
 As mentioned in Chapter \ref{subsec:objective}, the Wi-Fi standards 4 through 6e and the frequency bands from 2.4 GHz to 6 GHz are relevant for the tests.  
 Therefore, the Wi-Fi card must at least support Wi-Fi 6e.  
 In addition, the drivers and firmware of the card should be open, as this ensures greater transparency for time analysis and allows for modifications to investigate their influence.  
@@ -25,7 +24,7 @@ Specialized real-time hardware is deliberately avoided, since \ac{WLAN} is not a
 \end{figure}
 
 Figure \ref{fig:hardware} shows the individual components of the hardware setup.  
-As the computing unit, a Raspberry Pi 5B is used.  
+As the computing unit, a Raspberry Pi 5B is employed.  
 This model is widely available and used.  
 Earlier models, such as the Raspberry Pi 3, are, as described in \cite{raspy}, the third most sold computer of all time.  
 
@@ -36,7 +35,7 @@ Nevertheless, the drivers are open source, although the firmware remains closed 
 While changes are still being made to the driver, all standards up to Wi-Fi 6e can be used without errors.  
 
 The most recent Wi-Fi cards with both open drivers and open firmware are those that use the ath9k driver, as shown in \cite{ath9k}.  
-To include different drivers and firmware in the evaluation and to have access to fully open firmware, the AR5BXB92 from Qualcomm Atheros is used as additional card.  
+To include different drivers and firmware in the evaluation and to have access to fully open firmware, the AR5BXB92 from Qualcomm Atheros is used as an additional card.  
 This card was released in 2008 and only supports Wi-Fi 4 with 2.4 GHz and 5 GHz, as noted in \cite{ar5b}.  
 Thus, it provides a strong contrast to the Mediatek card.  
 
@@ -50,14 +49,14 @@ This HAT provides a mini PCIe slot.
 For the Atheros card, this is sufficient, as it uses a mini PCIe connector.  
 The Mediatek card, however, requires an M.2 Key E connector.  
 Therefore, as also shown in Figure \ref{fig:hardware}, a mini PCIe to M.2 Key E adapter is installed.  
-It must be ensured that the adapter supports M.2 Key E, since, as described in \cite[p. 24]{pcie}, Wi-Fi cards can use Key A, Key E, or Key A+E.  
+It must be ensured that the adapter supports M.2 Key E, since, as outlined in \cite[p. 24]{pcie}, Wi-Fi cards can use Key A, Key E, or Key A+E.  
 
 Since this section has described the hardware used, the following section introduces the fundamentals of Yocto Linux.  
 These are necessary to understand the configuration of the operating system, which is described in Chapter \ref{sec:os}.  
 
 \section{Yocto Project} \label{subsec:yocto}
 The Yocto Project was initiated by the Linux Foundation in 2010, as reported in \cite{The_Linux_Foundation_2011}.  
-As Salvador notes in \cite[Chap. 1]{10251255}, the Yocto Project is open source and emerged as a collaboration among multiple companies with the common goal of developing Linux-based embedded systems.  
+Salvador notes in \cite[Chap. 1]{10251255}, that the Yocto Project is open source and emerged as a collaboration among multiple companies with the common goal of developing Linux-based embedded systems.  
 Its primary objective was to minimize duplicated work.  
 
 As described by Gonzales in \cite[Chap. 1]{Gonzalez_2018}, the Yocto Project provides a framework for building embedded Linux distributions.  
@@ -95,7 +94,7 @@ To build a Linux distribution, several essential types of information are requir
     \item \textbf{User and Policy Configuration}: User configurations are typically defined in \texttt{local.conf}, e.g., selecting the target machine.  
           For instance, with the \texttt{meta-raspberrypi} layer, the specific Raspberry Pi model must be declared.  
           The file \texttt{bblayers.conf} specifies which layers are included in the build, with priorities determining the order in which recipes are searched.  
-          Policy configuration defines choices such as the package manager or init system.  
+          The policy configuration defines choices such as the package manager or the init system.  
 
     \item \textbf{Source Mirrors}: These provide the actual source code for the distribution, usually consisting of upstream project releases and local projects.  
 \end{itemize}
@@ -120,7 +119,7 @@ Thus, the packages highlighted in yellow in Figure~\ref{fig:yocto} are generated
 These packages are then integrated into an image during the image generation process\footnote{The image generation shown in Figure~\ref{fig:yocto} is strongly simplified.  
 Additional intermediate steps exist but are not presented or further discussed, as they are not relevant for this work.}.  
 
-Having now explained the basics of how the Linux system in this work is generated, the following section addresses how Wi-Fi is generally implemented in Linux.  
+After explaining how the Linux system used in this work is generated, the following section discusses the general implementation of Wi-Fi in Linux.  
 
 \section{Linux Network Stack} \label{subsec:linux_stack}
 
@@ -198,7 +197,7 @@ Once protocol-specific processing is complete, the method \texttt{sk\_data\_read
 
 In the final step, \circnum{11}, a system call transfers the data from the kernel sockets to user space.
 
-Having described the packet path within the Linux networking stack, the following section addresses fundamental characteristics of \ac{WLAN} and characteristics of the standards 4 through 7.
+Having described the packet path within the Linux networking stack, the following section addresses fundamentals of \ac{WLAN} and characteristics of the standards 4 through 7.
 
 \section{Wi-Fi standards} \label{subsec:stand}
 As described in \cite[p. 56]{ofdm}, IEEE 802.11 is one of the most widely used wireless communication protocols.  
@@ -246,19 +245,19 @@ Furthermore, the channels are shown with bandwidths of 20, 40, 80 and 160 MHz, a
 For instance, in the 40 MHz band, the center between channel 36 and 40 is channel 38.
 
 It can also be seen that the U-NII-2 band is marked as containing DFS channels.
-\ac{DFS} is mandatory in the ranges 5.25-5.35 GHz and 5.47-5.725 GHz, since these frequencies are also used by aviation and military radar systems, as described in \cite{dfs}.
+\ac{DFS} is mandatory in the ranges 5.25-5.35 GHz and 5.47-5.725 GHz, since these frequencies are also used by aviation and military radar systems, as outlined in \cite{dfs}.
 As a consequence, the connection must continuously scan for radar-specific pulse patterns and upon detection, switch to another frequency.
 \ac{DFS} also includes weather radar, which, as explained in \cite[p. 4]{weather}, operates between 5.6 GHz and 5.65 GHz.
 
 The 6 GHz band is divided into the radio bands U-NII-5 through U-NII-8, although in the European Union only U-NII-5 is permitted, as described in \cite{6ghz}.
-The representation of this band is identical to that of the 5 GHz band.
-In this band, channels start again at channel 1 and end at channel 93, or at channel 233 in the United States.
-Thus, in the European Union, 500 MHz—corresponding to the frequencies 5.925-6.425 GHz—are available.
+The structure of this band is similar to that of the 2.4 GHz band.
+In this band, channels start again at number 1 and end at channel 93, or at channel 233 in the United States.
+Thus, in the European Union, a frequency range of 500 MHz, corresponding to the frequencies 5.925-6.425 GHz, are available.
 In contrast, in the United States, channels up to 7.125 GHz can be used.
 Unlike the 5 GHz band, no \ac{DFS} channels exist in the 6 GHz band.
 
-Before addressing the specific characteristics of the Wi-Fi standards fundamental technologies must first be introduced.
-These technologies will be described at the example of Wi-Fi 4.
+Before addressing the specific characteristics of the Wi-Fi standards, fundamental technologies must first be introduced.
+These technologies will be outlined at the example of Wi-Fi 4.
 
 \subsection{OFDM Modulation}
 As described in \cite[p. 20]{ofdm}, one of the essential components of IEEE 802.11 is the modulation and multiplexing scheme \ac{OFDM}.
@@ -291,9 +290,9 @@ Here, $T_u$ denotes the useful symbol duration, i.e., the time interval during w
 
 Figure \ref{fig:ofdm} shows that three types of subcarriers exist: guard subcarriers, pilot subcarriers and data subcarriers.
 In Wi-Fi 4, the 20 MHz channel is divided into 64 subcarriers, which results from the use of a 64-point Fast Fourier Transform (FFT).
-Each FFT point represents a discrete frequency bin in the spectrum and determines the resolution of the subcarrier allocation.
+Each FFT point represents a discrete frequency slot in the spectrum and determines the resolution of the subcarrier allocation.
 For simplicity, the subcarriers are depicted schematically in Figure \ref{fig:ofdm}.
-In practice, the channel consists of four pilot subcarriers, 48 data subcarriers, and 12 unused subcarriers, which, as described in \cite[p. 20]{ofdm}, are referred to as guard subcarriers.
+In practice, the channel consists of four pilot subcarriers, 48 data subcarriers and twelve unused subcarriers, which, as described in \cite[p. 20]{ofdm}, are referred to as guard subcarriers.
 
 Guard subcarriers are located at the edges of the spectrum and serve to reduce interference between adjacent channels.
 As can be seen in Figure \ref{fig:ofdm} there is also one guard subcarrier in the middle.
@@ -437,9 +436,8 @@ As a result, if a user has little data to send, part of the allocated subcarrier
 Thus, within one modulation symbol, multiple clients can transmit simultaneously.  
 This significantly improves spectral efficiency, although the benefit is most relevant in multi-client scenarios, which are not the focus of this work.  
 
-At the time of writing, the newest standard is Wi-Fi 7, or IEEE 802.11be.  
-However, as Liu et al. note in \cite[p. 2]{liu2025ieee80211bewifi7}, it is officially released during this work in July 2025.
-But the necessary software is not yet available.  
+At the time of writing, the newest standard is Wi-Fi 7, or IEEE 802.11be. 
+However, as Liu et al. note in \cite[p. 2]{liu2025ieee80211bewifi7}, it was officially released during this work in July 2025, but the necessary software was not yet available. 
 Nevertheless, the core innovations can already be discussed.  
 As Liu et al. describe in \cite[p. 3,4]{liu2025ieee80211bewifi7}, Wi-Fi 7—like Wi-Fi 6E—supports all three frequency bands.  
 
@@ -512,7 +510,7 @@ If no other client is already transmitting, the access point responds after a \a
 
 For \acp{AIFS}, it also holds that, regardless of priority, this interval must always be larger than \ac{SIFS}.  
 This is because \ac{SIFS} represents the time spacing between critical operations such as ACK, \ac{RTS} and \ac{CTS} frames.  
-If \ac{AIFS} were shorter than \ac{SIFS}, these timing relationships would be disrupted.  
+If \acp{AIFS} were shorter than \acp{SIFS}, these timing relationships would be disrupted.  
 
 Upon receiving the \ac{CTS}, the client transmits its data, which is then acknowledged by the access point with an ACK \cite[p. 7]{csma_edca}.  
 Afterwards, the next client may attempt to transmit.  
@@ -554,8 +552,7 @@ In this way, throughput and the maximum number of packets to be sent can be cons
 \ac{QoS} can also be defined using a \ac{DSCP} value in the packet header.  
 As described in \cite[p. 2]{8002923}, this allows classification into 22 different configurations, each with its own weighting of the four \ac{QoS} properties mentioned above.  
 
-Since this chapter has explained the fundamentals of \ac{QoS}, all network-relevant foundations have now been covered.  
-The only remaining background required for this work concerns real-time aspects, which will be discussed in the following chapter.  
+After explained the fundamentals of \ac{QoS} in this chapter, the only remaining background required for this work concerns real-time aspects, which will be discussed in the following chapter.  
 
 \section{Real Time Systems} \label{sec:real_time}
 In this chapter, the fundamentals of real-time systems are explained.  
@@ -621,7 +618,7 @@ If a system is able to meet its real-time requirements, this property is referre
 In addition to execution time and the number of deadline misses, jitter is frequently used as a quality metric for real-time systems, as described in \cite[p. 38]{real_time_systems}.  
 Jitter refers to the temporal deviation from an expected event.  
 For example, if the period $t$ is 3 ms and the start time is $t_0$, the following event is expected at $t_0 + 3$ ms.  
-On a real system, however, it may occur at $t_0 + (3-x)$ ms, where $x \in [0, 3]$.  
+On a real system, however, it may occur at $t_0 + (3-x)$ ms, where $x \in [-3, 3]$.  
 This deviation $x$, i.e., the difference from the expected occurrence, is referred to as jitter and serves as a measure of the real-time capability of the system.  
 The lower the jitter, the more deterministic the system is and thus the higher its real-time quality.  
 
@@ -642,10 +639,10 @@ As Rostedt explains in \cite{rt_patch}, one of the main causes of such unpredict
 These signals, used by devices to communicate with the \ac{CPU}, are handled in \acp{ISR}.  
 In conventional Linux systems, \acp{ISR} preempt processes, preventing the reliable determination of \ac{WCET}.  
 
-In Linux, including with the RT-patch, processes are scheduled based on priority.  
+In Linux, extended with the RT-patch, processes are scheduled based on priority.  
 Priorities range from $-100$ to $39$, whereas the lower number is the higher priority.  
 For non-real-time processes, the priority $P$ is calculated as $P = 20 + NV$, where $NV$ is the nice value in the range $[-20, 19]$.
-The default of the niche value is $0$.  
+The default of the nice value is $0$.  
 Thus, normal processes have priorities in the range $[0, 39]$.  
 For real-time processes, $P = -1 - rt\_Prior$, where $rt\_Prior$ ranges from $[0, 99]$  yielding a priority range of $[-100, -1]$.  
 As before $rt\_Prior$ has a default value of $0$.
@@ -657,8 +654,8 @@ But for calculation of the priorities the model described before is used.
 Interrupt handling is also adapted by the RT-patch.  
 As described in \cite[p. 162]{rt_patch}, almost all\footnote{Exceptions exist, as noted in \cite[p. 163]{rt_patch}. Essential interrupts such as the timer interrupt are not threaded.} \acp{ISR} are moved into kernel threads.  
 A distinction is made between hard \acp{IRQ} and soft \acp{IRQ}.  
-Both are threaded, but while hard \acp{IRQ} remain non-preemptible, their execution becomes schedulable once threaded.  
-Soft \acp{IRQ}, in contrast, are both schedulable and preemptible.  
+Both are threaded, but while hard \acp{IRQ} remain non-preemptive, their execution becomes schedulable once threaded.  
+Soft \acp{IRQ}, in contrast, are both schedulable and preemptive.  
 
 Furthermore, the RT-patch introduces full kernel preemption.  
 This means that user processes with sufficiently high priority can preempt kernel activities.  
