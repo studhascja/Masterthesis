@@ -19,16 +19,16 @@ Nevertheless, as outlined in \cite{statista_hem}, there are still obstacles that
 These include the susceptibility of systems to interference, high investment costs and the absence of uniform standards.  
 Some of these challenges could be mitigated if the key components for communication between devices fulfilled specific requirements and norms.  
 
-In the following the problem which is addressed in this work is examinated.
+In the following, the problem addressed in this work, is examinated.
 
 \section{Problem description} \label{subsec:problem}
-For the previously described key component of wireless inter-device communication, a wide variety of standards are currently used, as described in \cite{industry4_standards}.  
+For the previously discussed key component of wireless inter-device communication, a wide variety of standards are currently used, as described in \cite{industry4_standards}.  
 These include, as Artexe et al. describe in \cite{industry4_standards}, in addition to Wi-Fi, Bluetooth Low Energy, 5G and five other standards that are most commonly employed.  
 This diversity is necessary because no single standard fully satisfies all requirements.  
-From this abundance of standards, it becomes clear that, as previously mentioned, the absence of standardization is often considered problematic.  
+From this abundance of standards, it becomes clear that, as mentioned, the absence of standardization is often considered problematic.  
 
-Furthermore, real-time capability plays an important role in Industry 4.0, as described in \cite[p. 1]{fi16090345}.  
-It is also considered that no wireless protocol may be used for tasks requiring real-time capability, as described in \cite{wollert}, instead LAN may be the better choice.  
+Furthermore, real-time capability plays an important role in Industry 4.0, as outlined in \cite[p. 1]{fi16090345}.  
+It is also considered that no wireless protocol may be used for tasks requiring real-time capability, as mentioned in \cite{wollert}, instead LAN may be the better choice.  
 Nevertheless, there are approaches that fulfill these criteria.  
 For example, \cite{fi16090345} presents 5G and Wi-Fi 7 and discusses their suitability for applications in Industry 4.0.  
 In this context, the requirement for real-time capability is also taken into account.  
@@ -59,7 +59,7 @@ To investigate this, the \ac{RTT} between server and client is measured.
 This method is illustrated in Figure \ref{fig:method}.
 In addition to real-time data, regular data must also be transmitted, as shown in Figure \ref{fig:method}.  
 Thus, this work analyzes not only the real-time capability of Wi-Fi but also its ability to handle concurrent best-effort traffic.  
-The target in this work is at \ac{RTT} of 3 ms, because as is carried out in more detail in Chapter \ref{subsec:real_time_kernel}, this time is an important time in industry 4.0.
+The target in this work is a \ac{RTT} of 3 ms, because as is carried out in more detail in Chapter \ref{subsec:real_time_kernel}, this time is an important time in industry 4.0.
 
 \begin{figure}[ht]
     \centering
@@ -96,7 +96,7 @@ This thesis begins with a description of the fundamentals in Chapter \ref{sec:ba
 These include, among others, the hardware setup used, the different Wi-Fi standards, and their distinctions.  
 Furthermore, the implementation of Wi-Fi in Linux as well as the concept of real-time capability in general and in Linux in particular are addressed in detail.  
 
-After the discussion of the fundamentals, related literature is presented in Chapter \ref{sec:related} and the existing state of research is analyzed.  
+After discussing the fundamentals, related literature is presented in Chapter \ref{sec:related} and the existing state of research is analyzed.  
 In addition, the scope and objectives of this thesis are distinguished from the existing work.  
 
 Subsequently, the implementation is described in Chapter \ref{sec:implementation}.  
@@ -104,7 +104,7 @@ This includes the operating system on which the test system is deployed, as well
 The test system consists of a test application, an automated test procedure and a monitoring system.  
 Each component is explained with respect to its functionality and implementation.  
 
-Afterwards, the execution of the various test cases is described in Chapter \ref{sec:mod}.  
+Afterwards, the execution of the various test cases is described in Chapter \ref{sec:eval}.  
 In other words, the implementation of \ac{QoS}, \ac{Qdisc} and the other factors is presented.  
 Furthermore, the environment in which the test procedure was conducted is explained.  
 
