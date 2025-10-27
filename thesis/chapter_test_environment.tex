@@ -42,7 +42,7 @@ Since the test system is intended to transmit \ac{rt-data} among normal data, it
 Therefore, the following section first outlines the general requirements of \acp{rt-system}. 
 Subsequently, additional requirements that go beyond standard \ac{rt} criteria and are specifically relevant for this system within the given test environment are discussed in more detail.
 
-\subsection{Requirements Real Time}
+\subsection{Real Time Requirements}
 To enable a system to achieve \ac{rt} capability, numerous factors must be considered. 
 In this work, only software-related requirements are considered.
 Since Wi-Fi is an interface that is not inherently real-time capable, hardware-related requirements would have minimal impact in this context while significantly broadening the scope of the thesis.
@@ -56,7 +56,7 @@ The necessity for these mechanisms to be implemented differently in \ac{rt} capa
 
 However, these mechanisms must not only be \ac{rt} capable at the kernel level—they also need to be considered during the development of applications intended to operate in a \ac{rt} context. 
 As Buttazzo outlines in \cite[p. 13 - 20]{Buttazzo_2024}, particular attention must be paid to the choice of programming language, memory usage and synchronization and communication between processes.
-It follows that, as shown in Figure \ref{fig:requirements} memory management, inter-task communication and inter-task-synchronsiation are not only requirements for the \ac{OS}, but must also be taken into account in the test system.
+It follows that, as shown in Figure \ref{fig:requirements}, memory management, inter-task communication and inter-task-synchronsiation are not only requirements for the \ac{OS}, but must also be taken into account in the test system.
 
 In \cite[p. 17, 18]{Buttazzo_2024} Buttazzo emphasizes that the choice of programming language for \ac{rt} systems should avoid the use of dynamic data structures and recursion. 
 This is because dynamic memory allocation and deallocation introduce unpredictability in execution time, making it impossible to determine the program's timing behavior in advance. 
@@ -74,14 +74,14 @@ Notably, Rust demonstrated a power consumption profile comparable to C, indicati
 While the characteristics outlined by Buttazzo are not mandatory in any of these languages, they can be implemented with appropriate discipline and design. 
 Thus, these languages are also suitable for \ac{rt} application development, provided that the specific constraints related to memory management, recursion and timing predictability are consciously observed and enforced by the developer, as they are not inherently guaranteed by the language itself.
 
-The chosen programming languages and specific implementation-level requirements for achieving \ac{rt} capability and how these are addressed are discussed in detail in Chapter \ref{subsec:impl}.
+The chosen programming languages and specific implementation-level requirements for achieving \ac{rt} capability and how these are addressed, are discussed in detail in Chapter \ref{subsec:impl}.
 
-Furthermore, the test system must be capable of transmitting both \ac{rt} and non-\ac{rt} data concurrently over the same network, with the \ac{rt} traffic maintaining a maximum round-trip delay of 3 ms. 
+Furthermore, the test system must be capable of transmitting both \ac{rt} and non-\ac{rt} data concurrently over the same network, with the \ac{rt} traffic maintaining a maximum \ac{RTT} of 3 ms. 
 This timing constraint stems from the fact that this work seeks to characterize Wi‑Fi’s \ac{rt} capabilities and the factors that influence them and to assess whether Wi‑Fi can be employed in an industrial \ac{rt} environment. 
 As discussed in Chapter \ref{sec:real_time}, such environments commonly impose a 3 ms deadline.
-So, beside the evaluation of the \ac{rt} capabilities of Wi-Fi and the minimization of the \ac{RTT}, timing constraint of 3 ms is the goal of this work, like stated in Chapter \ref{subsec:objective}.
+So, beside the evaluation of the \ac{rt} capabilities of Wi-Fi and the minimization of the \ac{RTT}, a timing constraint of 3 ms is the goal of this work, like stated in Chapter \ref{subsec:objective}.
 
-To summarize the requirements of the test environment are illustrated in Figure \ref{fig:requirements}.
+To summarize, the requirements of the test environment are illustrated in Figure \ref{fig:requirements}.
 There the requirements are split between \ac{OS} and test system.
 Furthermore, a distinction is made between \ac{rt} and non-\ac{rt} requirements.
 In this section the requirements shown in blue where discussed.
@@ -99,14 +99,14 @@ For both the test system and the \ac{OS}, the previously defined criteria for \a
 
 The requirements for the \ac{OS} include providing appropriate support for both the hardware and the software components of the test environment. 
 As described in Chapter \ref{sec:used_hardware}, this work utilizes a Raspberry Pi 5, to which a MediaTek 7925B22M and an Atheros AR5BXB92 Wi-Fi module can be connected via PCIe.
-Accordingly, the \ac{OS} have to support the Raspberry Pi 5 architecture and offer compatibility with the drivers mt76, mt7925e and ath9k.
+Accordingly, the \ac{OS} has to support the Raspberry Pi 5 architecture and offer compatibility with the drivers mt76, mt7925e and ath9k.
 
 Furthermore, the mt7925e driver is only available starting from Linux kernel version 6.8 and receives extended feature support with newer versions. 
 These enhancements primarily concern functionality related to Wi-Fi 6E and Wi-Fi 7, which is described in \cite{mt76}. 
 Since these standards are also within the scope of this work, the \ac{OS} should support the most recent possible version of the mt7925e driver to ensure full access to these capabilities.
 
 In addition to hardware compatibility, the \ac{OS} must also ensure compatibility with the required software components. 
-This includes the availability of essential programming languages and user-space networking and diagnostic tools which are necessary to run the test-system.
+This includes the availability of essential programming languages, user-space networking and diagnostic tools which are necessary to run the test-system.
 
 Moreover, the \ac{OS} should be as minimal as possible, containing only the components explicitly required for the test environment. 
 This reduces background activity and minimizes potential sources of interference or error, thereby ensuring a more stable and predictable testing environment.
@@ -120,7 +120,7 @@ For the non‑real‑time traffic, as much data as possible should be transmitte
 This means, only throughput and packet‑loss metrics need be considered for this traffic in the monitoring.
 
 Moreover, this study will compare the \ac{rt} performance of the algorithms underpinning different Wi‑Fi standards. 
-To that end, the server must support access points for Wi-Fi 4, 5 and 6 across all relevant frequency bands (2.4 GHz, 5 GHz and 6 GHz). 
+For that, the server must support access points for Wi-Fi 4, 5 and 6 across all relevant frequency bands (2.4 GHz, 5 GHz and 6 GHz). 
 The impact of QoS on \ac{rt} capability will also be evaluated, so the test system must be able to mark network packets with QoS parameters. 
 Given the large number of combinations of Wi‑Fi standards, frequency bands and QoS settings, an automated test framework is required to generate a comprehensive dataset for all test cases, from which reliable insights can be derived.
 
@@ -130,14 +130,14 @@ The focus will first be on the selection and configuration of the \ac{OS}, becau
 
 \section{Operating System} \label{sec:os}
 As discussed in the previous chapter, the selection of an appropriate \ac{OS} must primarily consider its \ac{rt} capabilities. 
-Such \acp{OS} are referred to as \ac{RTOS}. 
+Such \acp{OS} are referred to as \acp{RTOS}. 
 There exists a wide variety of \ac{RTOS}, each differing in architecture, strengths and limitations.
 The following section compares the advantages, disadvantages and performance characteristics of selected \acp{RTOS}. 
 Furthermore, their suitability for the purpose of this work is evaluated.
 
 \subsection{Selection of Operating System}
 The \ac{RTOS} that is used in this work is RT-Linux.
-It is one of the \acp{RTOS} that imposes almost no restrictions in terms of performance and compatibility compared to a general-purpose \ac{OS}.
+It is one of the \acp{RTOS} that imposes almost no restrictions in terms of performance and compatibility compared to a general-purpose \acp{OS}.
 As described by Sampath et al. in \cite{Sampath_2007}, RT-Linux is a Linux-based system enhanced through the PREEMPT\_RT patch, which equips it with \ac{rt} capabilities. 
 The authors examine the use of RT-Linux on an industrial controller with strict \ac{rt} requirements and additional \ac{rt} Ethernet demands. 
 Their study demonstrates the suitability of RT-Linux for such applications, reporting a maximum jitter of 380 microseconds over a 24-hour endurance test.
@@ -161,9 +161,9 @@ This conclusion is supported by Betz et al. \cite{5347056}, who state that RT-Li
 
 Yang et al. \cite{10870260} compare the \ac{rt} performance of NuttX, FreeRTOS, RT-Linux and Xenomai. 
 A noteworthy aspect of their study is the inclusion of both \ac{rt} capabilities and general-purpose features. 
-While RT-Linux can be used as a standalone system, to match these requirements, pure \ac{RTOS} like FreeRTOS and NuttX are executed alongside a general-purpose \ac{OS}. 
+While RT-Linux can be used as a standalone system, to match these requirements, pure \acp{RTOS} like FreeRTOS and NuttX are executed alongside a general-purpose \ac{OS}. 
 Also in this study a Raspberry Pi 4 was used as the hardware platform. 
-The results are showin that pure \ac{RTOS}, especially FreeRTOS, netherless deliver better \ac{rt} performance.
+The results are showing that pure \ac{RTOS}, especially FreeRTOS, nevertheless deliver better \ac{rt} performance.
 
 Mariesk et al. \cite{6140739} distinguish between the two fundamental \ac{RTOS} types kernel-based \ac{RTOS} and embedded \ac{RTOS}. 
 In their study, they evaluate systems based on interrupt latency, task switching time and preemption time. 
@@ -178,7 +178,7 @@ This means particularly hardware compatibility of the \ac{OS}.
 The MediaTek 7925B22M Wi-Fi card used in this work lacks drivers outside the Linux ecosystem, thereby excluding FreeRTOS as a viable option.
 
 Considering the experience with RT-Linux on Raspberry Pi systems stated by the studies before and the demonstrated maximum scheduling latency of 125 microseconds along with a maximum jitter of 380 microseconds of the test-system, RT-Linux proves sufficient for the purposes of this work. 
-Given a round-trip time (RTT) requirement of 3 milliseconds, this jitter is acceptable. 
+Given a \ac{RTT} requirement of 3 milliseconds, this jitter is acceptable. 
 Furthermore, since Wi-Fi is inherently not \ac{rt} capable
 and as discussed in Chapter \ref{sec:used_hardware}, the employed hardware which has, among other shared resources, a split L3 cache, is not optimized for \ac{rt} processing.
 So the minor limitations of RT-Linux do not significantly impact this test-environment.
@@ -222,7 +222,7 @@ The server part of the test system is controlled via the \textbf{Server Test Sui
 For the evaluation of real-time performance, the factors \textbf{Wi-Fi standard, frequency, bandwidth, \ac{QoS} and protocol} are considered in Chapter~\ref{sec:eval}.
 Therefore, these factors must be configurable within the test suite.
 The Wi-Fi standard, frequency and bandwidth are set through the access point configuration, whereas \ac{QoS} and the protocol type are configured within the test suite itself.
-Thus it follows that for each combination of access point configuration, QoS level and protocol type, the test suite performs a complete test run, so with the Test Suits a factorial design can be assured.
+Thus it follows that for each combination of access point configuration, QoS level and protocol type, the test suite performs a complete test run, so with the test suites a factorial design can be assured.
 Therefore, the total number of test runs is defined as $N_T = N_{AP} \times N_{QoS} \times N_{Prot}$, where $N_T$ is the total number of test runs, $N_{AP}$ is the number of different access point configurations, $N_{QoS}$ is the number of different considered QoS levels and $N_{Prot}$ is the number of different protocols used in this work. 
 The Server Test Suite is essential for the automated execution of these test runs, thereby fulfilling the previously specified requirement for test automation.
 
@@ -240,7 +240,7 @@ The first step in a server-side test run is the creation of the \ac{AP}, which i
 Hostapd allows the configuration of various Wi-Fi standards, frequencies and bandwidths, thereby meeting the requirement to support multiple Wi-Fi standards.
 
 Once the \ac{AP} is established, the server for non-\ac{rt} applications is launched using \textbf{Iperf3}. 
-This Software supports differentiation between UDP and TCP traffic, various packet sizes and data rates. 
+This software supports differentiation between UDP and TCP traffic, various packet sizes and data rates. 
 It also provides metrics such as packet loss and jitter, thus fulfilling all previously defined requirements for non-RT data transmission.
 
 Finally, the \textbf{Rust-RT Server} is started. 
@@ -283,7 +283,7 @@ As shown in \cite{iperf}, this tool allows the generation of network traffic and
 Furthermore, no separate monitoring needs to be developed, as the tool already includes it.  
 For example, latency and packet loss can be directly observed using \texttt{iperf3}.  
 
-Both the server test suite and the client test suite are implemented in Python.  
+Both the Server Test Suite and the Client Test Suite are implemented in Python.  
 This is possible because there are no real-time requirements for these components.  
 Only the server responsible for the RT connection must fulfill real-time constraints.  
 In this case, Python is a suitable choice because, as described in \cite{10209340}, it is very popular and widely used in embedded programming.  
@@ -325,14 +325,14 @@ Accordingly, the RT application in this work is written in Rust.
 To implement monitoring of the real-time application, \ac{BPF} is used.  
 It can be seamlessly integrated into Rust code using \texttt{libbpf-rs}.  
 \ac{BPF}, is a technology for efficient in-kernel data processing and monitoring, originally designed for packet filtering.  
-As described by Gregg in \cite[Chap. 2.10]{Gregg_2020}, it was originally build to observ network packages.
+As described by Gregg in \cite[Chap. 2.10]{Gregg_2020}, it was originally build to observe network packages.
 And it offers nearly the same functionality as the widely used profiling tool \texttt{perf}.  
 Furthermore, it is also employed in practice for network monitoring.
 This is evident in \cite{network_obser} and \cite{9359159}.
 However, it integrates better with Rust and is more flexible due to its scriptability and access to a broader range of event sources than \texttt{perf}.  
 BPF supports more event sources such as tracepoints, kprobes, uprobes and performance counters, enabling more detailed and application-specific monitoring.  
 
-In summary, the programming languages Python, Rust and BPF, as well as the tools \texttt{hostapd}, \texttt{iperf3} and \texttt{wpa\_supplicant}, must be provided by the operating system for the test system.  
+In summary, the programming languages Python, Rust and BPF, as well as the tools \texttt{hostapd}, \texttt{iperf3} and \texttt{wpa\_supplicant}, must be provided by the \ac{OS} for the test system.  
 The following section describes how this can be realized using the Yocto Project.
 
 \section{Implementation}
@@ -356,7 +356,7 @@ The \texttt{meta-python} layer provides support for the Python programming langu
 The \texttt{meta-networking} layer supplies essential networking tools that are also necessary for the test setup.  
 
 The \texttt{meta-raspberrypi} layer is essential for hardware-specific support for the Raspberry Pi platform.  
-This layer enables the generation of a customized operating system image that is compatible with the Raspberry Pi 5, by providing the required kernel configurations, bootloader integration and board-specific device trees.  
+This layer enables the generation of a customized \ac{OS} image that is compatible with the Raspberry Pi 5, by providing the required kernel configurations, bootloader integration and board-specific device trees.  
 
 The \texttt{meta-rust} layer is included to integrate the Rust programming language into the Yocto build system.  
 This integration is necessary to develop the \ac{rt} application in Rust, as required by the objectives of this thesis.
@@ -398,11 +398,11 @@ This overlay can be obtained from the official Raspberry Pi firmware repository~
 The recipe installs the locally available overlay into the \texttt{/boot/overlays} directory on the target system.  
 
 By setting the variables \texttt{RPI\_USE\_OVERLAYS} and \texttt{RPI\_EXTRA\_CONFIG} in \texttt{local.conf}, the overlay can be included in the \texttt{config.txt} file.  
-To fully integrate the overlay into the operating system, the \texttt{meta-raspberrypi} layer must be modified.  
+To fully integrate the overlay into the \ac{OS}, the \texttt{meta-raspberrypi} layer must be modified.  
 Specifically, the overlay must be added to the \texttt{RPI\_KERNEL\_DEVICETREE\_OVERLAYS} section of the file \texttt{meta-raspberrypi/conf/machine/include/rpi-base.inc}.  
 After this adjustment, the overlay was successfully deployed and referenced in the \texttt{config.txt} of the generated image.
 
-To make the operating system real-time capable, the Linux kernel must be extended using the RT patch.  
+To make the \ac{OS} real-time capable, the Linux kernel must be extended using the RT patch.  
 This is handled within the \texttt{recipes-kernel} section of the \texttt{meta-masterthesis} layer.  
 The Linux recipe provided by the \texttt{meta-raspberrypi} layer, which is based on version 6.12.1, is extended via a \texttt{.bbappend} file.  
 However, the RT patch is officially only available for kernel version 6.12.28.  
@@ -429,7 +429,7 @@ Once all technologies are installed on the target system, the final step is to i
 This is done in the \texttt{recipes-connectivity} section.  
 In the \texttt{network} category, marked in orange in Figure~\ref{fig:yocto_own}, two \texttt{.bbappend} files customize the configurations of \texttt{dnsmasq} and \texttt{dhcpcd}.  
 
-Other \texttt{.bb} and \texttt{.bbappend} files in this section install applications from a custom Git repositorie onto the target system.  
+Other \texttt{.bb} and \texttt{.bbappend} files in this section install applications from a custom Git repository onto the target system.  
 The \texttt{hostapd.bbappend} file installs multiple \ac{AP} configurations into \texttt{/etc/hostapd/}.  
 Additionally, it modifies the original recipe to compile \texttt{hostapd} using a custom configuration that supports the Wi-Fi 6E standard.  
 By default, \texttt{hostapd} does not support access points operating in the 6~GHz band.  
@@ -453,8 +453,8 @@ The file can then be created using the command:
 
 With these extensions, the Rust applications—including binaries, source code and a local compilation environment—are fully installed on the target system.
 
-In summary, this chapter described the steps required to build an operating system using the Yocto Project that fulfills all requirements for the intended test environment.  
-To explain the implementation of the test system an explanation of monitoring in general and the functionallity of the used technologies in monitoring is necessary.
+In summary, this chapter described the steps required to build an \ac{OS} using the Yocto Project that fulfills all requirements for the intended test environment.  
+To explain the implementation of the test system, an explanation of monitoring in general and the functionallity of the used technologies in monitoring is necessary.
 So this will be described in the following chapter.
 
 \section{Monitoring} \label{subsec:monitoring}
@@ -522,7 +522,7 @@ Since \ac{CO-RE} is not used in this work, it will not be described further here
 
 If the program is accepted by the verifier, it is either compiled by the \ac{JIT} compiler or executed by the interpreter.  
 For the \ac{JIT} compiler to take over, it must be both supported and enabled, which is controlled via the \texttt{bpf\_jit\_enabled} operation.  
-As described in \cite{jit}, this option can be enabled by writing the value "1" to the file \texttt{/proc/sys/net/core/bpf\_jit\_enable}.  
+As described in \cite{jit}, this option can be enabled by writing the value \texttt{1} to the file \texttt{/proc/sys/net/core/bpf\_jit\_enable}.  
 
 Like described by Gbadamosi et~al.\ in \cite[p.~4]{gbadamosi2024ebpfruntimelinuxkernel} the \ac{JIT} compiler translates the \ac{BPF} bytecode into native machine code for the running architecture at load time.  
 This eliminates the overhead of interpreting instructions during execution and significantly improves performance, especially for programs that are invoked frequently or handle large volumes of events.  
@@ -553,7 +553,7 @@ Besides the 10 registers, the virtual machine also offers 512 bytes on the stack
 Additionally, more memory is available in so-called maps.  
 These maps are created using the command \texttt{BPF\_MAP\_CREATE}, as described in \cite[p.~5]{gbadamosi2024ebpfruntimelinuxkernel}.  
 
-As Gregg discusses in \cite[Chap.~2.2]{Gregg_2020}, \ac{BPF} programs can exchange data among each other threw using maps.  
+As Gregg discusses in \cite[Chap.~2.2]{Gregg_2020}, \ac{BPF} programs can exchange data among each other through using maps.  
 Furthermore, the maps are synchronized, allowing parallel memory accesses.  
 Maps can be accessed from userspace, providing a way to transfer collected data from the virtual machine back to userspace.  
 Command-line tools such as \texttt{bpftrace} use these maps to display statistics, for example.  
@@ -564,8 +564,8 @@ Event sources or network packets can also be discarded in kernelspace if they ar
 Thus, the mechanism of maps and the virtual machine specified therein ensure security and efficiency by preventing unnecessary kernel-to-userspace interactions.  
 
 Gregg uses in \cite[Chap. 2.6]{Gregg_2020} the event source as an umbrella term for events and probes, so for static and dynamic event sources.
-Since this term is inconvenient, in literature often the term static and dynamic envents is used, or in general it is not used uniform.
-So to be more precise in the following the term event is only used for static event sources and the term probes is only used for dynamic event sources.
+Since this term is inconvenient, in literature often the term static and dynamic events is used.
+So to be more precise in the following, the term event is only used for static event sources and the term probes is only used for dynamic event sources.
 
 As shown in Figure~\ref{fig:bpf:working_principle}, the event configuration from userspace interacts with the virtual machine in kernelspace.  
 The event configuration particularly refers to the settings of command-line tools.  
@@ -574,9 +574,8 @@ Since command-line tools are not used in this work, the event configuration will
 
 As shown in Figure~\ref{fig:bpf:working_principle}, the virtual machine provides another method for transferring data from the kernel to userspace.  
 
-This is the ring buffer, which Gregg in \cite[Chap.~2.3]{Gregg_2020} also describes as the perf buffer.  
-The buffer is used to continuously transfer data from the kernel to userspace.  
-There are also other variants for sharing data between user and kernel space, including relayfs.  
+The ring buffer, which Gregg in \cite[Chap.~2.3]{Gregg_2020} also describes as perf buffer, is used to continuously transfer data from the kernel to userspace.  
+There are also other variants for sharing data between user and kernel space, including RelayFS.  
 
 RelayFS was developed by Tom Zanussi and has been integrated into the Linux kernel since 2003, as evident from the patch thread in \cite{relayfs}.  
 As explained by Zanussi in \cite{Wisniewski2003relayfsA}, it is also a mechanism to efficiently transfer data from kernelspace to userspace.  
@@ -593,7 +592,7 @@ This tendency is reflected not only in theory but also in practice.
 
 Nair et al. developed GAPP in \cite{Nair_2020}, a tool to identify serialization bottlenecks in parallel Linux applications.  
 For monitoring, \ac{BPF} is also used, and maps and perf buffers are employed for data exchange between kernel and userspace.  
-Another example is Liu et al., who built a protocol-independent network observability system in \cite{9359159}.  
+Another example are Liu et al., who built a protocol-independent network observability system in \cite{9359159}.  
 Furthermore, both Kannan et al., presenting a network monitoring agent in \cite{network_obser}, and Gowda et al., proposing kernel-level request tracing for microservice visibility in \cite{V_2022}, use \ac{BPF} along with maps and perf buffers.
 
 All these works utilize \ac{BPF} for monitoring and rely on maps and perf buffers for communication between kernel and userspace.  
@@ -607,7 +606,7 @@ The modules not yet mentioned from Figure~\ref{fig:bpf:working_principle} are BP
 All of these are shown as yellow boxes, which, as explained earlier, indicates that they represent components, which do not belong fully to \ac{BPF}, but influence the execution of the \ac{BPF} program.  
 
 As described by Gregg in \cite[Chap.~2.3.6]{Gregg_2020}, a \ac{BPF} program cannot execute arbitrary kernel functions.  
-To enable access to information from the operating system context within the program, BPF helper functions are used.  
+To enable access to information from the \ac{OS} context within the program, BPF helper functions are used.  
 These are defined in the BPF API in \texttt{include/uapi/linux/bpf.h}, and new helpers are constantly being added.  
 The BPF API in this context refers to the set of functions and interfaces that the kernel exposes to \ac{BPF} programs to interact with kernel and user space resources in a controlled manner.  
 As illustrated in Figure~\ref{fig:bpf:working_principle}, these helpers can be invoked via the \texttt{bpf\_call} instruction.  
@@ -619,11 +618,11 @@ This enables access to a monotonic clock, allowing the measurement of time inter
 Other important BPF helpers are \texttt{bpf\_get\_current\_pid\_tgid()} and \\
 \texttt{bpf\_get\_current\_comm(buf, buf\_size)}.  
 Each of these functions has a return value, which will be referred to as $R_1$ and $R_2$ in the following.  
-$R_1$ returns both the TGID and the PID of the current process, where TGID (Thread Group ID) refers to the identifier of the process as a whole, and PID (Process ID) refers to the specific thread within that process.  
+$R_1$ returns both the TGID (Thread Group ID) and the PID (Process ID) of the current process, where TGID refers to the identifier of the process as a whole and PID refers to the specific thread within that process.  
 The 64-bit value returned by $R_1$ is composed such that the high 32 bits contain the TGID and the low 32 bits contain the PID.  
 $R_2$ returns the current task name, also known as the command name (\texttt{comm}) of the process.  
 With these two functions, process names and precise IDs can be determined both in user space and kernel space.  
-This is important for filtering, and also for diagnostics when it is necessary to determine which process triggered a given event source.  
+This is important for filtering and also for diagnostics when it is necessary to determine which process triggered a given event source.  
 
 Another essential kernel function accessible via helpers is \texttt{bpf\_trace\_printk}.  
 As described in \cite{print}, this function can write print messages to the kernel trace log.  
@@ -656,7 +655,7 @@ int bpf(int cmd, union bpf_attr *attr, unsigned int size);
 \end{listing}
 
 The \texttt{cmd} parameter specifies the particular \ac{BPF} operation to be performed.  
-It is an integer value provided through an enumeration.  
+It is an integer value provided through an enum.  
 As Gregg describes it in \cite[Chap.~2.3.6]{Gregg_2020}, the \texttt{BPF\_PROG\_LOAD} enum value instructs the verifier to check a \ac{BPF} program and subsequently load it into the kernel.  
 Similarly, maps can be accessed or modified from userspace using commands such as \texttt{BPF\_MAP\_CREATE} or \texttt{BPF\_MAP\_LOOKUP\_ELEM}.  
 
@@ -992,7 +991,7 @@ However, as Gregg notes in \cite[Chap. 2.9]{Gregg_2020}, they were not released 
 
 Gregg describes that in the kernel, tracepoints have been placed at more than 100 points of interest for monitoring. 
 Tracepoints are continuously added by developers, which causes their number to steadily increase.  
-On the operating system used in this work, nearly 2500 tracepoints are already available.\footnote{This number can be determined with the command \texttt{find /sys/kernel/debug/tracing/events -type d | wc -l}, since all tracepoints are documented in this directory.}  
+On the \ac{OS} used in this work, nearly 2500 tracepoints are already available.\footnote{This number can be determined with the command \texttt{find /sys/kernel/debug/tracing/events -type d | wc -l}, since all tracepoints are documented in this directory.}  
 
 A tracepoint follows the format \texttt{subsystem:eventname}.  
 For example, the tracepoint \texttt{net/net\_dev\_xmit} consists of the subsystem \texttt{net} and the event \texttt{net\_dev\_xmit}.  
