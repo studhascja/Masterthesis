@@ -692,11 +692,11 @@ He defines observability as the property that the internal state of a system at 
 x_{k+1} = A x_k + B u_k, \quad y_k = C x_k + D u_k,
 \end{equation} 
 
-For a given state-space system model like presented in equation \ref{eq:obser} the variable $x_k$ is the state vector of the system at time step $k$.
-In equation \ref{eq:obser}, $u_k$ is the input vector at time step $k$,  
+For a given state-space system model like presented in equation \ref{eq:obser}, the variable $x_k$ is the state vector of the system at time step $k$.
+The variable $u_k$ is the input vector at time step $k$,  
 $y_k$ is the output vector at time step $k$,  
 $A$ is describing the evolution of the internal state over time,  
-while $B$ the input matrix describes how inputs affect the states,  
+while the input matrix $B$ describes how inputs affect the states,  
 $C$ is the output matrix mapping the state $x_k$ to the measured outputs $y_k$,  
 and $D$ is the feedthrough matrix describing any direct influence of the inputs on the outputs.  
 
@@ -722,17 +722,17 @@ This condition ensures that the current state $x_k$ can be fully reconstructed f
 
 Nevertheless, Gregg's definition of observability does not deviate substantially from Kalman's original formulation.  
 A system can only be fully understood if its internal state can be determined at all times from its outputs. 
-Also Gregg's definition is more practical orientated, where the original definition is more orientatedto the theory.
+Also, Gregg's definition is more practically oriented, where the original definition is more oriented to the theory.
 In order for a system to produce outputs from which its internal state can be inferred, certain analysis techniques are required.  
-Gregg categorizes these techniques in \cite[Chap.~1.2]{Gregg_2020} into \emph{tracing}, \emph{snooping}, \emph{sampling}, and \emph{profiling}.  
+Gregg categorizes these techniques in \cite[Chap.~1.2]{Gregg_2020} into \emph{tracing}, \emph{snooping}, \emph{sampling} and \emph{profiling}.  
 
 Tracing, as described by Gregg in \cite[Chap.~1.2]{Gregg_2020}, refers to recording the system state based on event sources.  
 The origins of tracing can be traced back to 1951, when Gill in \cite{doi:10.1098/rspa.1951.0087} described a method to rapidly diagnose errors in the code of digital computers.  
 This topic is closely related to debugging, yet Gill already employed several techniques in this paper that are also relevant to tracing.  
 He also emphasized that his error detection method should have as little impact on the system as possible.  
 Furthermore, he employed monitoring and reacting to event sources, as can be seen in \cite[p.~540, 547]{doi:10.1098/rspa.1951.0087}.  
-He's not using the term ``tracing`` in his paper yet, but he describes a method that nowerdays is considered between debugging and tracing.
-Like Gregg describes in \cite[Chap. 1.2]{Gregg_2020} nowerdays there are various tools in the Linux context that enable tracing, such as \texttt{strace} \cite{strace} or \texttt{top}.  
+He's not using the term ``tracing`` in his paper yet, but he describes a method that nowadays is considered between debugging and tracing.
+Like Gregg describes in \cite[Chap. 1.2]{Gregg_2020} nowadays there are various tools in the Linux context that enable tracing, such as \texttt{strace} \cite{strace} or \texttt{top}.  
 According to Gregg, \texttt{top} internally also works with event sources and subsequently outputs a summary of the information extracted from these event sources to the console.  
 From this, it follows that tracers must, on the one hand, be capable of detecting event sources, and on the other hand, also be able to read their metadata in order to fully understand their context.  
 Furthermore, since event sources can occur very frequently, the overhead of a tracer must remain low.
@@ -764,11 +764,11 @@ One example of a sampling tool is \texttt{gprof}.
 As shown in \cite{gprof}, this tool can be used to perform measurements at regular time intervals in order to determine how much time the program spends in various functions.  
 
 In this work, tracing is primarily used, and therefore sampling and profiling will not be discussed further at this point.  
-After having described the commonly used analysis techniques according to Gregg, all of which operate partially or exclusively with event sources, the following section explains what an event sources is and which types of event sources exist in the Linux context.  
-As previously mentioned, and as shown in Figure \ref{fig:bpf:working_principle}, can be classified into static and dynamic event sources.
+After having described the commonly used analysis techniques according to Gregg, all of which operate partially or exclusively with event sources, the following section explains what an event source is and which types exist in the Linux context.  
+As previously mentioned and as shown in Figure \ref{fig:bpf:working_principle}, they can be classified into static and dynamic event sources.
 
 In Figure \ref{fig:probes}, the diagram is also divided into three sections, again distinguishing static and dynamic tracing.  
-Sampling, as described is normally used when many event sources are triggered, so normally in the context of the \ac{CPU}, like can be seen in Figure \ref{fig:probes}.  
+Sampling, as described, is normally used when many event sources are triggered, so normally in the context of the \ac{CPU}, like presented in Figure \ref{fig:probes}.  
 Furthermore, Figure \ref{fig:probes} illustrates how a system stack is organized and which areas can be instrumented with event sources.  
 The kernel space is separated from the user space by the system call interface.  
 
@@ -784,7 +784,7 @@ Having explained where event sources can be attached, the following section disc
 The description begins with dynamic probes, as these were more readily adopted into the Linux kernel.  
 
 As Gregg describes in \cite[Chap. 1.2]{Gregg_2020}, dynamic probes consist of \acp{kprobe} and \acp{uprobe}.  
-As shown in Figure \ref{fig:probes}, \ac{kprobe} affects the kernel space, while \ac{uprobe} affects the user space.  
+As shown in Figure \ref{fig:probes}, a \ac{kprobe} affects the kernel space, while a \ac{uprobe} affects the user space.  
 According to Mavinakayanahalli \cite[p. 101]{Mavinakayanahalli_Panchamukhi_Keniston_Keshavamurthy_Hiramatsu_2006}, \acp{kprobe} were developed by the IBM Linux Technology Center and were integrated into the mainline kernel in version 2.6.9 in 2004.  
 However, the mailing list \cite{kprobe_early} indicates that \acp{kprobe} were patched into kernel 2.5.48 already in 2002, although they were not yet part of the mainline at that time.  
 
@@ -808,12 +808,12 @@ The \texttt{maxactive} field specifies the maximum number of concurrent \acp{kre
 The following describes the operation of \acp{kprobe} and \acp{kretprobe}:  
 
 \begin{itemize}
-    \item A \textbf{Registration} is needed before use ,as stated in the official documentation \cite{kprobe_doc}, for both \ac{kprobe} and \ac{kretprobe}.  
+    \item A \textbf{Registration} is needed before use, as stated in the official documentation \cite{kprobe_doc}, for both \ac{kprobe} and \ac{kretprobe}.  
           This is done using \texttt{register\_kprobe()} or \\
           \texttt{register\_kretprobe()}.  
           A \ac{kretprobe} cannot exist without a corresponding \ac{kprobe}.  
           Therefore, registering a \ac{kretprobe} always involves a \ac{kprobe}.  
-          During \ac{kprobe} registration, the first instruction of the target function is replaced with a breakpoint instruction which is \texttt{int3} on the x86 architecture.  
+          During \ac{kprobe} registration, the first instruction of the target function is replaced with a breakpoint instruction, which is implemented as \texttt{int3} on the x86 architecture.  
           The original instruction is also copied to allow later execution.  
     \item A \textbf{Trap} occurs when the CPU reaches the address specified during registration, triggering the \ac{kprobe} dispatcher.  
           The normal function flow is interrupted, and control is transferred to the \ac{kprobe} handler.  
@@ -824,16 +824,16 @@ The following describes the operation of \acp{kprobe} and \acp{kretprobe}:
           As can be seen in \cite{linux_kprobes_616}, this is performed by \texttt{pre\_handler\_kretprobe(struct kprobe *p, struct pt\_regs *regs)}, where \texttt{*p} is the \ac{kprobe} struct and \texttt{*regs} contains registers saved during the trap.  
           This function replaces the return address of the probed function on the stack with the trampoline address and stores the original return in the \texttt{kretprobe\_instance} struct.  
           This has the affect that the trampoline is triggered when the original function returns.  
-          Aside from this kretprobe-specific pre-handler, regular \ac{kprobe} can execute user-defined code before the actual function.  
-          After the \texttt{pre\_handler}, the copied instruction is executed in a single-step manner, as desrcibed in \cite{kprobe_doc}  
+          Aside from this kretprobe-specific \texttt{pre-handler}, regular \ac{kprobe} can execute user-defined code before the actual function.  
+          After the \texttt{pre\_handler}, the copied instruction is executed in a single-step manner, as desrcibed in \cite{kprobe_doc}.  
           Copying the instruction is necessary to avoid removing the breakpoint, which would allow other \acp{CPU} to skip the \ac{kprobe}.  
-          Execution then proceeds to either the trampoline or the post-handler.  
+          Execution then proceeds to either the trampoline or the \texttt{post-handler}.  
           In the post-handler, the return value can be further processed, or additional user code executed.  
           For a \ac{kretprobe}, the post-handler is not executed, as it is replaced by the next \ac{kprobe} triggered via the trampoline.  
           If the function terminates in a fault, such as a page fault, the previously mentioned fault handler is invoked.
           This handler prevents the function from crashing immediately and implements a user-defined routine for handling the error condition.
     \item The \textbf{Trampoline} typically consists, as described in \cite{kprobe_doc}, of a NOP instruction.  
-          As described by Stallings in \cite[p. 545]{Stallings_2018}, the NOP instruction means no operation.
+          As outlined by Stallings in \cite[p. 545]{Stallings_2018}, the NOP instruction means no operation.
           So this operation only acts as placeholder and makes space in the instruction stream.
           The trampoline handler is executed and transfers control to the return handler.  
           After execution of the return handler, the instruction pointer is restored to the original return address stored in \texttt{kretprobe\_instance}.  
@@ -855,10 +855,10 @@ The blacklist can also be dynamically viewed in DebugFS under \texttt{/sys/kerne
 It contains functions used in the \ac{kprobe} workflow.  
 For example, \texttt{do\_int3} is blacklisted because probing it would cause recursion, because the \ac{kprobe} would continuously probe itself.
 Another function on the blacklist is \texttt{do\_debug}.  
-As shown in \cite{linux_trap} and confirmed by Intel in \cite[p. 1468]{single_step}, this function handles the debug-exception vector \#DB.  
+As shown in \cite{linux_trap} and confirmed by Intel in \cite[p. 1468]{single_step}, this function handles the debug-exception vector $\#DB$.  
 It is used, among other things, for single stepping.  
 Since \acp{kprobe} use single stepping to execute the probed function, instrumenting this function would affect the handler used for single stepping.  
-Because \texttt{do\_debug} executes when a \#DB occurs and the TS flag is set, which is always the case for single stepping, probing it would lead to a deadlock.  
+Because \texttt{do\_debug} executes when a $\#DB$ occurs and the $TS$ flag is set, which is always the case for single stepping, probing it would lead to a deadlock.  
 
 The performance of \acp{kprobe} can be optimized, as described by Gregg in \cite[Chap. 2.7]{Gregg_2020}, by replacing the break instruction with a jump instruction.  
 This has been possible since kernel version 5.x and is applied automatically if feasible.  
@@ -890,7 +890,7 @@ Unlike \acp{kprobe}, \acp{uprobe} are attached to a function in an executable fi
 As described in \cite{uprobe_doc}, this can be achieved by registering uprobes in the file \\
 \texttt{/sys/kernel/tracing/uprobe\_events}.  
 For instance, using the command \\
-\texttt{echo 'p /usr/test:0x5329c0' > /sys/kernel/tracing/uprobe\_events} attaches a uprobe to the executable \texttt{test} at offset \texttt{0x5329c0}.  
+\texttt{echo 'p /usr/test:0x5329c0' > /sys/kernel/tracing/uprobe\_events} attaches an uprobe to the executable \texttt{test} at offset \texttt{0x5329c0}.  
 In other words, the function to be probed in \texttt{test} starts at byte \texttt{0x5329c0}.  
 This implies that the function and offset must always be provided when registering a \ac{uprobe}.  
 
@@ -905,7 +905,7 @@ struct uprobe *uprobe_register(
                                 loff_t ref_ctr_offset, 
                                 struct uprobe_consumer *uc);
 \end{minted}
-\caption{Function blueprint to register a Uprobe}
+\caption{Function blueprint to register an Uprobe}
 \label{lst:uprobe}
 \end{listing}
 
@@ -926,7 +926,7 @@ Therefore, the instructions are executed per process.
 Dronamraju refers to this area, where instructions are executed per process using single-stepping, as the XOL area.
 In this context XOL means execute out of line.  
 The main difference in the execution flow of a \ac{uprobe} is that it requires two context switches and is executed per process.  
-As described by Zhen et al. in \cite[p. 2]{zheng2023bpftimeuserspaceebpfruntime}, these context switches can increase the runtime of a uprobe by a factor of 10.  
+As described by Zhen et al. in \cite[p. 2]{zheng2023bpftimeuserspaceebpfruntime}, these context switches can increase the runtime of an uprobe by a factor of ten.  
 
 Furthermore, at the time of this work, no optimizations exist for \acp{uprobe} that are part of the kernel mainline.  
 Optimization of \acp{uprobe} by using a jump instruction, as in the case of \acp{kprobe}, is not possible because, due to per process execution in the XOL area, the jump instruction would otherwise overwrite the original instructions of other processes that are not currently executing the \ac{uprobe}.  
@@ -1152,10 +1152,10 @@ First, a stable API exists that defines exactly which information is made availa
 Moreover, tracepoints are preserved in future kernel versions.  
 A performance improvement over dynamic event sources\footnote{For the overhead of dynamic event sources, the minimum values correspond to the minimal reported latency of a simple probe, i.e. a \ac{kprobe} or \ac{uprobe}, and the maximum values correspond to the maximum reported latency of the respective return probes.} can also be observed.  
 
-On the kernel side, tracepoints are similar as fast as optimized \acp{kprobe}.  
+On the kernel side, tracepoints are similar fast as optimized \acp{kprobe}.  
 Since kprobes, however, cannot always be optimized, the overall performance of tracepoints is generally better.  
-On the user-level side, the performance of \acp{USDT} is significantly better than that of \acp{uprobe}.  
-The performance of \acp{USDT} is only slightly worse than that of tracepoints and is therefore, depending on the tracer, between 10 and 40 times faster than a \ac{uprobe}.  
+On the user-level side, the performance of \acp{USDT} is significantly better than that of \acp{uprobe} and only slightly worse than that of tracepoints.
+Therefore their performance is, depending on the tracer, between 10 and 40 times faster than a \ac{uprobe}.  
 
 \begin{table}[ht]
 \centering
@@ -1180,7 +1180,7 @@ The performance of \acp{USDT} is only slightly worse than that of tracepoints an
 \label{tab:event}
 \end{table}
 
-From these data, it follows that static event sources require more effort to maintain and to implement.  
+From this data, it follows that static event sources require more effort to maintain and to implement.  
 However, this effort is compensated by better performance and higher stability.  
 
 This observation is also supported in the literature.  
@@ -1198,14 +1198,15 @@ Since the basics to monitoring and the functionalities of event sources, which a
 
 \section{Test system}
 In this chapter, the test system is divided into the four components test application Server and Client, Test Automation and Access Point Configuration. 
-Since for the implementation of the client and server the test application, which is generating the data is required, the test application wil be described first.  
+For the implementation of the client and server, the test application, which is generating the data, is required.
+Therefore the test application will be described first.  
 Afterwards the implementation of the client and server will be explained.  
 Subsequently, the focus shifts to test automation, and finally to the creation of the access point.  
 
 \subsection{Test Application} \label{subsec:appl}
 
 First, the requirements that the test application must fulfill are discussed.  
-Afterwards, the test application itself is explained, and it is described how it meets these requirements.  
+Afterwards, the test application itself is explained and how it meets these requirements.  
 
 For the test application, the following three aspects are relevant:  
 
@@ -1214,10 +1215,10 @@ For the test application, the following three aspects are relevant:
     The focus of this work is to evaluate influencing factors on the real-time capability of Wi-Fi.  
     Therefore, influencing factors that are not related to Wi-Fi should be minimized.  
     If the execution time of the application is too long or if it requires many shared system resources such as the \ac{CPU}, cache, memory, or graphics card, then the application becomes vulnerable to real-time issues.  
-    That resource contention is a common problom for real-time systems, as stated among other by Aceituno et al. in \cite[p. 1]{ACEITUNO2021102223}.
+    That resource contention is a common problem for real-time systems, as stated among others by Aceituno et al. in \cite[p. 1]{ACEITUNO2021102223}.
     Especially in a multi-core environment it is not possible to avoid resource contention completely, but to restrict it as far as possible.
     It is mandatory that the application achieves real-time capability, since real-time violations would otherwise directly affect the test results.  
-    Furthermore, it is necessary that the application in general does not consume too much time, since otherwise the previously defined deadline of 3 ms, maybe cannot be met, or this at least becomes more difficult, as less time remains available for the Wi-Fi operation.  
+    Furthermore, it is necessary that the application in general does not consume too much time, since otherwise the previously defined deadline of 3 ms, might note be achieved, or this at least becomes more difficult, as less time remains available for the Wi-Fi operation.  
 
     \item \textbf{Amount of data}:  
     It is also required that the application continuously generates data that can be transmitted.  
@@ -1259,7 +1260,7 @@ Each job is characterized by three properties:
     \item The \textbf{\ac{WCET}}, which denotes the maximum execution time required by the job.  
           It corresponds to the execution time in the worst case, i.e., when the job is executed under the most unfavorable conditions.  
           Such conditions may arise due to external influences such as interrupts or blocked resources.  
-          In the networking context especially the time in the networkstack can be considered as a part of these conditions.
+          In the networking context especially the time in the network stack can be considered as a part of these conditions.
           The \ac{WCET} must be smaller than the scheduling window to guarantee that the job finishes before its deadline, thereby ensuring that the application represented by the job is real-time capable.  
 \end{itemize}
 
@@ -1302,7 +1303,7 @@ Thus, the event-triggered model is described as the more efficient option.
 
 However, this view is contrasted by the study of Meister et al. in \cite{meister2023sharednetworkeffectstime}, where the two models are also compared.  
 Their results demonstrate that in practice, especially under network effects, the time-triggered model can outperform the event-triggered one.  
-Since the studies of Khojasteh et al. where only theoratical and the network load were not considered, the results of Meister et al. can be considered as meaningfull.
+Since the studies of Khojasteh et al. where only theoretically and the network load was not considered, the results of Meister et al. can be considered as meaningfull.
 
 Since this work also considers network effects, and because the periodic model provides lower complexity, improved observability, and enhanced predictability, a periodic model is adopted in this thesis.  
 The periodic model has a lower complexity, because it has no separate parameter for a deadline or a minimum period and therefore less parameters in general.
@@ -1314,12 +1315,12 @@ A distinction is made between real-time jobs, which are shown in blue, and non-r
 It can be observed that only the real-time jobs possess a period duration and an arrival time.  
 The non-real-time job extends across the entire timeline.  
 This is because there is no specific regulation for it.  
-The requirement was to transmit as much bulk data as possible alongside the real-time data, which results in these data being sent continuously.  
+The requirement was to transmit as much bulk data as possible alongside the real-time data, which results in this data being sent continuously.  
 Only the real-time jobs are subject to timing constraints.  
 For $J_{i+2}$, the model also visualizes how a real-time violation occurs.  
 $J_{i+2}$ finishes at the time $E_{i+2}$, which is the interval $rt_{v-i+2}$ after its deadline $D_{i+2}$.  
 This interval is shown in red.  
-Thus, the diagram does not represent the load on the \ac{CPU}, but instead the load on the network, at least in part.  
+Thus, the diagram does not represent the load on the \ac{CPU}, but instead the load on the network, at least partially.  
 
 The execution of a job is depicted on the right side in the Application Concept.  
 A job is one iteration in which a step of the application is executed.  
@@ -1346,7 +1347,7 @@ If the deadline is met, the penalty value $y_p$ is set to 0.
 If the deadline is missed, a penalty is applied.  
 As described in Section \ref{sec:real_time}, the value of a real-time application does not only depend on the result but also on the timing constraints.  
 Therefore, $y_p$ was introduced.  
-Even if $D_i$ were missed, the result would still be correct.  
+Even if $D_i$ was missed, the result would still be correct.  
 However, in order to visualize the real-time violation, the result is deliberately distorted by $y_p$, since according to the definition of a real-time application it must be considered incorrect.  
 
 In step \circnum{7}, the angle $\alpha$, the calculated coordinates $(x_i, y_i)$, and the penalty $y_{pi}$, which is 0 if the real-time constraints are satisfied, are stored in a pre-allocated array.  
@@ -1509,7 +1510,7 @@ enum MessageType {
 \end{listing}
 
 In the \textit{Start} state, the server waits until it receives a message of type \texttt{Start}.  
-Subsequently, it transitions into the next derivephase of the protocol.  
+Subsequently, it transitions into the next derive phase of the protocol.  
 
 After the state \emph{Start}, the three states \ac{NTP}, \ac{PTP}, and \emph{Check} follow.  
 All three states serve the purpose of time synchronization.  
@@ -1595,7 +1596,7 @@ Thus, for all four intervals, a time measurement in the kernel at the tracepoint
 
 How this synchronization is implemented is described in the following.
 
-\subsection{Testenvorioinment Synchronizations} \label{subsec:impl_uprobe}
+\subsection{Synchronization of the Testenvironment} \label{subsec:impl_uprobe}
 The synchronization between user space and kernel space is addressed first, since it is relevant for the subsequent synchronization between client and server.  
 In \ac{BPF}, that is, in the code of the application executed within the kernel, time can only be measured using the function \texttt{bpf\_ktime\_get\_ns()}.  
 This function returns the time in nanoseconds since system start, as described in \cite{bpf_ktime_get_ns}.  
@@ -1630,7 +1631,7 @@ The following section discusses the technical implementation of the synchronizat
 This process is illustrated in Figure~\ref{fig:uprobe}.  
 As can be seen, a \ac{uretprobe} is used for time synchronization.  
 Two timelines are depicted, one for user space and one for kernel space.  
-The user-space timeline starts at time $t_{u0}$, while the kernel-space timeline begins at time $t_{k0}$.  
+The user-space timeline starts at time $tu_0$, while the kernel-space timeline begins at time $t_{k0}$.  
 As previously mentioned, the problem is that $t_{u0} \neq t_{k0}$.  
 Therefore, it is desirable to establish a common reference point on both timelines from which times can be measured relative to each other.  
 This is achieved by the \ac{uretprobe}.  
@@ -1689,7 +1690,7 @@ For each case, 100 measurements were performed in order to determine the maximum
 The table reports both the maximum and average values for $d_{ku}$ as well as for jitter, in addition to the average durations of $t_{uretprobe}$ and $t_{uprobe}$.  
 
 Furthermore, these values are provided for two different timers in Rust.  
-Specifically, the measurements were conducted using the timer \texttt{SystemTime::now()}, which, as explained earlier, is said to be unsuitableand and the timer \texttt{Instant::now()}.  
+Specifically, the measurements were conducted using the timer \texttt{SystemTime::now()}, which, as explained earlier, is said to be unsuitable and and the timer \texttt{Instant::now()}.  
 In addition, the experiments were carried out once with real-time priority enabled and once without real-time priority.  
 
 \begin{table}[ht]
@@ -1716,7 +1717,7 @@ In addition, the experiments were carried out once with real-time priority enabl
 \end{table}
 
 The results reveal two clear tendencies.  
-First, the function \texttt{Instant::now()} is faster than \texttt{SystemTime::now()} both on average and in the maximum case and it also exhibits lower jitter.  
+First, the function \texttt{Instant::now()} is faster than \texttt{SystemTime::now()} both on average and in the worst case and it also exhibits lower jitter.  
 Second, the measurements with real-time priority consistently outperform those without real-time priority.  
 Both tendencies were expected, since it was already shown in \cite{systemtime} that \texttt{SystemTime::now()} is less accurate than \texttt{Instant::now()}.  
 Real-time priority, as described in Section~\ref{subsec:real_time_kernel}, allows the scheduler to prioritize execution, which generally results in lower latency and jitter.  
@@ -1764,8 +1765,8 @@ Therefore, it is crucial that the function name remains unchanged and that the f
 
 In the execution of the function, a timestamp is generated first in order to keep $d_{ku}$ as small as possible.  
 The timestamp represents the point in time $t_{k6}$ in Figure~\ref{fig:uprobe}.  
-Subsequently, memory is reserved in the ring buffer using the function \texttt{bpf\_ringbuf\_reserve}, after which the event is submitted via \texttt{bpf\_ringbuf\_submit} into it, in order get consumed by the user space.  
-After the message is submitted into the rinbuffer the user sace gets a notification that there is an message to collect, like described in \cite{buffer_submit}.
+Subsequently, memory is reserved in the ring buffer using the function \texttt{bpf\_ringbuf\_reserve}, after which the event is submitted via \texttt{bpf\_ringbuf\_submit} into it, in order to get consumed by the user space.  
+After the message is submitted into the ring buffer the user space gets a notification that there is a message to collect, like described in \cite{buffer_submit}.
 The event consists of a type identifier \texttt{event\_type}, a data structure containing the parameters \texttt{msg\_type} and \texttt{seq} and a timestamp.  
 For the \ac{uretprobe}, only the event type and the timestamp are relevant.  
 The event type allows the user-space program to determine how the event should be processed.  
@@ -1811,7 +1812,7 @@ This protocol, however, was primarily designed for \ac{LAN} environments.
 According to Chefrour \cite[p.~31]{CHEFROUR202226}, \ac{PTP} can achieve accuracies between $10$ and $100\,\text{ns}$, but only when implemented in hardware, which requires specialized network chips.  
 
 Both \ac{NTP} and \ac{PTP} are, as highlighted in \cite[p.~29]{CHEFROUR202226}, significant milestones and key protocols in network synchronization.  
-For this reason, these names are used here to denote the phases of coarse synchronization and fine synchronization, respectively.  
+For this reason, these names are used here to denote the phases of coarse- and fine-synchronization, respectively.  
 Both protocols rely on the assumption of a symmetric network.  
 In other words, it is assumed that the transmission time from $x$ to $y$ equals the transmission time from $y$ to $x$.  
 The synchronization approach used in this work is based on the same principle.  
@@ -1843,7 +1844,7 @@ The resulting $\ac{RTT}_{NTP}$ serves as the basis for fine synchronization.
 The procedure of the \ac{PTP} phase is illustrated as \ac{PTP} repetition in Figure~\ref{fig:flow_chart}.  
 In this phase, the server again sends a message to the client, this time of type \ac{PTP}.  
 Unlike in the \ac{NTP} phase, the server does not synchronize its user and kernel space before sending the message, but rather after a delay.  
-Specifically, it waits for $\frac{\ac{RTT}_{NTP}}{2}$ after sending the message before performing synchronization.  
+Specifically, it waits for $\frac{\ac{RTT}_{NTP}}{2}$ after sending the message, before performing synchronization.  
 The client behaves identically to the \ac{NTP} phase, except that it returns a packet of type \ac{PTP} to the server.  
 The server measures $\ac{RTT}_{PTP}$ and checks whether $|\ac{RTT}_{NTP} - \ac{RTT}_{PTP}| < \ac{PTP}_{Req}$ holds.  
 If the condition is satisfied, the process transitions to the Check state, otherwise, the repetition is executed again.  
