@@ -617,8 +617,8 @@ If a system is able to meet its real-time requirements, this property is referre
 
 In addition to execution time and the number of deadline misses, jitter is frequently used as a quality metric for real-time systems, as described in \cite[p. 38]{real_time_systems}.  
 Jitter refers to the temporal deviation from an expected event.  
-For example, if the period $t$ is 3 ms and the start time is $t_0$, the following event is expected at $t_0 + 3$ ms.  
-On a real system, however, it may occur at $t_0 + (3-x)$ ms, where $x \in [-3, 3]$.  
+For example, if the period $t$ is 7 ms and the start time is $t_0$, the following event is expected at $t_0 + 7$ ms.  
+On a real system, however, it may occur at $t_0 + (7-x)$ ms, where $x \in [-7, 7]$.  
 This deviation $x$, i.e., the difference from the expected occurrence, is referred to as jitter and serves as a measure of the real-time capability of the system.  
 The lower the jitter, the more deterministic the system is and thus the higher its real-time quality.  
 

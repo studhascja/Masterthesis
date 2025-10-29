@@ -76,10 +76,11 @@ Thus, these languages are also suitable for \ac{rt} application development, pro
 
 The chosen programming languages and specific implementation-level requirements for achieving \ac{rt} capability and how these are addressed, are discussed in detail in Chapter \ref{subsec:impl}.
 
-Furthermore, the test system must be capable of transmitting both \ac{rt} and non-\ac{rt} data concurrently over the same network, with the \ac{rt} traffic maintaining a maximum \ac{RTT} of 3 ms. 
+Furthermore, the test system must be capable of transmitting both \ac{rt} and non-\ac{rt} data concurrently over the same network, with the \ac{rt} traffic maintaining a \ac{RTT} as low as possible. 
 This timing constraint stems from the fact that this work seeks to characterize Wi‑Fi’s \ac{rt} capabilities and the factors that influence them and to assess whether Wi‑Fi can be employed in an industrial \ac{rt} environment. 
-As discussed in Chapter \ref{sec:real_time}, such environments commonly impose a 3 ms deadline.
-So, beside the evaluation of the \ac{rt} capabilities of Wi-Fi and the minimization of the \ac{RTT}, a timing constraint of 3 ms is the goal of this work, like stated in Chapter \ref{subsec:objective}.
+The lower the achievable real-time capable \ac{RTT}, the wider the range of industrial applications in which Wi-Fi could be employed. 
+This is because the requirements in industrial environments can vary substantially, resulting in different levels of real-time constraints.
+These belong in one hand, to the duration of \ac{RTT} and in the other, the overall degree of real-time capability that a system must provide.
 
 To summarize, the requirements of the test environment are illustrated in Figure \ref{fig:requirements}.
 There the requirements are split between \ac{OS} and test system.
@@ -178,7 +179,7 @@ This means particularly hardware compatibility of the \ac{OS}.
 The MediaTek 7925B22M Wi-Fi card used in this work lacks drivers outside the Linux ecosystem, thereby excluding FreeRTOS as a viable option.
 
 Considering the experience with RT-Linux on Raspberry Pi systems stated by the studies before and the demonstrated maximum scheduling latency of 125 microseconds along with a maximum jitter of 380 microseconds of the test-system, RT-Linux proves sufficient for the purposes of this work. 
-Given a \ac{RTT} requirement of 3 milliseconds, this jitter is acceptable. 
+This jitter is considered acceptable, since the expected \ac{RTT} is in the range of several milliseconds. 
 Furthermore, since Wi-Fi is inherently not \ac{rt} capable
 and as discussed in Chapter \ref{sec:used_hardware}, the employed hardware which has, among other shared resources, a split L3 cache, is not optimized for \ac{rt} processing.
 So the minor limitations of RT-Linux do not significantly impact this test-environment.
@@ -1218,8 +1219,7 @@ For the test application, the following three aspects are relevant:
     That resource contention is a common problem for real-time systems, as stated among others by Aceituno et al. in \cite[p. 1]{ACEITUNO2021102223}.
     Especially in a multi-core environment it is not possible to avoid resource contention completely, but to restrict it as far as possible.
     It is mandatory that the application achieves real-time capability, since real-time violations would otherwise directly affect the test results.  
-    Furthermore, it is necessary that the application in general does not consume too much time, since otherwise the previously defined deadline of 3 ms, might note be achieved, or this at least becomes more difficult, as less time remains available for the Wi-Fi operation.  
-
+    
     \item \textbf{Amount of data}:  
     It is also required that the application continuously generates data that can be transmitted.  
     This ensures that a sufficiently large number of data transmissions take place, which in turn are the foundation for reliable test results.  
@@ -1473,8 +1473,8 @@ Liu et al. \cite[p. 6]{10.1145/3672197.3673430} report that it provides up to 25
 At the time of publication of \cite{Gregg_2020}, the ring buffer was not yet mainline, which explains why Gregg uses the perf buffer.  
 
 In lines 16--20, a polling thread is launched, which continuously checks for the presence of new events.  
-As detailed in \cite{rb}, polling continues until a new entry is available in the ring buffer or a timeout of 3 milliseconds elapses.  
-This timeout is chosen to ensure that, in the absence of new events, the overall process is not blocked, as the application operates on a periodic workload model with a 3 ms interval.  
+As detailed in \cite{rb}, polling continues until a new entry is available in the ring buffer or a timeout of 3 ms elapses.  
+This timeout is chosen to ensure that, in the absence of new events, the overall process is not blocked, as the application operates on a periodic workload model with a 3 ms interval, as described in Chapter \ref{sec:eval}.  
 
 In lines 22--36, a \ac{TCP} server is initialized, and the \texttt{SetupContext} is configured.  
 The \texttt{SetupContext} is a structure encompassing all data required in subsequent states.  

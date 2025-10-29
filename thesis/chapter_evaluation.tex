@@ -9,7 +9,6 @@ Finally, Chapter \ref{subsec:disc} compares the results of this thesis with find
 Certain factors remain constant across all test runs.  
 The test procedure is defined by five key elements:  
 \begin{itemize}
-    \item The \textbf{cycle time}, which in this thesis is fixed at 3 ms as previously described.  
     \item The \textbf{packet size and bandwith of bulk data transmission}, which must be determined to minimize interference with the real-time application and simultaneously deliver a reasonable amount of data.  
     \item The \textbf{duration of a single test run}, i.e., the time during which the RT-application executes its computation.  
     \item The \textbf{number of repetitions} of each test run, i.e., how often a given test case is executed to produce sufficient data for reliable conclusions.  
@@ -23,8 +22,13 @@ As described in \cite[p. 3]{drift}, quartz clocks can exhibit a drift of 1-100 p
 This corresponds to a drift of 60 $\mu$s to 6 ms per minute.  
 However, in the results of this thesis, no noticeable drift was observed within a one-minute interval.  
 
-With a cycle time of 3 ms, each 60-second run consists of 20,000 cycles.  
-Each test case is repeated three times, resulting in 60,000 cycles per case to increase the probability of capturing anomalies.  
+With a cycle time of 3 ms\footnote{In this work, a cycle time of 3~ms is used, since the maximum latency observed during test runs with low interference averages around this value. 
+The cycle time is therefore chosen to be as low as possible in order to allow for a high number of iterations, yet not so low that the real-time capability of the application could never be maintained. 
+As long as the number of real-time violations does not degrade the overall application performance, such violations are considered irrelevant. 
+The objective of this work, as described in Chapter~\ref{subsec:objective}, is to determine the probability with which real-time capability can be achieved for a given cycle time~$x$. 
+For this purpose, the exact cycle time used is not critical, since the data indicating when the \ac{RTT} is completed are available.}
+, each 60-second run consists of 20.000 cycles.  
+Each test case is repeated three times, resulting in 60.000 cycles per case to increase the probability of capturing anomalies.  
 Additionally, before each run, the system clock is synchronized, effectively eliminating clock drift.  
 The Wi-Fi connection is also given a warm-up period of 60 seconds, as recommended in \cite[Chap.~3.3.3.14]{alexander-bmwg-wlan-switch-meth-01}, to avoid distortions in the results.  
 
