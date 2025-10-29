@@ -1930,7 +1930,7 @@ A check is performed again to ensure that the message type is not out of bounds.
 If the check passes, the event is assembled and submitted to the ring buffer.  
 This procedure has already been illustrated in Listing~\ref{lst:bpf_uprobe}.  
 
-The data sent via the ring buffer are received in user space by Rust and stored as events in separate queues.  
+The data sent via the ring buffer is received in user space by Rust and stored as events in separate queues.  
 In other words, a dedicated queue is provided for each tracepoint event.  
 As shown in Listing~\ref{lst:bpf_uprobe}, the event also contains the \ac{PID}.  
 This identifier is used to verify whether the event in the ring buffer originates from \ac{BPF}.  
@@ -1985,13 +1985,13 @@ Listing~\ref{lst:calc} illustrates the flow of the \texttt{calculation} function
 As previously mentioned, the start time is first recorded and the $x$-coordinate is computed, before the angle for which the $y$-coordinate is to be calculated is sent to the client.  
 This process is shown in lines 2--7.  
 Subsequently, the tracepoint events for \texttt{net\_dev\_xmit} and \texttt{net\_dev\_queue} are awaited.  
-This is realized through the function \texttt{wait\_for\_event()}, which takes as a parameter the queue in which the corresponding event is collected.  
+This is realized through the function \texttt{wait\_for\_event()}, which takes the queue as a parameter in which the corresponding event is collected.  
 The function returns the event, from which the timestamp of its occurrence can be extracted via the \texttt{timestamp} attribute.  
 
-Afterward, the response from the client is awaited, and upon its arrival the end time is recorded.  
+Afterwards, the response from the client is awaited, and upon its arrival the end time is recorded.  
 The message contains the $y$-value and the client's timing data.  
 These, combined with the server's timing data, are used as shown in lines 22--26 to calculate the monitoring times described in Figure~\ref{fig:tx}.  
-Finally, it is checked whether the interval between start and end time exceeds the specified time limit, thereby violating the real-time requirement.  
+Finally, the server checks whether the interval between start and end time exceeds the specified time limit, thereby violating the real-time requirement.  
 If this is the case, the previously mentioned penalty is applied to $y$.  
 
 After this state, only two states remain, as shown in Figure~\ref{fig:state_machine}.  
@@ -2000,8 +2000,8 @@ It can be reached from any synchronization state as well as from the \textit{Cal
 This state is entered under one of the following conditions:  
 \begin{itemize}  
     \item \textbf{Client timeout:} If the client terminates the \ac{TCP} connection or does not respond in the case of \ac{UDP}.  
-    \item \textbf{Incomplete dataset:} If the data collected by the server\footnote{The dataset consists of the monitoring data and the circle data, i.e., the $x$ and $y$ values.} are incomplete.  
-          In other words, if not all points contain data or if certain data for specific points are missing.  
+    \item \textbf{Incomplete dataset:} If the data collected by the server\footnote{The dataset consists of the monitoring data and the circle data, i.e., the $x$ and $y$ values.} is incomplete.  
+          In other words, if not all points contain measurements or if certain data for specific points are missing.  
 \end{itemize}  
 
 The error state terminates both the server and the client and informs the test automation system that the test must be repeated.  
