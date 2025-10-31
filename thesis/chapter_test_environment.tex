@@ -2000,7 +2000,7 @@ It can be reached from any synchronization state as well as from the \textit{Cal
 This state is entered under one of the following conditions:  
 \begin{itemize}  
     \item \textbf{Client timeout:} If the client terminates the \ac{TCP} connection or does not respond in the case of \ac{UDP}.  
-    \item \textbf{Incomplete dataset:} If the data collected by the server\footnote{The dataset consists of the monitoring data and the circle data, i.e., the $x$ and $y$ values.} is incomplete.  
+    \item \textbf{Incomplete dataset:} If the data collected by the server\footnote{The dataset consists of monitoring data and circle data, i.e., the $x$ and $y$ values.} is incomplete.  
           In other words, if not all points contain measurements or if certain data for specific points are missing.  
 \end{itemize}  
 
@@ -2028,7 +2028,7 @@ In the figure the test suite for the server is shown, it will be explained, when
 \begin{figure}[ht]
     \centering
     \includegraphics[width=0.7\linewidth]{figures/Test-Suite.drawio.pdf}
-    \caption{Presentation of sequence diagram of the test-suite of the server}
+    \caption{Sequence diagram illustrating the interaction and execution flow between the server and client test suites.}
     \label{fig:test-suite}
 \end{figure}
 
@@ -2039,24 +2039,22 @@ On the client side, the iperf3 client is not launched by the test suite itself, 
 
 In both test suites, the next step is the selection of the test run.  
 For this purpose, the status file is first checked, which contains a digit specifying which test run should be executed next.  
-Afterwards, the configuration file is opened, which contains the different configurations.  
+Afterwards, the test specific configuration file is opened.
 Each configuration corresponds to one line in this file, specifying the Wi-Fi standard, frequency, bandwidth, \ac{QoS} status, protocol and \ac{AP} configuration name.  
 For instance, the line \texttt{4 2.4 20 0 udp wifi4} specifies that the Wi-Fi connection should use standard 4, a frequency of 2.4 GHz and a bandwidth of 20 MHz.  
 Moreover, no \ac{QoS} parameters should be applied, the application should use \ac{UDP} and the corresponding hostapd configuration for the Wi-Fi parameters is included in the config file \texttt{wifi4}.  
-The last parameter is not relevant for the client test suite since it has not to start an \ac{AP} with hostapd.  
+The last parameter is not relevant for the client test suite since it does not have to start an \ac{AP} with hostapd.  
 
 The next step on the server side is to start the \ac{AP} with the respective hostapd configuration.  
-The client test suite does not include this step.
-Instead the client establishes a connection to the server using wpa-supplicant.  
+Instead of launching hostapd, the client establishes a connection to the server using wpa-supplicant.  
 The hostapd configurations are explained in more detail in Chapter~\ref{subsec:hostapd}.  
 
 In the subsequent step, both test suites set or reset the \ac{QoS} parameters.
-Afterwards the application, either the server or the client, is started in a thread.  
-In the next step, the test executions proceed, which differ between server and client.  
+Afterwards the application, either the server or the client, is started in a thread.    
 On the server side, only the application priority is checked to ensure that it is set to 139, i.e., real-time priority, while the iperf process runs at a lower priority.  
 This is achieved by executing the shell command \texttt{ps -eLo comm,pri | grep server/iperf} in Python and verifying that the server process runs at priority 139, whereas the iperf process does not.  
 As described in~\cite{ps}, this command lists all processes including threads and outputs only the name and the priority.  
-On the client side, the priorities are checked in the same way.  
+The client side checkes the priorities analogously.  
 Additionally, it is verified that Wi-Fi version, bandwidth and frequency match the values specified in the configuration.  
 In other words, the client test suite checks that the server's \ac{AP} configuration is correct and actually usable\footnote{The fact that an \ac{AP} provides certain features, such as Wi-Fi standard 6, does not automatically imply that these features are active in the client connection.  
 For example, if the client connects to the \ac{AP} with an incompatible \ac{WPA} configuration, the Wi-Fi standard may be downgraded.  
@@ -2091,7 +2089,6 @@ This represents the section that is repeated at least once for each configuratio
 Consequently, the Rust project is compiled only once for both client and server.  
 On the server side, the iperf3 server is also started only once, since it remains persistent.  
 By contrast, the iperf3 client reconnects for each test run, since it may require a different configuration.  
-This process is explained in more detail in Chapter~\ref{sec:mod}.  
 
 Having now described the organization of the test runs, the following section addresses the implementation of the \acp{AP} using hostapd.  
 
@@ -2143,5 +2140,5 @@ The configuration can be divided into several parts:
 
 \end{itemize}
 
-Having now explained how the desired settings can be applied in hostapd, the following section examines further measures regarding network characteristics and prioritization and their influence on the real-time performance of the Wi-Fi connection.
+Having now explained how the desired settings can be applied in hostapd, the following section examines further measures regarding network characteristics, prioritization and their influence on the real-time performance of the Wi-Fi connection.
 
