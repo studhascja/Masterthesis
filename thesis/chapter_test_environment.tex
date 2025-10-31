@@ -2132,7 +2132,7 @@ The configuration can be divided into several parts:
           For other bandwidths, \texttt{centr\_freq\_idx} and \texttt{oper\_chwidth} must be set.  
           For \texttt{oper\_chwidth}, the value $0 \rightarrow 40\,\text{MHz}$, $1 \rightarrow 80\,\text{MHz}$ and $2 \rightarrow 160\,\text{MHz}$ applies.  
           For \texttt{centr\_freq\_idx}, the center frequency $f_{center} = \frac{f_{c-start} + f_{c-end}}{2}$ must be calculated, and the channel containing this frequency must be selected.  
-          For example, in the 5\,GHz band with a bandwidth of 80\,MHz and a starting channel of 36, the end channel is 48 due to the 20\,MHz channel width\footnote{Like described Chapter \ref{subsec:stand}, the difference between two Channel is 5\,MHz. So to achieve 80\,MHz it is necessary to add four 20\,MHz channels. In this case these are the channel 36, 40, 44 and 48.}.  
+          For example, in the 5\,GHz band with a bandwidth of 80\,MHz and a starting channel of 36, the end channel is 48 due to the 20\,MHz channel width\footnote{Like described in Chapter \ref{subsec:stand}, the distance between two channels is 5\,MHz. So to achieve a bandwidth of 80\,MHz it is necessary to add four 20\,MHz channels. In this case these are the channel 36, 40, 44 and 48.}.  
           Thus, $f_{center} = \frac{(5000\,\text{MHz} + 5 \times 36) + (5000\,\text{MHz} + 5 \times 48)}{2} = 5210\,\text{MHz}$.  
           This corresponds to channel 42, which is assigned to \texttt{centr\_freq\_idx}.  
           In the 6\,GHz band, \texttt{op\_class} must also be considered.  
