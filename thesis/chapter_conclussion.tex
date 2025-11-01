@@ -6,7 +6,7 @@ Furthermore, an outlook on the future development of Wi-Fi's real-time capabilit
 
 \section{Conclusion}
 The research question formulated in Chapter~\ref{subsec:problem} was:
-\textit{"What options exist to improve the real-time capability of Wi-Fi, which factors influence it and to what degree can real-time capability be achieved?"}  
+\textit{"What options exist to improve the real-time capability of Wi-Fi, which factors influence it and to what degree can real-time capability be achieved?"}.  
 To address this research question, it was divided into three sub-questions.  
 
 The first sub-question, \textit{"What options exist to improve the real-time capability?"}, was examined in Chapters~\ref{sec:implementation} and~\ref{sec:eval}.  
@@ -29,7 +29,7 @@ Three main approaches to enhance real-time capability were identified:
 The second sub-question, \textit{"Which factors influence the real-time capability of Wi-Fi?"}, was partly addressed in the discussion of the first.  
 In this study, the influencing factors Wi-Fi standard, frequency, bandwidth, \ac{QoS}, and protocol were identified and analyzed.  
 The degree to which each factor affects capability varies across test runs and is presented in Table~\ref{tab:eval}.  
-In the Table the results presented as radar charts in Figures~\ref{fig:r_mid_max}, \ref{fig:r_labor_max} and~\ref{fig:r_high_max} are illustrated as influences in percentage form.  
+The results presented as radar charts in Figures~\ref{fig:r_mid_max}, \ref{fig:r_labor_max} and~\ref{fig:r_high_max} are illustrated as influences in percentage form.  
 In other words, the magnitude of each influencing factor is represented as a percentage and the sum of all five factors equals 100\%.  
 
 \begin{table}
@@ -65,7 +65,7 @@ The third sub-question, \textit{"To what degree can real-time capability be achi
 As described in Section~\ref{subsec:disc}, a 99.999\% deadline compliance probability can already be achieved for a deadline of 3.7\,ms.  
 However, the corresponding \ac{WCET} exceeds 700\,ms for this test run.  
 Therefore, it can be concluded that Wi-Fi may be suitable for \textbf{soft real-time} and potentially for \textbf{firm real-time} systems, but for \textbf{hard real-time} applications, the deadlines would need to be set significantly higher.  
-It must also be ensured that interference is minimized, as interference can increase the \ac{WCET} by up to a factor of 24, as indicated by the results in Table~\ref{tab:wcet}.  
+It must also be ensured that interference is minimized, as it can increase the \ac{WCET} by up to a factor of 24, as indicated by the results in Table~\ref{tab:wcet}.  
 
 The following section discusses the future development of Wi-Fi's real-time capability and explores possible methods to further enhance it.  
 
@@ -74,7 +74,7 @@ Future research building upon this work could extend the experiments conducted h
 To extend the experiments of this work, the presented test runs could be repeated in larger network environments instead of a simple peer-to-peer connection, introducing more interference and higher server load.  
 Additionally, test runs could be carried out in different physical environments to analyze the effect of surrounding objects on real-time capability, while also varying the communication distance between nodes.  
 
-To improve the real-tim capbility, one possible approach is, to use Wi-Fi cards that support multiple driver queues.  
+To improve the real-time capbility, one possible approach is, to use Wi-Fi cards that support multiple driver queues.  
 This would allow the prioritization mechanism, implemented in this work via the \ac{Qdisc}, to be extended.  
 All Wi-Fi cards used in this study support only a single driver queue, which is why this approach could not be investigated.  
 
@@ -89,7 +89,7 @@ This would, however, involve a modification of the Wi-Fi standard, which was int
 
 In the future, adapting the standard may no longer be necessary.  
 As Bartolin-Arnau et~al.~\cite[p.~15]{telecom6020040} note, the real-time capability of Wi-Fi tends to increase with each new standard generation.  
-This observation has also been confirmed by the results of this study\footnote{Even though, as described in Chapter~\ref{subsec:disc}, the real-time capability was lowest for the Wi-Fi~6 standard (newes used standard), newer standards inherently introduce improvements in bandwidth and frequency range.
+This observation has also been confirmed by the results of this study\footnote{Even though, as described in Chapter~\ref{subsec:disc}, the real-time capability was lowest for the Wi-Fi~6 standard (newest used standard), newer standards inherently introduce improvements in bandwidth and frequency range.
 When these accompanying enhancements are taken into account, the statement that real-time capability increases with newer Wi-Fi standards remains valid.}.  
 With each new Wi-Fi standard, wider channel bandwidths and sometimes even additional frequency bands are introduced.
 Both of these have a positiv impact on the real-time capability.  

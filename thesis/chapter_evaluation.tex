@@ -1,23 +1,23 @@
 \chapter{Evaluation} \label{sec:eval}
-In this chapter, the test methodology, the different test scenarios and their results are presented.  
-Chapter \ref{subsec:procedure} discusses the boundary conditions of the test runs.  
+In this chapter, the \texttt{test methodology}, the different \texttt{\texttt{test runs}} and their results are presented.  
+Chapter \ref{subsec:procedure} discusses the boundary conditions of the \texttt{\texttt{test runs}}.  
 Subsequently, in Chapters \ref{subsec:low}, \ref{subsec:medium} and \ref{subsec:high}, the procedure is applied under environments with varying levels of interference.  
 Finally, Chapter \ref{subsec:disc} compares the results of this thesis with findings from related work and places them in context.  
 
 \section{Test procedure} \label{subsec:procedure}
 
-Certain factors remain constant across all test runs.  
-The test procedure is defined by five key elements:  
+Certain factors remain constant across all \texttt{test runs}.  
+The \texttt{test methodology} is defined by five key elements:  
 \begin{itemize}
     \item The \textbf{packet size and bandwith of bulk data transmission}, which must be determined to minimize interference with the real-time application and simultaneously deliver a reasonable amount of data.  
     \item The \textbf{duration of a single test run}, i.e., the time during which the RT-application executes its computation.  
-    \item The \textbf{number of repetitions} of each test run, i.e., how often a given test case is executed to produce sufficient data for reliable conclusions.  
-    \item The \textbf{different test cases}, derived from the influencing factors outlined in Figure \ref{fig:factors}.  
-    In this thesis, a total of 112 different test cases are considered.  
+    \item The \textbf{number of repetitions} of each test run, i.e., how often a given \texttt{test case} is executed to produce sufficient data for reliable conclusions.  
+    \item The \textbf{different \texttt{test cases}}, derived from the influencing factors outlined in Figure \ref{fig:factors}.  
+    In this thesis, a total of 112 different \texttt{test cases} are considered.  
 \end{itemize}  
 
 To determine the execution time of the real-time application, both the number of repetitions and potential clock drift must be taken into account.  
-In this thesis, each test case is executed for 60 seconds.  
+In this thesis, each \texttt{test case} is executed for 60 seconds.  
 As described in \cite[p. 3]{drift}, quartz clocks can exhibit a drift of 1-100 ppm (parts per million).  
 This corresponds to a drift of 60 $\mu$s to 6 ms per minute.  
 However, in the results of this thesis, no noticeable drift was observed within a one-minute interval.  
@@ -28,7 +28,7 @@ As long as the number of real-time violations does not degrade the overall appli
 The objective of this work, as described in Chapter~\ref{subsec:objective}, is to determine the probability with which real-time capability can be achieved for a given cycle time~$x$. 
 For this purpose, the exact cycle time used is not critical, since the data indicating when the \ac{RTT} is completed are available.}
 , each 60-second run consists of 20.000 cycles.  
-Each test case is repeated three times, resulting in 60.000 cycles per case to increase the probability of capturing anomalies.  
+Each \texttt{test case} is repeated three times, resulting in 60.000 cycles per case to increase the probability of capturing anomalies.  
 Additionally, before each run, the system clock is synchronized, effectively eliminating clock drift.  
 The Wi-Fi connection is also given a warm-up period of 60 seconds, as recommended in \cite[Chap.~3.3.3.14]{alexander-bmwg-wlan-switch-meth-01}, to avoid distortions in the results.  
 
@@ -67,12 +67,12 @@ The table shows the average and maximum latency\footnote{Latency is defined as t
 
 It can be observed that, the maximum latency in particular, increases significantly with higher data rates.  
 It is also evident that the maximum latency at 20~Mbit/s is higher than at 30~Mbit/s.  
-This effect can be attributed to an unfavorable execution-time constellation in the test run at 20~Mbit/s.  
+This effect can be attributed to an unfavorable execution-time constellation in the \texttt{test run} at 20~Mbit/s.  
 This explanation is supported by the average latency, which increases continuously with the data rate.  
 
 The maximum data rate of Wi-Fi~4 with a 20~MHz bandwidth is 76.9~Mbit/s.  
-Thus, the results of the test case with 20~Mbit/s are still realistic, but for this study, a data rate of 30~Mbit/s is selected.  
-The test runs with 5~Mbit/s show up to 45\% lower maximum latency in the low-bandwidth cases compared to the runs with 30~Mbit/s.  
+Thus, the results of the \texttt{test case} with 20~Mbit/s are still realistic, but for this study, a data rate of 30~Mbit/s is selected.  
+The \texttt{test runs} with 5~Mbit/s show up to 45\% lower maximum latency in the low-bandwidth cases compared to the runs with 30~Mbit/s.  
 However, in a network that carries both real-time and bulk data traffic, it is not realistic to limit the non-real-time traffic to 5~Mbit/s.  
 At 30~Mbit/s, the maximum data rate of Wi-Fi~4 with 20~MHz bandwidth is utilized by 39\%, and the preliminary experiments did not show significant degradations compared to 20~Mbit/s.  
 
@@ -109,7 +109,7 @@ However, it is noticeable that larger packet sizes perform better than smaller o
 
 Based on the results of the preliminary experiments, this study employs a data rate of 30~Mbit/s with a packet size of 4096~Bytes for the bulk data.  
 
-The test cases are defined as combinations of the influencing factors shown in Figure \ref{fig:factors}.
+The \texttt{test cases} are defined as combinations of the influencing factors shown in Figure \ref{fig:factors}.
 They can be divided in Wi-Fi standard, frequency, bandwidth, \ac{QoS} and transport protocol.  
 These factors are chosen as influencing parameters, as they encompass all adjustable variables within a Wi-Fi system that can affect its real-time performance.
 
@@ -121,27 +121,27 @@ In total, Wi-Fi~6 therefore contributes eight combinations.
 Together, across all standards, 14 unique combinations of standards, frequency bands and bandwidths are considered.  
 
 Each of these 14 combinations is tested with four differnet levels of \ac{QoS} and with both \ac{TCP} and \ac{UDP}.  
-This results in a total of $8 \times 14 = 112$ test cases.  
+This results in a total of $8 \times 14 = 112$ \texttt{test cases} per test run.  
 
 \begin{figure}[ht]
     \centering
     \includegraphics[width=0.7\textwidth]{figures/Factors.drawio.pdf}
-    \caption{Illustration of the test cases resulting from the influencing factors.}
+    \caption{Illustration of the \texttt{test cases} resulting from the influencing factors.}
     \label{fig:factors}
 \end{figure}
 
-In the following, the test runs in an environment with low inteferences are discussed first.  
+In the following, the \texttt{test cases} in an environment with low inteferences are discussed first.  
 
 \section{Low disturbance test} \label{subsec:low}
 
 In this test scenario, the experiments were conducted in an \ac{EMC} laboratory to bypass theoretical interference factors.  
-The objective of these experiments is to evaluate the behavior of the different test cases in an ideal environment.  
+The objective of these experiments is to evaluate the behavior of the different \texttt{test cases} in an ideal environment.  
 The results can subsequently be used to assess the impact of real-world conditions on the Wi-Fi connection.  
 In the \ac{EMC} laboratory, neither external electromagnetic interference nor additional influencing factors such as electrical devices or human presence are present.  
 
 The results of the experiments are illustrated in Figures \ref{fig:tcp_low} and \ref{fig:udp_low}.  
-A distinction is made between \ac{TCP}- and \ac{UDP}-based test cases.  
-The naming convention of the test cases follows the pattern: Standard-Frequency-Bandwidth-QoS-Protocol.  
+A distinction is made between \ac{TCP}- and \ac{UDP}-based \texttt{test cases}.  
+The naming convention of the \texttt{test cases} follows the pattern: Standard-Frequency-Bandwidth-QoS-Protocol.  
 A value of “1” in the \ac{QoS} field indicates that \ac{QoS} is enabled.  
 Specifically, the value 0xB8 was set as the \ac{DSCP} flag.  
 This corresponds to the \ac{EF} class, which is intended for latency-critical applications, as described in the official \ac{IETF} document RFC 3246 \cite{rfc3246}.  
@@ -150,78 +150,78 @@ This class is particularly designed for voice and video applications that requir
 \begin{figure}[ht]
     \centering
     \resizebox{\textwidth}{!}{\input{figures/jitter_tcp_boxplot_3.pgf}}
-    \caption{Presentation of the jitter of the TCP test cases in a low-interference environment.}
+    \caption{Presentation of the jitter of the TCP \texttt{test cases} in a low-interference environment.}
     \label{fig:tcp_low}
 \end{figure}
 
-Figure \ref{fig:tcp_low} presents the test cases using the \ac{TCP} protocol.  
-It can be observed that test cases with enabled \ac{QoS} consistently exhibit significantly lower maximum values. 
+Figure \ref{fig:tcp_low} presents the \texttt{test cases} using the \ac{TCP} protocol.  
+It can be observed that \texttt{test cases} with enabled \ac{QoS} consistently exhibit significantly lower maximum values. 
 An improvement of up to 70\% is achieved in some cases.
 The mean values are also lower in most cases, although the difference is comparatively small.  
-A similar behavior is observed in the \ac{UDP} test cases shown in Figure \ref{fig:udp_low}.  
+A similar behavior is observed in the \ac{UDP} \texttt{test cases} shown in Figure \ref{fig:udp_low}.  
 
 Among the phases described in Section \ref{sec:implementation}, Phases 3 and 6 account for the largest share of the cycle time, together exceeding 90~\% in nearly all cases.  
 These phases begin with the transfer of the packet to the driver queue via the Tracepoint \texttt{net\_dev\_xmit} and end with the confirmation of reception at the target device via the Tracepoint \texttt{netif\_receive\_skb}.  
 A finer subdivision is not possible within this part of the network stack since no additional tracepoints exist.  
-The significantly reduced jitter maxima in test cases with enabled \ac{QoS} affects only Phases 3 and 6.  
+The significantly reduced jitter maxima in \texttt{test cases} with enabled \ac{QoS} affects only Phases 3 and 6.  
 This is due to the preferential treatment of packets with the \ac{DSCP} flag set in both the driver and the firmware.  
 As described in \cite{rfc3246}, the standard for the \ac{EF} class specifies shorter queues and reduced backoff times.  
 Consequently, the delays within the driver and firmware are reduced, preventing occasional high latencies.  
-However, this is not guaranteed, as illustrated by test case 6-5-80-1-TCP in Figure \ref{fig:tcp_low}, which shows comparatively high maximum values despite \ac{QoS} being enabled.  
+However, this is not guaranteed, as illustrated by \texttt{test case} \texttt{6-5-80-1-tcp} in Figure \ref{fig:tcp_low}, which shows comparatively high maximum values despite \ac{QoS} being enabled.  
 
 \begin{figure}[ht]
     \centering
     \resizebox{\textwidth}{!}{\input{figures/jitter_udp_boxplot_3.pgf}}
-    \caption{Presentation of the jitter of the UDP test cases in a low-interference environment.}
+    \caption{Presentation of the jitter of the UDP \texttt{test cases} in a low-interference environment.}
     \label{fig:udp_low}
 \end{figure}
 
-It is also noteworthy that the \ac{TCP} test cases consistently show lower mean jitter and mean latency compared to the \ac{UDP} test cases.  
+It is also noteworthy that the \ac{TCP} \texttt{test cases} consistently show lower mean jitter and mean latency compared to the \ac{UDP} \texttt{test cases}.  
 This observation is unexpected, as the connection establishment and error correction mechanisms in \ac{TCP} would typically suggest lower performance.  
 The maximum values, however, are approximately the same for both protocols.  
 
-Another unexpected observation concerns the test cases with 80~MHz bandwidth, which in most instances show comparatively poor results.  
-The test cases using 80~MHz bandwidth exhibit the highest jitter maxima.  
-Out of eight test cases with 80~MHz bandwidth, six show a relatively high maximum jitter.  
-Only test case 5-5-80-1 exhibits low maximum values, both for \ac{TCP} and for \ac{UDP}.  
+Another unexpected observation concerns the \texttt{test cases} with 80~MHz bandwidth, which in most instances show comparatively poor results.  
+The \texttt{test cases} using 80~MHz bandwidth exhibit the highest jitter maxima.  
+Out of eight \texttt{test cases} with 80~MHz bandwidth, six show a relatively high maximum jitter.  
+Only \texttt{test case} 5-5-80-1 exhibits low maximum values, both for \ac{TCP} and for \ac{UDP}.  
 
-It was initially expected that test cases with lower bandwidth would show poorer performance, since the channel is more heavily utilized.  
+It was initially expected that \texttt{test cases} with lower bandwidth would show poorer performance, since the channel is more heavily utilized.  
 This expectation is generally confirmed, as both the average and maximum jitter tend to decrease with increasing bandwidth.  
-However, the 80~MHz test cases form an exception to this trend.  
+However, the 80~MHz \texttt{test cases} form an exception to this trend.  
 
-A correlation between the factors standard and frequency in the test cases and the jitter could not be identified.  
+A correlation between the factors standard and frequency in the \texttt{test cases} and the jitter could not be identified.  
 
 Having established the behavior of the test system under ideal conditions, the following section examines the results in a more realistic environment.  
 
 \section{Average disturbance test}  \label{subsec:medium}
 
-\ref{fig:mid_tcp} and \ref{fig:mid_udp} illustrate the results of the test runs in an environment with average interference, which are called \acp{ADT}.
+\ref{fig:mid_tcp} and \ref{fig:mid_udp} illustrate the results of the \texttt{test cases} in an environment with average interference, which are called \acp{ADT}.
 An environment with medium interference corresponds to a typical office or residential setting, where other networks and electrical devices exist that may cause interference.  
 However, there are no devices or networks deliberately deployed to disturb the test system.  
 
-Figures \ref{fig:mid_tcp} and \ref{fig:mid_udp} show the results of the test runs for the maximum and average jitter.  
+Figures \ref{fig:mid_tcp} and \ref{fig:mid_udp} show the results of the \texttt{test cases} for the maximum and average jitter.  
 The jitter values are expressed as a percentage relative to the jitter observed in the low-interference environment.  
 This test was already described in Section \ref{subsec:low}.  
 
-In general, the results show that the maxima increased more strongly for the \ac{TCP} test cases than for the \ac{UDP} test cases.  
+In general, the results show that the maxima increased more strongly for the \ac{TCP} \texttt{test cases} than for the \ac{UDP} \texttt{test cases}.  
 By contrast, the mean jitter increased more strongly for \ac{UDP}.  
 Both protocols, however, exhibit an overall increase in jitter.  
 Nevertheless, the average jitter for \ac{TCP} remained unchanged.  
 
-It is also evident that test cases with \ac{QoS} generally show a smaller increase in jitter.  
-For both protocols, all high outliers in both average and maximum jitter occur in test cases without \ac{QoS}.  
+It is also evident that \texttt{test cases} with \ac{QoS} generally show a smaller increase in jitter.  
+For both protocols, all high outliers in both average and maximum jitter occur in \texttt{test cases} without \ac{QoS}.  
 In particular, in the 6 GHz band, a notably small increase in jitter can be observed.  
 This can primarily be attributed to the fact that, at the time of this study, only few devices operated in this frequency band, resulting in minimal interference.  
 However, Wi-Fi Standard 6 shows higher increases in jitter, both in maximum and average values, compared to Standards 4 and 5.  
 Among these, Standard 4 performs best.  
-This can be seen clearly in Figure \ref{fig:mid_tcp}, particularly for test cases 6-5-20-0-TCP and 6-5-80-0-TCP.  
-In Figure \ref{fig:mid_udp}, the test case 6-2.4-20-0-UDP stands out.  
+This can be seen clearly in Figure \ref{fig:mid_tcp}, particularly for \texttt{test cases} 6-5-20-0-TCP and 6-5-80-0-TCP.  
+In Figure \ref{fig:mid_udp}, the \texttt{test case} 6-2.4-20-0-UDP stands out.  
 
-In the \ac{UDP} test run, the test case 6-2.4-20-0-UDP is particularly affected by interference, showing a maximum jitter level eight times higher than the average maximum increase.  
-In the \ac{TCP} test run, the test case 5-5-40-0-TCP is most noticeable, exhibiting a maximum jitter level seven times higher than the average maximum increase.  
-Such outliers occur in almost all test configurations, with the sole exception of the test cases 6-6-160-*-*.  
-Outliers are especially present in the 2.4 GHz band with 20 MHz and 80 MHz bandwidth, meaning the presented test runs represent the general trend well.  
-Furthermore, it is noticeable that outliers occur significantly less frequently in test runs with \ac{QoS} and exhibit lower magnitudes.  
+In the \ac{UDP} test run, the \texttt{test case} 6-2.4-20-0-UDP is particularly affected by interference, showing a maximum jitter level eight times higher than the average maximum increase.  
+In the \ac{TCP} test run, the \texttt{test case} 5-5-40-0-TCP is most noticeable, exhibiting a maximum jitter level seven times higher than the average maximum increase.  
+Such outliers occur in almost all test configurations, with the sole exception of the \texttt{test cases} 6-6-160-*-*.  
+Outliers are especially present in the 2.4 GHz band with 20 MHz and 80 MHz bandwidth, meaning the presented \texttt{test runs} represent the general trend well.  
+Furthermore, it is noticeable that outliers occur significantly less frequently in \texttt{test cases} with \ac{QoS} and exhibit lower magnitudes.  
 
 Outliers always occur in phases 3 and 6, i.e., in the link and hardware layers of the network stack.  
 In these cases, the client side is more affected in terms of both average and maximum jitter.  
@@ -260,7 +260,7 @@ This work considers five levels of \ac{QoS}.
           After leaving the \ac{Qdisc}, packets are handed to the driver queue and subsequently to the \ac{NIC} via \ac{DMA}, using the same \ac{EDCA} procedure as in \ac{QoS} 3.  
 \end{itemize}  
 
-All \ac{QoS} levels are implemented using \texttt{tc} and \texttt{iptables}, and all \ac{DSCP} values were verified per test case with Wireshark.  
+All \ac{QoS} levels are implemented using \texttt{tc} and \texttt{iptables}, and all \ac{DSCP} values were verified per \texttt{test case} with Wireshark.  
 The full configuration can be found in Appendix \ref{lst:qos}.  
 To distinguish network traffic, packets were marked with \texttt{--set-mark 1} and separated by ports.  
 Bulk data transmission was always performed on port 5202, while RT data transmission was carried out on port 8080.  
@@ -278,19 +278,19 @@ The results of the tests with different \ac{QoS} levels are presented in Figures
 Here, a distinction is again made between \ac{UDP} and \ac{TCP}, as well as between maximum and average jitter.  
 
 For the average jitter, it can be observed that for both \ac{UDP} and \ac{TCP}, all values are below the average jitter without \ac{QoS}.  
-Furthermore, as shown in Figures \ref{fig:qos_udp_avg} and \ref{fig:qos_tcp_avg}, test cases with 20 MHz bandwidth and a frequency of 2.4 GHz perform the worst.  
+Furthermore, as shown in Figures \ref{fig:qos_udp_avg} and \ref{fig:qos_tcp_avg}, \texttt{test cases} with 20 MHz bandwidth and a frequency of 2.4 GHz perform the worst.  
 It is also noticeable that across all \ac{QoS} levels, the jitter behaves similarly, with \ac{QoS} 1 performing slightly worse and \ac{QoS} 3 performing best.  
 In general, a combination of \ac{DSCP} value and \ac{Qdisc} yields better results than using only a \ac{DSCP} value.  
 The difference between the average jitter of \ac{QoS} 3 and the other \ac{QoS} levels is most pronounced in the \ac{UDP} cases.  
 Overall, however, the jitter values are higher in the \ac{UDP} cases than in the \ac{TCP} cases.  
 
 Regarding the maximum jitter, shown in Figures \ref{fig:qos_udp_max} and \ref{fig:qos_tcp_max}, different characteristics can be observed.  
-As already noted in previous test runs, the \ac{UDP} and \ac{TCP} test cases are very similar in terms of maximum jitter.  
-\ac{TCP} even performs slightly worse regarding maximum jitter, particularly in test case 4-5-40-TCP, where the \ac{QoS} 3 configuration exhibits a very large maximum jitter, as seen in Figure \ref{fig:qos_tcp_max}.  
-In general, no clear patterns can be identified in the evaluation of the test cases with respect to maximum jitter.  
+As already noted in previous \texttt{test runs}, the \ac{UDP} and \ac{TCP} \texttt{test cases} are very similar in terms of maximum jitter.  
+\ac{TCP} even performs slightly worse regarding maximum jitter, particularly in \texttt{test case} 4-5-40-TCP, where the \ac{QoS} 3 configuration exhibits a very large maximum jitter, as seen in Figure \ref{fig:qos_tcp_max}.  
+In general, no clear patterns can be identified in the evaluation of the \texttt{test cases} with respect to maximum jitter.  
 It is only noticeable that both \ac{TCP} and \ac{UDP} show distinct outliers in the measurement data, especially for the \ac{QoS} 3 configuration and to a lesser extent for \ac{QoS} 1.  
-Interestingly, in both \ac{TCP} and \ac{UDP}, the test case 4-5-20 stands out as particularly affected.  
-It is also evident that in the maximum jitter, all curves converge at test case 6-6-160-*, where the jitter is generally very low.  
+Interestingly, in both \ac{TCP} and \ac{UDP}, the \texttt{test case} 4-5-20 stands out as particularly affected.  
+It is also evident that in the maximum jitter, all curves converge at \texttt{test case} 6-6-160-*, where the jitter is generally very low.  
 This indicates that during this test case, no outliers occurred in any of the \ac{QoS} configurations.  
 
 From the \ac{QoS} tests, it can therefore be concluded that for average jitter, \ac{QoS} 3 provides the best performance.  
@@ -300,33 +300,33 @@ It is also noticeable that tests using Wi-Fi 6 in the 6 GHz band with a bandwidt
 After discussing in this chapter how an environment with medium interference affects the real-time capability of Wi-Fi and how \ac{QoS} influences it, the following section examines vie the \ac{HDT}, how the real-time performance of Wi-Fi behaves in an environment with high interference.  
 
 \section{High disturbance test} \label{subsec:high}
-In the high-interference test, the same test cases are conducted as before, but an additional pair of Raspberry Pis is introduced.  
+In the high-interference test, the same \texttt{test cases} are conducted as before, but an additional pair of Raspberry Pis is introduced.  
 This second pair operates on the same frequency and with the same bandwidth, transmitting as many packets as possible via \texttt{iperf3}.  
 The second pair of Raspberry Pis, referred to in the following as the \emph{noisy neighbour}, is equipped with an Atheros AR5BXB92 Wi-Fi card, as described in Section \ref{sec:used_hardware}.  
-However, since this card only supports Wi-Fi 4, only test cases in the 2.4 GHz and 5 GHz bands are considered.  
-For the test cases with 80 MHz bandwidth, the noisy neighbour uses only 40 MHz channels, as Wi-Fi 4 does not support wider channels.  
+However, since this card only supports Wi-Fi 4, only \texttt{test cases} in the 2.4 GHz and 5 GHz bands are considered.  
+For the \texttt{test cases} with 80 MHz bandwidth, the noisy neighbour uses only 40 MHz channels, as Wi-Fi 4 does not support wider channels.  
 This setup allows the simulation of a worst-case scenario for the 2.4 GHz and 5 GHz bands, in which another Wi-Fi network in close proximity fully occupies the same channel on the same frequency band.  
 
-The results are shown in Figures  \ref{fig:high_tcp} and \ref{fig:high_udp}, again distinguishing between \ac{TCP} and \ac{UDP} test cases.  
-For the \ac{QoS} test cases, \ac{QoS} level 3 was applied, since, as discussed in Section \ref{subsec:medium}, it produced the best results for average jitter and exhibited outliers in the maximum jitter only in isolated cases.  
+The results are shown in Figures  \ref{fig:high_tcp} and \ref{fig:high_udp}, again distinguishing between \ac{TCP} and \ac{UDP} \texttt{test cases}.  
+For the \ac{QoS} \texttt{test cases}, \ac{QoS} level 3 was applied, since, as discussed in Section \ref{subsec:medium}, it produced the best results for average jitter and exhibited outliers in the maximum jitter only in isolated cases.  
 In both figures, the maximum jitter is shown in blue and the average jitter in green.  
 The average of the maximum jitter values is shown in red and the average of the mean jitter values in yellow.  
 It can be observed that the \ac{TCP} and \ac{UDP} values show significantly smaller differences between each other in the low-interference scenario described in Section \ref{subsec:low}.  
-It is also evident that the test cases with \ac{QoS} perform significantly better than those without \ac{QoS}.  
+It is also evident that the \texttt{test cases} with \ac{QoS} perform significantly better than those without \ac{QoS}.  
 Compared to the laboratory experiment, the jitter increased by a factor of 10-20 in both average and maximum values.  
 
-Furthermore, it is noticeable that the test case 6-6-160-1-* remained almost unchanged.  
-This is because this test run was recorded as a reference and was not affected by interference in its frequency band.  
-Accordingly, it can be seen that the test cases are not disturbed across frequency bands, which was expected.  
-Surprisingly, however, the test cases with 80 MHz bandwidth did not perform better but often worse than the 40 MHz test cases.  
+Furthermore, it is noticeable that the \texttt{test case} 6-6-160-1-* remained almost unchanged.  
+This is because the associated \texttt{test run} was recorded as a reference and was not affected by interference in its frequency band.  
+Accordingly, it can be seen that the \texttt{test cases} are not disturbed across frequency bands, which was expected.  
+Surprisingly, however, the \texttt{test cases} with 80 MHz bandwidth did not perform better but often worse than the 40 MHz \texttt{test cases}.  
 Since the noisy neighbour operates only on a 40 MHz channel, merely half of the frequency spectrum of the 80 MHz channels was interfered with, yet no improvement was observed.  
 
 This chapter has examined how Wi-Fi behaves under heavy load in the worst possible interference scenario, the following section discusses the results of all three test series.  
 
 \section{Discussion} \label{subsec:disc}
-After the previous chapters presented the measurement data and the evaluation of the test runs conducted in three different environments (laboratory, office and with neighboring connection), the following section summarizes and discusses the results.  
+After the previous chapters presented the measurement data and the evaluation of the \texttt{test runs} conducted in three different environments (\ac{LDT}, \ac{ADT} and \ac{HDT}), the following section summarizes and discusses the results.  
 To illustrate the results and the effects of the individual factors on the maximum jitter, a spider radar chart is shown for each test run, representing both the maximum and the average jitter.  
-Accordingly, Figure~\ref{fig:r_mid} depicts the effects observed during the test run under medium load conditions.  
+Accordingly, Figure~\ref{fig:r_mid} depicts the effects observed during the \texttt{test run} under medium load conditions.  
 Figure~\ref{fig:r_mid_max} illustrates the impact on the maximum jitter, while Figure~\ref{fig:r_mid_med} presents the corresponding effects on the average jitter.  
 
 \begin{figure}[h]
@@ -348,19 +348,19 @@ Figure~\ref{fig:r_mid_max} illustrates the impact on the maximum jitter, while F
   \label{fig:r_mid}
 \end{figure}
 
-The effects are calculated by comparing test cases that differ in only one parameter.  
+The effects are calculated by comparing \texttt{test cases} that differ in only one parameter.  
 In other words, to determine the influence of the \ac{QoS} factor, the test configurations \texttt{std:a-freq:b-bandwidth:c-qos:0-prot:d} ($config_1$) and \texttt{std:a-freq:b-bandwidth:c-qos:1-prot:d} ($config_2$) are compared.  
-For each factor, a variable exists to which the influence per test case is accumulated.  
+For each factor, a variable exists to which the influence per \texttt{test case} is accumulated.  
 The influence on the maximum jitter is calculated using  
 \[
 \frac{|max(config_1) - max(config_2)|}{\frac{max(config_1) + max(config_2)}{2}} \times 100.
 \]  
-This represents the average percentage difference between the two test runs, which is then added to the corresponding variable.  
+This represents the average percentage difference between the two \texttt{test cases}, which is then added to the corresponding variable.  
 If \ac{QoS} 1 performs better than \ac{QoS} 0, the result is added to the variable of \ac{QoS} 1 as a negative value, i.e., subtracted.  
 This procedure is repeated for all comparable combinations.  
 However, not all combinations are comparable.
-For instance, regarding the \emph{standard} factor, only a limited number of Standard~6 test cases can be compared, since all other factors must remain identical.  
-Because only Standard~6 supports the 6~GHz frequency, all test cases involving this frequency are not comparable to others.  
+For instance, regarding the \emph{standard} factor, only a limited number of Standard~6 \texttt{test cases} can be compared, since all other factors must remain identical.  
+Because only Standard~6 supports the 6~GHz frequency, all \texttt{test cases} involving this frequency are not comparable to others.  
 
 In Figure~\ref{fig:r_mid}, the radar chart consists of five parameters corresponding to the five factors.  
 Thus, frequency is shown in blue, standard in yellow, bandwidth in orange, \ac{QoS} in green and protocol in turquoise.  
@@ -373,7 +373,7 @@ Hence, a negative value (shown in green) indicates better performance, while a p
 The grid network overlaid on the radar chart represents the sum of the absolute values of all parameter contributions.  
 
 \begin{itemize}  
-\item The factor \textbf{\ac{QoS}} represents the most significant influence on the maximum jitter in all three test runs, as shown in Figures~\ref{fig:r_labor}, \ref{fig:r_mid} and \ref{fig:r_high}.  
+\item The factor \textbf{\ac{QoS}} represents the most significant influence on the maximum jitter in all three \texttt{test runs}, as shown in Figures~\ref{fig:r_mid}, \ref{fig:r_labor} and \ref{fig:r_high}.  
 In these cases, the test configurations with enabled \ac{QoS} perform better overall.  
 This result was expected, since by using \ac{DSCP} values and a prioritized \ac{Qdisc}, real-time packets are prioritized both through scheduling and through the \acp{AC}.  
 The improvement of network packet jitter by applying \ac{QoS} mechanisms is well documented in the literature, like Roijers et~al.\ describe in~\cite[p.~2627]{ROIJERS20062621}.  
@@ -384,7 +384,7 @@ However, similar observations have been made in other scientific studies.
 Simon et~al.\ report in~\cite[p.~227--228]{tcp_vs_udp} that in their results, \ac{UDP} exhibits twice the latency of \ac{TCP}.  
 Similarly, Gaoyang et~al.\ in~\cite[p.~11]{tcp_vs_ud} state that \ac{TCP} tends to show lower latency, particularly when larger data packets are transmitted.  
 
-\item In addition to the finding that \ac{QoS} has a major impact on maximum jitter and that the protocol significantly affects the average jitter, it can also be observed that, in the test run with medium interference, the \textbf{frequency} plays a more substantial role than in the laboratory scenario.  
+\item In addition to the finding that \ac{QoS} has a major impact on maximum jitter and that the protocol significantly affects the average jitter, it can also be observed that, in the \texttt{test run} with medium interference, the \textbf{frequency} plays a more substantial role than in the laboratory scenario.  
 Here, the 6~GHz frequency clearly performs best.  
 This can be attributed to the fact that, at the time of this study, the 6~GHz band had only recently been introduced through the Wi-Fi~6E standard and therefore was not yet widely used by devices.  
 A similar observation was reported by Bartolin-Arnau et~al.\ in~\cite[p.~14--17]{telecom6020040}, where it was shown that the 6~GHz frequency provides significant advantages in environments with high interference.  
@@ -396,7 +396,7 @@ However, this observation is not consistent with the findings of Bartolin-Arnau 
 Their results, however, are not explicitly explained.  
 Similarly, Salam et~al.\ report in~\cite[p.~3]{10815245} that Wi-Fi~6 exhibits better real-time capabilities than Wi-Fi~5, though the test environment and conditions were not specified.  
 Thus, the results of this work contrast with current published findings.
-It is important to note taht the best-performing test runs with medium inteference employed Standard~6, but the the average performance of the other standards was generally better.  
+It is important to note that the best-performing \texttt{test cases} with medium inteference employed Standard~6, but the the average performance of the other standards was generally better.  
 Nevertheless, the standard was found to have the smallest overall effect in this study, as the measurement values across different standards were relatively close to each other.  
 
 \item For the factor \textbf{bandwidth}, it can be observed that configurations using 160~MHz consistently perform better in comparison.  
@@ -412,13 +412,13 @@ Overall, the trend aligns with the findings presented here, with the exception t
 \begin{figure}[ht]
     \centering
     \includegraphics[width=\textwidth]{figures/latency_cdf_all.pdf}
-    \caption[Visualization of cumulative probability at cycle time for different test runs.]{Representation of the percentage number of cycles that meet real time at a certain rate for chosen test runs.}
+    \caption[Visualization of cumulative probability at cycle time for different \texttt{test runs}.]{Representation of the percentage number of cycles that meet real time at a certain rate for chosen \texttt{test runs}.}
     \label{fig:percent}
 \end{figure}
 
-Since obtaining the \ac{WCET} is crucial for assessing real-time capability, a 24-hour test run using the best-performing configuration was conducted in this study.  
+Since obtaining the \ac{WCET} is crucial for assessing real-time capability, a 24-hour \texttt{test run} using the best-performing configuration was conducted in this study.  
 This allows for a more comprehensive interpretation of the remaining results and enables an evaluation of the real-time performance of Wi-Fi achievable at the time of this work.  
-The selected test configuration was \texttt{std:6-freq:6-b:160-\ac{QoS}:3-p:\ac{TCP}}, performed in an environment with medium interference.  
+The selected test configuration was \texttt{std:6-freq:6-b:160-\ac{QoS}:3-p:tcp}, performed in an environment with medium interference.  
 A cycle time of 3\,ms was used again, resulting in a dataset of over 32 million samples.  
 
 In Figure~\ref{fig:percent}, the Y-axis shows the number of repetitions that fall below the latency indicated on the X-axis.\footnote{When interpreting Figure~\ref{fig:percent}, it must be noted that both axes are non-linear.}  
@@ -427,16 +427,16 @@ Avdotin et~al.\ state in~\cite[p.~1]{Avdotin_2019} that a reliability level of 9
 Therefore, this value is also adopted for the subsequent analysis.  
 Furthermore, Table~\ref{tab:wcet} references the \ac{WCET} and both values are compared to each other.  
 
-It can be observed in Figure~\ref{fig:percent} that the test runs conducted in the laboratory (blue) and under medium interference (yellow) perform best, achieving the 99.999\% threshold at 0.5\,ms and 2\,ms, respectively.  
+It can be observed in Figure~\ref{fig:percent} that the \texttt{test cases} conducted in the laboratory (blue) and under medium interference (yellow) perform best, achieving the 99.999\% threshold at 0.5\,ms and 2\,ms, respectively.  
 As expected, the laboratory tests yield superior results.  
-Particularly within the final 0.001\% of the data, the laboratory tests exhibit much more deterministic behavior than those under medium interference.  
+Particularly within the final 0.001\% quantile, shown in Figure \ref{fig:percent}, the laboratory tests exhibit much more deterministic behavior than those under medium interference.  
 This is evident from the nearly linear curve of the laboratory test, indicating the absence of significant outliers.  
 
-When comparing the normal test run under medium interference to the 24-hour test (red), it becomes apparent that the latter experienced more outliers.  
+When comparing the normal \texttt{test run} under medium interference to the 24-hour test (red), it becomes apparent that the latter experienced more outliers.  
 A probability of 99.999\% for meeting the deadline is only achieved at 3.7\,ms, which is more than 1.5 times higher than in the standard test.  
 However, the most significant difference is found in the \ac{WCET}, which is discussed later in this chapter.  
 
-In the test run under heavy load (green), the 99.999\% probability is reached only at over 20\,ms more than ten times higher than under medium interference.\footnote{In the high-load test run, the 6\,GHz band and thus the 160\,MHz bandwidth cannot be used. Therefore, the configurations in this comparison differ. The difference between the two test configurations under medium interference, however, is noticeable only in the \ac{WCET}, as shown in Table~\ref{tab:wcet} and Figure~\ref{fig:mid_tcp}. Consequently, the configurations can still be compared and used to draw conclusions.}  
+In the \texttt{test run} under heavy load (green), the 99.999\% probability is reached only at over 20\,ms more than ten times higher than under medium interference.\footnote{In the high-load test run, the 6\,GHz band and thus the 160\,MHz bandwidth cannot be used. Therefore, the configurations in this comparison differ. The difference between the two test configurations under medium interference, however, is noticeable only in the \ac{WCET}, as shown in Table~\ref{tab:wcet} and Figure~\ref{fig:mid_tcp}. Consequently, the configurations can still be compared and used to draw conclusions.}  
 Avdotin et~al.\ demonstrate in~\cite[p.~2--3]{Avdotin_2019} that by modifying resource allocation in the firmware and using Wi-Fi~6, latencies below 1\,ms can be achieved.  
 Such performance could not be reached in this work without resource allocation.  
 In laboratory conditions, sub-1\,ms latencies are theoretically possible, although it must be noted that in long-term tests, the \ac{WCET} can increase drastically, making latencies below 1\,ms unattainable.  
@@ -467,7 +467,7 @@ $C_{ath9k}$-4-5-40-1-tcp & 0.14 ms & 0.03 ms & 6.16 ms & 6.33 ms  \\
 $C_{mt7925e}$-4-5-40-1-tcp & 0.34 ms & 0.04 ms & 6.31 ms & 6.69 ms  \\
 \hline\hline
 \end{tabular}
-\caption{Comparison of the WCET of different test runs}
+\caption{Comparison of the WCET of different \texttt{test runs}}
 \label{tab:wcet}
 \end{table}
 
@@ -477,13 +477,13 @@ In the table, the longest duration of each phase for both the client and the ser
 Thus, the value of \texttt{\ac{WCET} Application} is composed of the intervals $t1_{max} + t4_{max} + t5_{max} + t8_{max}$, as described in Section~\ref{subsec:monitoring}.  
 Here, $t1_{max}$ and $t8_{max}$ represent the maximum time spent in the application, transport, and network layers on the server side, while $t4_{max}$ and $t5_{max}$ represent the corresponding durations on the client side.  
 The phase \texttt{\ac{WCET} \ac{Qdisc}} is formed by the intervals $t2_{max} + t6_{max}$, representing the sum of the maximum queuing durations (server and client) within the \ac{Qdisc}.  
-The \texttt{\ac{WCET} Driver and MAC} phase consists of the intervals $t3_{max} + t7_{max}$, representing the sum of the maximum transmission times between the handover of a packet to the driver and the reception of the corresponding acknowledgment in the NAPI, again for both, the server- and te client-side .  
+The \texttt{\ac{WCET} Driver and MAC} phase consists of the intervals $t3_{max} + t7_{max}$, representing the sum of the maximum transmission times between the handover of a packet to the driver and the reception of the corresponding acknowledgment in the NAPI, again for both, the server- and the client-side .  
 Table~\ref{tab:wcet} also shows the total \ac{WCET}, obtained by summing all previous phases, ensuring that the actual \ac{WCET} of the system is represented.  
 The observed \ac{WCET} during testing is significantly lower, as the maximum values of all phases never occurred simultaneously.  
 
 The configurations analyzed correspond to those shown in Figure~\ref{fig:percent}.  
-In addition, the configurations \texttt{std:4-freq:5-b:40-prot:\ac{TCP}} with two different firmware versions (\texttt{ath9k} and \texttt{mt7925e}) were examined.  
-These two test cases were included because the intervals involving firmware execution represent the largest share of total time, allowing for an evaluation of firmware influence.  
+In addition, the configurations \texttt{std:4-freq:5-b:40-qos:1-prot:tcp} with two different firmware versions (\texttt{ath9k} and \texttt{mt7925e}) were examined.  
+These two \texttt{test cases} were included because the intervals involving firmware execution represent the largest share of total time, allowing for an evaluation of firmware influence.  
 The \texttt{ath9k} firmware was used in conjunction with the AR5BXB92 Wi-Fi card, as described in Section~\ref{sec:used_hardware}.  
 In Table~\ref{tab:wcet}, the best-performing test configuration of the \texttt{ath9k} driver is used.
 Furthermore the tests were conducted under medium interference conditions.  

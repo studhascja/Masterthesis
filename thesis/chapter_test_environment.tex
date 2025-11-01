@@ -1542,7 +1542,7 @@ For the measurements, tracepoints are used, since they provide the advantages de
 \end{figure}
 
 \begin{itemize}
-    \item \textbf{Interval $t_1$} measures the time the application requires to compute the X-coordinate and to transfer the packet from user space to kernel space.  
+    \item \textbf{Interval $t_1$}\label{itm:t1} measures the time the application requires to compute the X-coordinate and to transfer the packet from user space to kernel space.  
           Therfore it starts in the application on the server, i.e., at position \circnum{1} in Figure~\ref{fig:application}.  
           It ends at the tracepoint \texttt{net\_dev\_queue}, which marks the entry into the \ac{Qdisc} and thus the TX-API.  
           The TX-API is described in detail in Section~\ref{subsec:linux_stack}.  
@@ -1551,7 +1551,7 @@ For the measurements, tracepoints are used, since they provide the advantages de
           Therefore, this point is also relevant to enable the measurement of the \ac{Qdisc}.  
           Moreover, it includes a context switch which, as described in Section~\ref{subsec:monitoring}, introduces a non-negligible latency.  
 
-    \item \textbf{Interval $t_2$} measures the time the packet spends inside the \ac{Qdisc}.  
+    \item \textbf{Interval $t_2$}\label{itm:t2} measures the time the packet spends inside the \ac{Qdisc}.  
           This is particularly relevant to detect potential congestion in the \ac{Qdisc}. 
           It begins at the end of $t_1$, at the tracepoint \texttt{net\_dev\_queue} and ends at the tracepoint \texttt{net\_dev\_xmit}, which marks the exit from the \ac{Qdisc} and thus the entry into the TX ring buffer of the driver.  
           This tracepoint represents the last measurement point on the server side before a network packet leaves the server.  
@@ -1559,7 +1559,7 @@ For the measurements, tracepoints are used, since they provide the advantages de
           As reported by Corbet in \cite{qdisc}, the locking mechanisms of the \ac{Qdisc} alone introduce a delay of 48 ns.  
           He further states that the average delay caused by the \ac{Qdisc} is in the range of 58--68 ns.  
 
-    \item \textbf{Interval $t_3$} includes the time required for a packet to be transferred from the TX ring buffer of the server via \ac{DMA} to the server's \ac{NIC}, to be processed there, transmitted over the medium, and received by the client.
+    \item \textbf{Interval $t_3$}\label{itm:t3} includes the time required for a packet to be transferred from the TX ring buffer of the server via \ac{DMA} to the server's \ac{NIC}, to be processed there, transmitted over the medium, and received by the client.
           On the client side, the packet must be received by the \ac{NIC}, transferred again via \ac{DMA} into the RX ring buffer, and then passed into kernel space.  
           As soon as a new packet is available in the RX ring buffer, an interrupt is triggered, as illustrated in Figure~\ref{fig:tx}. 
           The interval starts at the end of $t_2$, i.e., at the tracepoint \texttt{net\_dev\_xmit}, and ends at the tracepoint \texttt{consume\_skb} on the client.    
@@ -1571,7 +1571,7 @@ For the measurements, tracepoints are used, since they provide the advantages de
           This interval involves multiple layer transitions of the \ac{OSI-model}, as well as critical points such as the RX and TX ring buffers of the drivers and the processing in both \acp{NIC}.  
           However, no further tracepoints exist in these areas to allow finer-grained monitoring.  
 
-    \item \textbf{Interval $t_4$} covers the time from the client's link layer, through the network and transport layers, into the application.
+    \item \textbf{Interval $t_4$}\label{itm:t4} covers the time from the client's link layer, through the network and transport layers, into the application.
           Thus it starts at the client's \texttt{consume\_skb} tracepoint and ends when the packet reaches the application in the client.    
           In this phase, a context switch from kernel space to user space and a system call are required.  
           Both the context switch and the system call may vary in duration depending on system load.  
