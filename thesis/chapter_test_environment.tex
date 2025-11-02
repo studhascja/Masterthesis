@@ -337,10 +337,22 @@ In summary, the programming languages Python, Rust and BPF, as well as the tools
 The following section describes how this can be realized using the Yocto Project.
 
 \section{Implementation}
-The background and functionality of the Yocto Project have already been described in Section \ref{subsec:yocto}.  
+The background and functionality of the Yocto Project have already been described in Section~\ref{subsec:yocto}.  
 Therefore, this section does not elaborate on them further and proceeds directly with the specific implementation within the context of this thesis.  
 
-Figure \ref{fig:yocto_own} illustrates the structure of the Yocto Project as used in this work.  
+Table~\ref{tab:used_packages} lists the most important installed packages.  
+They are divided into the categories \texttt{Firmware \& Hardware Support}, \texttt{Build \& Development Environment}, \texttt{Networking Tools}, \texttt{Monitoring} and \texttt{Applications}.  
+The classifications were chosen according to the usage of the packages within the test system.  
+In the \texttt{Description} column, the reason for installing each package is given in parentheses.  
+This reason generally refers to an application of the test system.  
+
+For the sake of clarity, not all installed packages are listed.  
+Fundamental packages such as \texttt{systemd} or \texttt{packagegroup-core-boot} are omitted.  
+All packages described as necessary in Chapter~\ref{subsec:used_technologies} are included, as well as additional packages required for the operation or the build process of the essential tools.  
+These include, among others, the programming languages Rust and Python, as well as build tools such as \texttt{gcc}, \texttt{clang} and \texttt{cargo}.  
+
+The following section describes the structure of the Yocto Project as used in this work.  
+It is illustrated in Figure~\ref{fig:yocto_own}.  
 The figure displays the various layers of the Yocto Project that were utilized.  
 Layers that required no modifications are marked in green.  
 Layers that were integrated but still required certain adjustments are highlighted in yellow.  

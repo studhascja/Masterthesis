@@ -1,4 +1,58 @@
 \chapter{First Chapter of the Appendix}
+\begin{table}
+\caption[Overview of the used packages in the Yocto build system for the test environment.]{Overview of the used packages in the Yocto build system for the test environment. Highlighted in green are the packages developed as part of this work. Highlighted in orange are packages that are modified.}
+\label{tab:used_packages}
+\centering
+\begin{tabular}{|p{3.5cm}|p{4cm}|p{8cm}|}
+\hline
+\textbf{Category} & \textbf{Package} & \textbf{Description} \\
+\hline
+
+% ==== Firmware ====
+\multirow{3}{=}{\makecell[l]{\textbf{Firmware \&}\\\textbf{Hardware Support}}}
+& kernel-modules & Kernel modules for drivers loaded at runtime. \\ \cline{2-3}
+& linux-firmware & Firmware binaries for various hardware devices. \\ \cline{2-3}
+& \cellcolor{green!30}pcie-overlays & PCIe device tree overlays. \\ \hline
+
+% ==== Build & Dev ====
+\multirow{7}{=}{\makecell[l]{\textbf{Build \&} \\\textbf{Development}\\\textbf{Environment}}}
+& gcc & GNU C compiler. \\ \cline{2-3}
+& make & Build automation tool. \\ \cline{2-3}
+& clang & LLVM-based C/C++ compiler (rust-ebpf application). \\ \cline{2-3}
+& cargo & Rust package manager and build system (rust-ebpf application). \\ \cline{2-3}
+& rust & Rust compiler and toolchain. \\ \cline{2-3}
+& python3 & Python 3 interpreter (Test Suite). \\ \hline
+& libbpf & C library for working with eBPF programs (rust-ebpf application). \\ \cline{2-3}
+
+% ==== Networking ====
+\multirow{9}{=}{\makecell[l]{\textbf{Networking Tools}}}
+& iproute2 & Network configuration (interfaces, routing, tunnels). \\ \cline{2-3}
+& iproute2-tc & \ac{QoS} utilities. \\ \cline{2-3}
+& net-tools & Network utilities (like ifconfig, netstat, also neede for the \ac{QoS} script). \\ \cline{2-3}
+& iptables & Firewall and NAT management tool (\ac{QoS} script). \\ \cline{2-3}
+& \cellcolor{orange!30}hostapd & Wi-Fi access point and authentication daemon (Server AP). \\ \cline{2-3}
+& wpa-supplicant & Wi-Fi client manager (Client). \\ \cline{2-3}
+& iw & Command-line tool for Wi-Fi configuration. \\ \cline{2-3}
+& iperf3 & Network performance and bandwidth test tool. (bulk data) \\ \cline{2-3}
+& dhcpcd & DHCP client for automatic IP configuration. \\ \hline
+
+% ==== Monitoring ====
+\multirow{4}{=}{\makecell[l]{\textbf{Monitoring}}}
+& trace-cmd & Kernel tracing and analysis tool (ftrace frontend). \\ \cline{2-3}
+& perf & Performance profiler for CPU and system analysis. \\ \cline{2-3}
+& tcpdump & Captures and analyzes network packets. \\ \cline{2-3}
+& procps & Tools for process and system monitoring (ps, top, free).  \\ \hline
+
+% ==== Rust Apps ====
+
+\multirow{2}{=}{\makecell[l]{\textbf{Applications}}}
+& \cellcolor{green!30}rust-application  & Rust Server-Client Testsystem, for \ac{UDP} and \ac{TCP}. \\ \cline{2-3}
+
+& \cellcolor{green!30}test-system & Implements the Server and Client Test Suite and necessary helper scripts, as for the \ac{QoS} implementation \\ \hline
+
+\end{tabular}
+\end{table}
+
 \label{a:somelabel}
 \begin{listing}[H]
     \centering
