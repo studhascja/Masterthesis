@@ -377,7 +377,7 @@ This integration is necessary to develop the \ac{rt} application in Rust, as req
 \begin{figure}[ht]
     \centering
      \includegraphics[width=\textwidth]{figures/YoctoDiagramm.drawio.pdf}
-    \caption[Presentation of the Yocto Project structure of this work]{Representation of the Yocto Project structure of this work: Layers that did not need to be edited are shown in green, layers that needed minor editing are shown in yellow and custom layers are shown in red.}
+    \caption[Presentation of the Yocto Project structure of this work]{Representation of the Yocto Project structure of this work: Layers that did not need to be edited are shown in green, layers that needed minor editing are shown in yellow and custom layers are shown in red. The priorities of the layers are indicated by the numbers on the right of the respective layer.}
     \label{fig:yocto_own}
 \end{figure}
 
@@ -398,7 +398,7 @@ The GNU C Library was chosen because it is the default C library used in full-fe
 This ensures proper activation of the \texttt{meta-raspberrypi} layer.  
 Furthermore, the preferred Linux kernel version must be explicitly set to 6.12, since the default version provided by the \texttt{meta-raspberrypi} layer is 6.1.  
 
-The custom \texttt{meta-masterthesis} layer is assigned a higher priority than the other layers in \texttt{bblayers.conf}.  
+As can be seen in Figure \ref{fig:yocto_own}, the custom \texttt{meta-masterthesis} layer is assigned a higher priority (10) than the other layers in \texttt{bblayers.conf}.  
 This is necessary to ensure that the \texttt{.bbappend} files within this layer are processed before the corresponding \texttt{.bb} files of other layers.  
 The \texttt{meta-masterthesis} layer can be divided into four recipe categories, illustrated in purple in Figure~\ref{fig:yocto_own}.  
 The individual \texttt{.bb} and \texttt{.bbappend} files are depicted in light green in the same figure.
