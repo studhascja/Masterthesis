@@ -2080,9 +2080,6 @@ For determining the Wi-Fi standard, the full output is analyzed for the flags \a
 \ac{HT} is mandatory for Wi-Fi~4, \ac{VHT} for Wi-Fi~5 and \ac{HE} for Wi-Fi~6.  
 If none of these flags is present in the output, the standard is older than Wi-Fi~4.  
 
-Once the tests are completed, the string \texttt{ready} is written into a pipe, which the Rust application reads to signal that the tests have finished.  
-This ensures that the tests do not interfere with the real-time capabilities of the application.  
-In the check state, the application waits for the \texttt{ready} signal from the pipe.  
 Even if the tests fail, the application is executed to completion, but the test results are logged, allowing one to identify which properties were not fulfilled.  
 The tests are implemented using \texttt{py-unittest}.  
 This ensures that the desired configurations are validated and enforced.  
