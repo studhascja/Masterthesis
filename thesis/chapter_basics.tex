@@ -296,7 +296,7 @@ In practice, the channel consists of four pilot subcarriers, 48 data subcarriers
 
 Guard subcarriers are located at the edges of the spectrum and serve to reduce interference between adjacent channels.
 As can be seen in Figure \ref{fig:ofdm} there is also one guard subcarrier in the middle.
-This one is called DC-subcarrier (direct conversion subcarrier) and isn't used because it is exactly on the center frequncy of the channel frequency.
+This one is called DC-subcarrier (direct conversion subcarrier) and isn't used because it is exactly on the center frequency of the channel frequency.
 Pilot subcarriers are inserted at predefined positions within the band and are used for channel estimation, synchronization and phase tracking.
 Pilot subcarriers carry known signals, so the receiver can determine the error caused by the transmission.
 Data subcarriers carry the actual data.
@@ -308,7 +308,7 @@ From this, an effective symbol duration $T_u$ of 3.2 $\mu s$ is obtained, as sho
 T_u = \frac{1}{\Delta f} = \frac{1}{312.5 \, \text{kHz}} = 3.2 \, \mu s
 \end{equation}
 
-After each modulation symbol duration $T_u$, a guard interval is added, to avoid inter-symbol inteference caused by multipath propagation.
+After each modulation symbol duration $T_u$, a guard interval is added, to avoid inter-symbol interference caused by multipath propagation.
 In Wi-Fi 4, this guard period has a length of 0.8 $\mu s$.
 This results in a total symbol duration $T_s$ of 4 $\mu s$.
 

@@ -1443,8 +1443,8 @@ use std::env;
 use libbpf_cargo::SkeletonBuilder;
 
 fn main() {
-    let |\textcolor{blue}{kernel\_headers}| = |\textcolor{teal}{env}|::|\textcolor{orange}{var(}|"KERNEL_HEADERS"|\textcolor{orange}{)}|.
-        |\textcolor{orange}{unwrap\_or(}|"/usr/src/kernel".|\textcolor{orange}{to\_string())}|;
+    let |\textcolor{blue}{kernel\_headers}| = |\textcolor{teal}{env}|::|\textcolor{orange}{var(}|"KERNEL_HEADERS"|\textcolor{orange}{)}|
+        .|\textcolor{orange}{unwrap\_or(}|"/usr/src/kernel".|\textcolor{orange}{to\_string())}|;
     |\textcolor{teal}{SkeletonBuilder}|::|\textcolor{orange}{new()}|
         .|\textcolor{orange}{source(}|"src/bpf/monitore.bpf.c"|\textcolor{orange}{)}|
         .|\textcolor{orange}{clang\_args(}|&format!(
@@ -1953,14 +1953,13 @@ The same procedure applies to the other events.
 \begin{listing}[H]
     \centering
 \begin{minted}[fontsize=\small, escapeinside=||, linenos]{rust}
-
-fn calculation_phase(){
+fn calculation_phase() {
     let start_time = Instant::now();
     let theta = 2.0 * PI * (i as f64) / (NUM_POINTS as f64);
     let x = RADIUS * theta.cos();
 
     let encoded_msg = encode_message(MessageType::Calc, i, theta, RADIUS, 0)?;
-    stream.write_all(&encoded_msg);
+    stream.write_all(&encoded_msg)?;
 
     let queue_event = wait_for_event(queue);
     let server_queue_time = queue_event.timestamp;
@@ -1968,25 +1967,29 @@ fn calculation_phase(){
     let send_event = wait_for_event(send);
     let server_send_time = send_event.timestamp;
 
-     match stream.read(&mut buffer) {
-         let end_time = Instant::now();
-         let msg: Message = *bytemuck::from_bytes::<Message>(&buffer);
+    match stream.read(&mut buffer) {
+        Ok(_) => {
+            let end_time = Instant::now();
 
-         let receive_event = wait_for_event(receive);
-         let server_receive_time = receive_event.timestamp;
-         
-         calc_monitoring(
-            server_queue_time, 
-            ..., 
-            msg.client_queue_time, 
-            ...);
-         
-         if end_time.duration_since(start_time) <= TIMEOUT_NS as u128 {
-            y
-         } else {
-            y - penalty
-         };
-     }
+            let msg: Message = *bytemuck::from_bytes::<Message>(&buffer);
+
+            let receive_event = wait_for_event(receive);
+            let server_receive_time = receive_event.timestamp;
+
+            calc_monitoring(
+                server_queue_time,
+                ...,
+                msg.client_queue_time,
+                ...
+            );
+
+            if end_time.duration_since(start_time) <= TIMEOUT_NS as u128 {
+                y
+            } else {
+                y - penalty
+            }
+        }
+    }
 }
 \end{minted}
 \caption{Presentation of Pseudo-Code of the calculation function}
