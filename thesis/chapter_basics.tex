@@ -647,7 +647,7 @@ Thus, normal processes have priorities in the range $[0, 39]$.
 For real-time processes, $P = -1 - rt\_Prior$, where $rt\_Prior$ ranges from $[0, 99]$  yielding a priority range of $[-100, -1]$.  
 As before $rt\_Prior$ has a default value of $0$.
 Consequently, real-time processes are always preferred over non-real-time processes.  
-Depending on the model of priorites they have different ranges.
+Depending on the model of priorities they have different ranges.
 In Linux the priorities often have a range of $[0, 139]$, where $139$ the highest priority is.
 But for calculation of the priorities the model described before is used.
 

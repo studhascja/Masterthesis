@@ -56,7 +56,7 @@ The necessity for these mechanisms to be implemented differently in \ac{rt} capa
 
 However, these mechanisms must not only be \ac{rt} capable at the kernel level—they also need to be considered during the development of applications intended to operate in a \ac{rt} context. 
 As Buttazzo outlines in \cite[p. 13 - 20]{Buttazzo_2024}, particular attention must be paid to the choice of programming language, memory usage and synchronization and communication between processes.
-It follows that, as shown in Figure \ref{fig:requirements}, memory management, inter-task communication and inter-task-synchronsiation are not only requirements for the \ac{OS}, but must also be taken into account in the test system.
+It follows that, as shown in Figure \ref{fig:requirements}, memory management, inter-task communication and inter-task-synchronization are not only requirements for the \ac{OS}, but must also be taken into account in the test system.
 
 In \cite[p. 17, 18]{Buttazzo_2024} Buttazzo emphasizes that the choice of programming language for \ac{rt} systems should avoid the use of dynamic data structures and recursion. 
 This is because dynamic memory allocation and deallocation introduce unpredictability in execution time, making it impossible to determine the program's timing behavior in advance. 
@@ -467,7 +467,7 @@ The file can then be created using the command:
 With these extensions, the Rust applications—including binaries, source code and a local compilation environment—are fully installed on the target system.
 
 In summary, this chapter described the steps required to build an \ac{OS} using the Yocto Project that fulfills all requirements for the intended test environment.  
-To explain the implementation of the test system, an explanation of monitoring in general and the functionallity of the used technologies in monitoring is necessary.
+To explain the implementation of the test system, an explanation of monitoring in general and the functionality of the used technologies in monitoring is necessary.
 So this will be described in the following chapter.
 
 \section{Monitoring} \label{subsec:monitoring}
@@ -644,7 +644,7 @@ In contrast to C, where, as explained in \cite{printf}, messages are printed to 
 The messages can then be read via the \texttt{/sys/kernel/tracing/trace\_pipe} interface.  
 This function therefore provides a fast way to add simple debugging output.
 
-As illustrated in Figure~\ref{fig:bpf:working_principle}, beside \ac{BPF} helper funtions, also syscalls can be invoked from the \ac{BPF} virtual machine.  
+As illustrated in Figure~\ref{fig:bpf:working_principle}, beside \ac{BPF} helper functions, also syscalls can be invoked from the \ac{BPF} virtual machine.  
 These syscalls are specific to the \ac{BPF} environment and provide the same functionality as conventional syscalls, but operate differently.  
 
 Syscalls have existed since the early 1980s, as evidenced by the first official Unix Programmer's Manual~\cite{bell}.  
@@ -838,7 +838,7 @@ The following describes the operation of \acp{kprobe} and \acp{kretprobe}:
           This function replaces the return address of the probed function on the stack with the trampoline address and stores the original return in the \texttt{kretprobe\_instance} struct.  
           This has the affect that the trampoline is triggered when the original function returns.  
           Aside from this kretprobe-specific \texttt{pre-handler}, regular \ac{kprobe} can execute user-defined code before the actual function.  
-          After the \texttt{pre\_handler}, the copied instruction is executed in a single-step manner, as desrcibed in \cite{kprobe_doc}.  
+          After the \texttt{pre\_handler}, the copied instruction is executed in a single-step manner, as described in \cite{kprobe_doc}.  
           Copying the instruction is necessary to avoid removing the breakpoint, which would allow other \acp{CPU} to skip the \ac{kprobe}.  
           Execution then proceeds to either the trampoline or the \texttt{post-handler}.  
           In the post-handler, the return value can be further processed, or additional user code executed.  
@@ -1266,7 +1266,7 @@ Each job is characterized by three properties:
 
 \begin{itemize}
     \item The \textbf{arrival time}, which specifies when the job begins.  
-          It corresponds to the point in time when the event \texttt{scheduleswitch} is triggered, where the parameter \texttt{nextpid} contains the identifier of the thread.  
+          It corresponds to the point in time when the event \texttt{schedule switch} is triggered, where the parameter \texttt{nextpid} contains the identifier of the thread.  
     \item The \textbf{deadline}, which is the latest point in time by which the job must be completed.  
           The interval between arrival time and deadline is referred to as the scheduling window and represents the time available for execution.  
     \item The \textbf{\ac{WCET}}, which denotes the maximum execution time required by the job.  
@@ -1430,7 +1430,7 @@ If this attempt fails, the default path \texttt{/usr/src/kernel} is assumed.
 
 Subsequently, the skeleton can be generated by means of the \texttt{SkeletonBuilder}.  
 As indicated in \cite{skeleton}, the builder requires three arguments.  
-First, it requires the \ac{BPF} source file, which in this case is \texttt{monitore.bpf.c}, as illustrated in line~8 of Listing~\ref{lst:build_script}.  
+First, it requires the \ac{BPF} source file, which in this case is \texttt{monitor.bpf.c}, as illustrated in line~8 of Listing~\ref{lst:build_script}.  
 Second, it requires the output file, that is, the file name in which the skeleton will be stored after generation.  
 This is shown in line~15.  
 Finally, the builder requires compile flags for \texttt{clang}.  
@@ -1446,14 +1446,14 @@ fn main() {
     let |\textcolor{blue}{kernel\_headers}| = |\textcolor{teal}{env}|::|\textcolor{orange}{var(}|"KERNEL_HEADERS"|\textcolor{orange}{)}|
         .|\textcolor{orange}{unwrap\_or(}|"/usr/src/kernel".|\textcolor{orange}{to\_string())}|;
     |\textcolor{teal}{SkeletonBuilder}|::|\textcolor{orange}{new()}|
-        .|\textcolor{orange}{source(}|"src/bpf/monitore.bpf.c"|\textcolor{orange}{)}|
+        .|\textcolor{orange}{source(}|"src/bpf/monitor.bpf.c"|\textcolor{orange}{)}|
         .|\textcolor{orange}{clang\_args(}|&format!(
             "-I{}/arch/arm64/include/generated/uapi 
             -I{}/include 
             -I{}/include/uapi 
             -I{}/include/generated", 
             |\textcolor{blue}{kernel\_headers}, \textcolor{blue}{kernel\_headers}, \textcolor{blue}{kernel\_headers}, \textcolor{blue}{kernel\_headers})||\textcolor{orange}{)}|
-        .|\textcolor{orange}{build\_and\_generate(}|"src/bpf/monitore.skel.rs"|\textcolor{orange}{)}|
+        .|\textcolor{orange}{build\_and\_generate(}|"src/bpf/monitor.skel.rs"|\textcolor{orange}{)}|
         .|\textcolor{orange}{unwrap()}|;
 }
 \end{minted}
@@ -1461,7 +1461,7 @@ fn main() {
 \label{lst:build_script}
 \end{listing}
 
-Using the skeleton, as illustrated in Listing~\ref{lst:setup} line 5, an \texttt{ObjectBuilder} is initially created through \texttt{MonitoreSkelBuilder::default()}.  
+Using the skeleton, as illustrated in Listing~\ref{lst:setup} line 5, an \texttt{ObjectBuilder} is initially created through \texttt{MonitorSkelBuilder::default()}.  
 This builder can subsequently be opened using the \texttt{.open()} method.  
 
 During this step, the compiled \ac{BPF} object file is "opened," resulting in the creation of an \texttt{OpenObject}.  

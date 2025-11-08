@@ -57,11 +57,11 @@
 \begin{listing}[H]
     \centering
 \begin{minted}[fontsize=\small, escapeinside=||, linenos]{rust}
-include!("bpf/monitore.skel.rs");
+include!("bpf/monitor.skel.rs");
 ...
 |\textcolor{orange}{set\_rt\_priority(}|99|\textcolor{orange}{)}|;
 ...
-let |\textcolor{blue}{open\_skel}| = |\textcolor{teal}{MonitoreSkelBuilder}|::|\textcolor{orange}{default()}|.|\textcolor{orange}{open()}|;
+let |\textcolor{blue}{open\_skel}| = |\textcolor{teal}{MonitorSkelBuilder}|::|\textcolor{orange}{default()}|.|\textcolor{orange}{open()}|;
 let mut | \textcolor{blue}{skel} | = | \textcolor{blue}{open\_skel}|?.|\textcolor{orange}{load()}|?;
 |\textcolor{blue}{skel}|.|\textcolor{orange}{attach()?}|;
 
