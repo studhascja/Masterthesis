@@ -13,7 +13,7 @@ Finally, the test system itself will be discussed in more detail.
 
 \section{Requirements}
 In this section, the requirements of the test environment are analyzed in greater detail. 
-The discussion begins with a description of the system architecture, followed by an outline of general \ac{rt} requirements. 
+The discussion begins with a description of the system architecture, followed by an outline of general real-time requirements. 
 These are then used to define the specific requirements applicable to the test system.
 
 The test environment is illustrated in Figure \ref{fig:pi_wifi_general}. 
@@ -36,55 +36,55 @@ The server provides an access point to which the client connects.
 So an exclusive Wi-Fi network is used in this work.
 
 In summary, the goal of the test environment is to transmit both \ac{rt-data} and bulk-data\footnote{The bulk-data does not have any real-time constraints.} over the same wireless network interface. 
-While the bulk data throughput should be maximized, the primary focus is to ensure that no \ac{rt} violations occur on the \ac{rt} connection.
+While the bulk data throughput should be maximized, the primary focus is to ensure that no real-time violations occur on the real-time connection.
 
 Since the test system is intended to transmit \ac{rt-data} among normal data, it must fulfill the requirements of a \ac{rt-system}. 
 Therefore, the following section first outlines the general requirements of \acp{rt-system}. 
-Subsequently, additional requirements that go beyond standard \ac{rt} criteria and are specifically relevant for this system within the given test environment are discussed in more detail.
+Subsequently, additional requirements that go beyond standard real-time criteria and are specifically relevant for this system within the given test environment are discussed in more detail.
 
 \subsection{Real Time Requirements}
-To enable a system to achieve \ac{rt} capability, numerous factors must be considered. 
+To enable a system to achieve real-time capability, numerous factors must be considered. 
 In this work, only software-related requirements are considered.
 Since Wi-Fi is an interface that is not inherently real-time capable, hardware-related requirements would have minimal impact in this context while significantly broadening the scope of the thesis.
 
-As previously mentioned in Chapter \ref{sec:real_time}, the primary objective of a \ac{rt} system is predictability. 
+As previously mentioned in Chapter \ref{sec:real_time}, the primary objective of a real-time system is predictability. 
 According to Buttazzo \cite[p. 10]{Buttazzo_2024}, predictability can only be achieved if the system ensures timeliness, meaning that the value of a process depends not only on its correct output but also on its timely execution—specifically, meeting deadlines.
 
-To fulfill these requirements, the \textbf{software foundation}, particularly the \ac{OS} kernel, must be tailored to \ac{rt} needs.
+To fulfill these requirements, the \textbf{software foundation}, particularly the \ac{OS} kernel, must be tailored to real-time needs.
 Key aspects include preemptiveness, scheduling, inter-task synchronization, inter-task communication, memory management, interrupt handling and timers.
-The necessity for these mechanisms to be implemented differently in \ac{rt} capable kernels compared to non-\ac{rt} ones is discussed in detail in Chapter \ref{subsec:real_time_kernel} and will therefore not be reiterated here.
+The necessity for these mechanisms to be implemented differently in real-time capable kernels compared to non-real-time ones is discussed in detail in Chapter \ref{subsec:real_time_kernel} and will therefore not be reiterated here.
 
-However, these mechanisms must not only be \ac{rt} capable at the kernel level—they also need to be considered during the \textbf{development of applications} intended to operate in a \ac{rt} context. 
+However, these mechanisms must not only be real-time capable at the kernel level—they also need to be considered during the \textbf{development of applications} intended to operate in a real-time context. 
 As Buttazzo outlines in \cite[p. 13 - 20]{Buttazzo_2024}, particular attention must be paid to the choice of programming language, memory usage and synchronization and communication between processes.
 It follows that, as shown in Figure \ref{fig:requirements}, memory management, inter-task communication and inter-task-synchronization are not only requirements for the \ac{OS}, but must also be taken into account in the test system.
 
-In \cite[p. 17, 18]{Buttazzo_2024} Buttazzo emphasizes that the choice of programming language for \ac{rt} systems should avoid the use of dynamic data structures and recursion. 
+In \cite[p. 17, 18]{Buttazzo_2024} Buttazzo emphasizes that the choice of programming language for real-time systems should avoid the use of dynamic data structures and recursion. 
 This is because dynamic memory allocation and deallocation introduce unpredictability in execution time, making it impossible to determine the program's timing behavior in advance. 
 Therefore, memory must be allocated statically and prior to execution. 
 Similarly, recursion poses a challenge, as it is difficult to predict the amount of memory required and the number of recursive calls during runtime.
 
-Furthermore, Buttazzo argues that a programming language suitable for \ac{rt} applications should support bounded loops, meaning that the number of iterations is fixed and known at compile time. 
-In general, programming languages for \ac{rt} systems should offer the capability to explicitly define timing constraints and ensure adherence to the aforementioned principles—ideally enforcing them.
+Furthermore, Buttazzo argues that a programming language suitable for real-time applications should support bounded loops, meaning that the number of iterations is fixed and known at compile time. 
+In general, programming languages for real-time systems should offer the capability to explicitly define timing constraints and ensure adherence to the aforementioned principles—ideally enforcing them.
 As programming languages, Buttazzo suggests \texttt{Real-Time Concurrent C} and \texttt{Real-Time Euclid}, both of which fulfill all the stated requirements.
 
-By contrast, Michael P. Rooney et al. describe in \cite[p. 1]{10321761} a study involving the development of a \ac{SCADA} \ac{rt} application implemented in the four different programming languages C, Rust, Numba Python and Cython.
-All of these languages were successfully used to achieve \ac{rt} performance. 
+By contrast, Michael P. Rooney et al. describe in \cite[p. 1]{10321761} a study involving the development of a \ac{SCADA} real-time application implemented in the four different programming languages C, Rust, Numba Python and Cython.
+All of these languages were successfully used to achieve real-time performance. 
 Notably, Rust demonstrated a power consumption profile comparable to C, indicating similar efficiency.
 
 While the characteristics outlined by Buttazzo are not mandatory in any of these languages, they can be implemented with appropriate discipline and design. 
-Thus, these languages are also suitable for \ac{rt} application development, provided that the specific constraints related to memory management, recursion and timing predictability are consciously observed and enforced by the developer, as they are not inherently guaranteed by the language itself.
+Thus, these languages are also suitable for real-time application development, provided that the specific constraints related to memory management, recursion and timing predictability are consciously observed and enforced by the developer, as they are not inherently guaranteed by the language itself.
 
-The chosen programming languages and specific implementation-level requirements for achieving \ac{rt} capability and how these are addressed, are discussed in detail in Chapter \ref{subsec:impl}.
+The chosen programming languages and specific implementation-level requirements for achieving real-time capability and how these are addressed, are discussed in detail in Chapter \ref{subsec:impl}.
 
-Furthermore, the test system must be capable of transmitting both \ac{rt} and non-\ac{rt} data concurrently over the same network, with the \ac{rt} traffic maintaining a \ac{RTT} as low as possible. 
-This timing constraint stems from the fact that this work seeks to characterize Wi‑Fi’s \ac{rt} capabilities and the factors that influence them and to assess whether Wi‑Fi can be employed in an industrial \ac{rt} environment. 
+Furthermore, the test system must be capable of transmitting both real-time and non-real-time data concurrently over the same network, with the real-time traffic maintaining a \ac{RTT} as low as possible. 
+This timing constraint stems from the fact that this work seeks to characterize Wi‑Fi’s real-time capabilities and the factors that influence them and to assess whether Wi‑Fi can be employed in an industrial real-time environment. 
 The lower the achievable real-time capable \ac{RTT}, the wider the range of industrial applications in which Wi-Fi could be employed. 
 This is because the requirements in industrial environments can vary substantially, resulting in different levels of real-time constraints.
 These belong in one hand, to the duration of \ac{RTT} and in the other, the overall degree of real-time capability that a system must provide.
 
 To summarize, the requirements of the test environment are illustrated in Figure \ref{fig:requirements}.
 There the requirements are split between \ac{OS} and test system.
-Furthermore, a distinction is made between \ac{rt} and non-\ac{rt} requirements.
+Furthermore, a distinction is made between real-time and non-real-time requirements.
 In this section the requirements shown in blue where discussed.
 
 \begin{figure}[ht]
@@ -96,7 +96,7 @@ In this section the requirements shown in blue where discussed.
 
 \subsection{Requirements of the Test Environment} \label{subsec:requirements}
 The following section defines the requirements for the test environment which are shown in yellow in Figure \ref{fig:requirements}.
-For both the test system and the \ac{OS}, the previously defined criteria for \ac{rt} capability are assumed to be fulfilled.
+For both the test system and the \ac{OS}, the previously defined criteria for real-time capability are assumed to be fulfilled.
 
 The requirements for the \ac{OS} include providing appropriate \textbf{support for both the hardware and the software components} of the test environment. 
 As described in Chapter \ref{sec:used_hardware}, this work utilizes a Raspberry Pi 5, to which a MediaTek 7925B22M and an Atheros AR5BXB92 Wi-Fi module can be connected via PCIe.
@@ -114,15 +114,15 @@ This reduces background activity and minimizes potential sources of interference
 
 In addition to the \ac{OS}, the test system also has \textbf{non‑real‑time requirements}.
 These are highlighted in yellow under “Test System” in Figure \ref{fig:requirements}. 
-The application under test must be instrumented so that its \ac{rt} performance can be measured accurately, enabling meaningful conclusions to be drawn. 
-This requires comprehensive monitoring and debugging facilities to precisely identify and isolate any sources of \ac{rt} violations.
+The application under test must be instrumented so that its real-time performance can be measured accurately, enabling meaningful conclusions to be drawn. 
+This requires comprehensive monitoring and debugging facilities to precisely identify and isolate any sources of real-time violations.
 
-For the non‑real‑time traffic, as much data as possible should be transmitted without degrading the \ac{rt} application’s performance. 
+For the non‑real‑time traffic, as much data as possible should be transmitted without degrading the real-time application’s performance. 
 This means, only throughput and packet‑loss metrics need be considered for this traffic in the monitoring.
 
-Moreover, this study will compare the \ac{rt} performance of the algorithms underpinning different Wi‑Fi standards. 
+Moreover, this study will compare the real-time performance of the algorithms underpinning different Wi‑Fi standards. 
 For that, the server must support access points for Wi-Fi 4, 5 and 6 across all relevant frequency bands (2.4 GHz, 5 GHz and 6 GHz). 
-The impact of QoS on \ac{rt} capability will also be evaluated, so the test system must be able to mark network packets with QoS parameters. 
+The impact of QoS on real-time capability will also be evaluated, so the test system must be able to mark network packets with QoS parameters. 
 Given the large number of combinations of Wi‑Fi standards, frequency bands and QoS settings, an automated test framework is required to generate a comprehensive dataset for all test cases, from which reliable insights can be derived.
 
 In this chapter, the requirements for the test environment were defined. 
@@ -130,7 +130,7 @@ The following sections will discuss how these requirements are implemented.
 The focus will first be on the selection and configuration of the \ac{OS}, because it forms the foundation of the test environment after the choice of hardware.
 
 \section{Operating System} \label{sec:os}
-As discussed in the previous chapter, the selection of an appropriate \ac{OS} must primarily consider its \ac{rt} capabilities. 
+As discussed in the previous chapter, the selection of an appropriate \ac{OS} must primarily consider its real-time capabilities. 
 Such \acp{OS} are referred to as \acp{RTOS}. 
 There exists a wide variety of \ac{RTOS}, each differing in architecture, strengths and limitations.
 The following section compares the advantages, disadvantages and performance characteristics of selected \acp{RTOS}. 
@@ -139,31 +139,31 @@ Furthermore, their suitability for the purpose of this work is evaluated.
 \subsection{Selection of Operating System}
 The \ac{RTOS} that is used in this work is RT-Linux.
 It is one of the \acp{RTOS} that imposes almost no restrictions in terms of performance and compatibility compared to a general-purpose \ac{OS}.
-As described by Sampath et al. in \cite{Sampath_2007}, RT-Linux is a Linux-based system enhanced through the PREEMPT\_RT patch, which equips it with \ac{rt} capabilities. 
-The authors examine the use of RT-Linux on an industrial controller with strict \ac{rt} requirements and additional \ac{rt} Ethernet demands. 
+As described by Sampath et al. in \cite{Sampath_2007}, RT-Linux is a Linux-based system enhanced through the PREEMPT\_RT patch, which equips it with real-time capabilities. 
+The authors examine the use of RT-Linux on an industrial controller with strict real-time requirements and additional real-time Ethernet demands. 
 Their study demonstrates the suitability of RT-Linux for such applications, reporting a maximum jitter of 380 microseconds over a 24-hour endurance test.
 
-Similarly, Arshiabanu \cite{ARSHIABANU_2014} presents a \ac{rt} system implemented using RT-Linux. 
-The study evaluates the impact of various scheduling policies on \ac{rt} performance and is executed on a Raspberry Pi. 
+Similarly, Arshiabanu \cite{ARSHIABANU_2014} presents a real-time system implemented using RT-Linux. 
+The study evaluates the impact of various scheduling policies on real-time performance and is executed on a Raspberry Pi. 
 Dewit et al. \cite{ae11aecebd4e4fd6896d0b8bb93fa73a} further investigate the influence of RT-Linux in combination with a Raspberry Pi 5 on scheduling latencies, reporting a maximum scheduling latency of 125 microseconds.
 This study is especially relevant for this work, because it uses the same hardware platform.
 
 Despite these studies, there also are more critical perspectives. 
-Siro Arthur et al. \cite{Siro_2007} also evaluated \ac{rt} capabilities of RT-Linux. 
+Siro Arthur et al. \cite{Siro_2007} also evaluated real-time capabilities of RT-Linux. 
 This study analyzes metrics such as context switch time, memory access latency and TCP latency. 
-The study reveals that while the PREEMPT\_RT patch enhances \ac{rt} capabilities, it does not reach the same level of determinism as systems natively designed for \ac{rt} applications. 
-Furthermore, this analysis was performed on single-core CPUs, where reduced shared resources can change the \ac{rt} behavior. 
+The study reveals that while the PREEMPT\_RT patch enhances real-time capabilities, it does not reach the same level of determinism as systems natively designed for real-time applications. 
+Furthermore, this analysis was performed on single-core CPUs, where reduced shared resources can change the real-time behavior. 
 
-There are also studies with multicore platforms which question the suitability of RT-Linux for hard \ac{rt} environments. 
+There are also studies with multicore platforms which question the suitability of RT-Linux for hard real-time environments. 
 Carvalho et al. \cite{9018464} investigated RT-Linux running on a Raspberry Pi, focusing on latency metrics such as polling, timed loops, hardware interrupts and software interrupts. 
-Their results confirm that although RT-Linux offers certain \ac{rt}  properties, it should only be used in non-critical \ac{rt} environments. 
-This conclusion is supported by Betz et al. \cite{5347056}, who state that RT-Linux is appropriate for soft \ac{rt} applications.
+Their results confirm that although RT-Linux offers certain real-time properties, it should only be used in non-critical real-time environments. 
+This conclusion is supported by Betz et al. \cite{5347056}, who state that RT-Linux is appropriate for soft real-time applications.
 
-Yang et al. \cite{10870260} compare the \ac{rt} performance of NuttX, FreeRTOS, RT-Linux and Xenomai. 
-A noteworthy aspect of their study is the inclusion of both \ac{rt} capabilities and general-purpose features. 
+Yang et al. \cite{10870260} compare the real-time performance of NuttX, FreeRTOS, RT-Linux and Xenomai. 
+A noteworthy aspect of their study is the inclusion of both real-time capabilities and general-purpose features. 
 While RT-Linux can be used as a standalone system, to match these requirements, pure \acp{RTOS} like FreeRTOS and NuttX are executed alongside a general-purpose \ac{OS}. 
 Also in this study a Raspberry Pi 4 was used as the hardware platform. 
-The results are showing that pure \ac{RTOS}, especially FreeRTOS, nevertheless deliver better \ac{rt} performance.
+The results are showing that pure \ac{RTOS}, especially FreeRTOS, nevertheless deliver better real-time performance.
 
 Mariesk et al. \cite{6140739} distinguish between the two fundamental \ac{RTOS} types kernel-based \ac{RTOS} and embedded \ac{RTOS}. 
 In their study, they evaluate systems based on interrupt latency, task switching time and preemption time. 
@@ -171,16 +171,16 @@ RT-Linux and Xenomai are considered kernel-based \ac{RTOS}, while eCos represent
 The results show that kernel-based \ac{RTOS} are more suitable for multi-task applications due to their lower task-switching overhead. 
 Since this work requires the execution of multiple concurrent tasks, frequent scheduling switches are expected, making a kernel-based \ac{RTOS} the preferable choice.
 
-In summary, the optimal \ac{RTOS} depends heavily on the specific application and \ac{rt} requirements. 
-Based on the referenced studies, FreeRTOS appears to offer the best \ac{rt} capabilities. 
-However, additional constraints beyond \ac{rt} performance must be considered when selecting the \ac{OS}, like stated in the previous section.
+In summary, the optimal \ac{RTOS} depends heavily on the specific application and real-time requirements. 
+Based on the referenced studies, FreeRTOS appears to offer the best real-time capabilities. 
+However, additional constraints beyond real-time performance must be considered when selecting the \ac{OS}, like stated in the previous section.
 This means particularly hardware compatibility of the \ac{OS}. 
 The MediaTek 7925B22M Wi-Fi card used in this work lacks drivers outside the Linux ecosystem, thereby excluding FreeRTOS as a viable option.
 
 Considering the experience with RT-Linux on Raspberry Pi systems stated by the studies before and the demonstrated maximum scheduling latency of 125 microseconds along with a maximum jitter of 380 microseconds of the test-system, RT-Linux proves sufficient for the purposes of this work. 
 This jitter is considered acceptable, since the expected \ac{RTT} is in the range of several milliseconds. 
-Furthermore, since Wi-Fi is inherently not \ac{rt} capable
-and as discussed in Chapter \ref{sec:used_hardware}, the employed hardware which has, among other shared resources, a split L3 cache, is not optimized for \ac{rt} processing.
+Furthermore, since Wi-Fi is inherently not real-time capable
+and as discussed in Chapter \ref{sec:used_hardware}, the employed hardware which has, among other shared resources, a split L3 cache, is not optimized for real-time processing.
 So the minor limitations of RT-Linux do not significantly impact this test-environment.
 
 There are various ways to implement an RT-Linux system. 
@@ -234,18 +234,18 @@ The Server Test Suite is essential for the automated execution of these test run
 \end{figure}
 
 A \textbf{server-side test run} comprises the three components Hostapd, Iperf Bulk Server and Rust-RT Server. 
-Each test run contributes to the overall test automation by ensuring that the required steps to establish both a \ac{rt} and a non-\ac{rt} network link within the same network are executed in the correct order.
+Each test run contributes to the overall test automation by ensuring that the required steps to establish both a real-time and a non-real-time network link within the same network are executed in the correct order.
 
 The first step in a server-side test run is the creation of the \ac{AP}, which is achieved using the \textbf{Hostapd} software. 
 Hostapd allows the configuration of various Wi-Fi standards, frequencies and bandwidths, thereby meeting the requirement to support multiple Wi-Fi standards.
 
-Once the \ac{AP} is established, the server for non-\ac{rt} applications is launched using \textbf{Iperf3}. 
+Once the \ac{AP} is established, the server for non-real-time applications is launched using \textbf{Iperf3}. 
 This software supports differentiation between UDP and TCP traffic, various packet sizes and data rates. 
 It also provides metrics such as packet loss and jitter, thus fulfilling all previously defined requirements for non-RT data transmission.
 
 Finally, the \textbf{Rust-RT Server} is started. 
 This component is implemented in Rust and makes use of \ac{BPF}. 
-This enables both compliance with \ac{rt} requirements and integrated monitoring capabilities. 
+This enables both compliance with real-time requirements and integrated monitoring capabilities. 
 The rationale behind the choice of programming languages is discussed after the explanation of the test system architecture in Section \ref{subsec:used_technologies}.
 
 The \textbf{client-side test system} is structurally similar to the server-side system. 
@@ -371,7 +371,7 @@ The \texttt{meta-raspberrypi} layer is essential for hardware-specific support f
 This layer enables the generation of a customized \ac{OS} image that is compatible with the Raspberry Pi 5, by providing the required kernel configurations, bootloader integration and board-specific device trees.  
 
 The \texttt{meta-rust} layer is included to integrate the Rust programming language into the Yocto build system.  
-This integration is necessary to develop the \ac{rt} application in Rust, as required by the objectives of this thesis.
+This integration is necessary to develop the real-time application in Rust, as required by the objectives of this thesis.
 
 \begin{figure}[ht]
     \centering
