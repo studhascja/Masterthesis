@@ -966,7 +966,7 @@ One such approach was presented by Zheng et al. in \cite{zheng2023bpftimeuserspa
 They optimized the behavior of \acp{uprobe} by reducing context switches.  
 This is achieved by handling \acp{uprobe} entirely in userspace.  
 The approach is limited to the use of \acp{uprobe} in the context of \ac{BPF}.  
-In the proposed program \textit{bpftime}, the virtual machine for \ac{BPF} is implemented in userspace instead of in the kernel.  
+In the proposed program \texttt{bpftime}, the virtual machine for \ac{BPF} is implemented in userspace instead of in the kernel.  
 Thus, the entire execution of a \ac{BPF} program, as described before, takes place in userspace.  
 It would go beyond the scope here to explain the execution flow in detail, but Zheng et al. were able to fully implement \acp{uprobe} in userspace.  
 The per process principle was preserved in this implementation.  
@@ -975,10 +975,10 @@ As a result, all context switches were eliminated, which is also reflected in th
 The performance of userspace \acp{uprobe} and \acp{uretprobe} is approximately 10 times better than that of the original probes.  
 In \cite[p. 7]{zheng2023bpftimeuserspaceebpfruntime} values of about 314~ns for \acp{uprobe} and 381~ns for \acp{uretprobe} were achieved.  
 These results are already very close to those of optimized \acp{kprobe}.  
-In particular, the values of optimized \acp{uretprobe} show no significant difference compared to bpftime.  
+In particular, the values of optimized \acp{uretprobe} show no significant difference compared to \texttt{bpftime}.  
 
-However, at the time of this work, bpftime is still a work in progress and suffers from several bugs and an unstable API, as described in \cite{bpftime}.  
-Nevertheless, bpftime is mentioned here to illustrate that the performance of \acp{uprobe} could soon approach that of \acp{kprobe}.  
+However, at the time of this work, \texttt{bpftime} is still a work in progress and suffers from several bugs and an unstable API, as described in \cite{bpftime}.  
+Nevertheless, \texttt{bpftime} is mentioned here to illustrate that the performance of \acp{uprobe} could soon approach that of \acp{kprobe}.  
 
 After having explained what a probe is, and how it is implemented in Linux, both in the kernel and in userspace, the following section explains what an event is.  
 Furthermore, it will be discussed how events are implemented and what differences exist compared to probes.  
@@ -1244,7 +1244,7 @@ For the test application, the following three aspects are relevant:
 \end{enumerate}
 
 In Figure \ref{fig:application}, the concept of the test application is presented.  
-It is divided into the three sections Application Concept, Calculation, and Visualization.  
+It is divided into the three sections Application Concept, Calculation and Visualization.  
 The discussion first addresses the Concept.  
 
 \begin{figure}[ht]
@@ -1602,7 +1602,7 @@ For the intervals $t_3$ and $t_7$, time synchronization between client and serve
 Otherwise, these values could not be compared with each other.  
 
 It is furthermore necessary to synchronize time measurement between kernel space and user space on both devices.  
-This is required for the intervals $t_1$, $t_4$, $t_5$, and $t_8$, since in these intervals measurements are taken on both the client and the server, from the application to the tracepoint \texttt{net\_dev\_queue} and from the tracepoint \texttt{consume\_skb} back to the application.  
+This is required for the intervals $t_1$, $t_4$, $t_5$ and $t_8$, since in these intervals measurements are taken on both the client and the server, from the application to the tracepoint \texttt{net\_dev\_queue} and from the tracepoint \texttt{consume\_skb} back to the application.  
 Thus, for all four intervals, a time measurement in the kernel at the tracepoint and a time measurement in user space within the application are required.  
 
 How this synchronization is implemented is described in the following.
@@ -2127,7 +2127,7 @@ The configuration can be divided into several parts:
           This is the only configuration on the client side that must be adjusted when Wi-Fi property, like the standard, change.
 
     \item \textbf{Frequency:} To configure the frequency, the hostapd parameters \texttt{hw\_mode}, \texttt{channel}, and \texttt{op\_class} must be set.  
-          Frequencies of 2.4\,GHz, 5\,GHz, and 6\,GHz can be selected.  
+          Frequencies of 2.4\,GHz, 5\,GHz and 6\,GHz can be selected.  
           For 2.4\,GHz, \texttt{hw\_mode=g} must be set.  
           For 5\,GHz and 6\,GHz, \texttt{hw\_mode=a} must be set.  
           The channel must be within the respective frequency band.  

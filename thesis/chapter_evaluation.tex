@@ -160,10 +160,10 @@ An improvement of up to 70\% is achieved in some cases.
 The mean values are also lower in most cases, although the difference is comparatively small.  
 A similar behavior is observed in the \ac{UDP} \texttt{test cases} shown in Figure \ref{fig:udp_low}.  
 
-Among the phases described in Section \ref{sec:implementation}, Phases 3 and 6 account for the largest share of the cycle time, together exceeding 90~\% in nearly all cases.  
-These phases begin with the transfer of the packet to the driver queue via the Tracepoint \texttt{net\_dev\_xmit} and end with the confirmation of reception at the target device via the Tracepoint \texttt{netif\_receive\_skb}.  
+Among the intervals described in Section \ref{sec:implementation}, intevals $t_3$ and $t_6$ account for the largest share of the cycle time, together exceeding 90~\% in nearly all cases.  
+These intervals begin with the transfer of the packet to the driver queue via the Tracepoint \texttt{net\_dev\_xmit} and end with the confirmation of reception at the target device via the Tracepoint \texttt{netif\_receive\_skb}.  
 A finer subdivision is not possible within this part of the network stack since no additional tracepoints exist.  
-The significantly reduced jitter maxima in \texttt{test cases} with enabled \ac{QoS} affects only Phases 3 and 6.  
+The significantly reduced jitter maxima in \texttt{test cases} with enabled \ac{QoS} affects only intervals $t_3$ and $t_6$.  
 This is due to the preferential treatment of packets with the \ac{DSCP} flag set in both the driver and the firmware.  
 As described in \cite{rfc3246}, the standard for the \ac{EF} class specifies shorter queues and reduced backoff times.  
 Consequently, the delays within the driver and firmware are reduced, preventing occasional high latencies.  
@@ -223,7 +223,7 @@ Such outliers occur in almost all test configurations, with the sole exception o
 Outliers are especially present in the 2.4 GHz band with 20 MHz and 80 MHz bandwidth, meaning the presented \texttt{test runs} represent the general trend well.  
 Furthermore, it is noticeable that outliers occur significantly less frequently in \texttt{test cases} with \ac{QoS} and exhibit lower magnitudes.  
 
-Outliers always occur in phases 3 and 6, i.e., in the link and hardware layers of the network stack.  
+Outliers always occur in intervals $t_3$ and $t_6$, i.e., in the link and hardware layers of the network stack.  
 In these cases, the client side is more affected in terms of both average and maximum jitter.  
 As shown in Figure \ref{fig:pi_wifi_general}, both devices in the RT connection must send and receive data.  
 In contrast, during bulk data transmission, only the client sends data while the server only receives.  
@@ -233,6 +233,7 @@ This work considers five levels of \ac{QoS}.
 \begin{itemize}  
     \item \textbf{\ac{QoS} 0} means that no \ac{QoS} is applied.  
     \item \textbf{\ac{QoS} 1} uses the \ac{DSCP} value 0xB8, which corresponds to the \ac{EF} class and is, as described in RFC 3246 \cite{rfc3246}, specifically intended for latency-critical applications.  
+          This class was also used in the \acp{LDT}.
     \item \textbf{\ac{QoS} 2} uses the CS7 class, which \cite[p. 27]{rfc4594} recommends for control applications.  
           This class is not intended for user applications, but for network management and control tasks.  
           Since these run at a higher priority than user traffic, this work investigates whether this class provides advantages for real-time Wi-Fi connections.  
@@ -297,14 +298,14 @@ From the \ac{QoS} tests, it can therefore be concluded that for average jitter, 
 However, for maximum jitter, no definitive conclusion can be drawn regarding the optimal \ac{QoS} configuration, except that a combination of \ac{Qdisc} and \ac{DSCP} value produces better results than using only a \ac{DSCP} value.  
 It is also noticeable that tests using Wi-Fi 6 in the 6 GHz band with a bandwidth of 160 MHz perform particularly well.  
 
-After discussing in this chapter how an environment with medium interference affects the real-time capability of Wi-Fi and how \ac{QoS} influences it, the following section examines vie the \ac{HDT}, how the real-time performance of Wi-Fi behaves in an environment with high interference.  
+After discussing in this chapter how an environment with medium interference affects the real-time capability of Wi-Fi and how \ac{QoS} influences it, the following section examines via the \ac{HDT}, how the real-time performance of Wi-Fi behaves in an environment with high interference.  
 
 \section{High disturbance test} \label{subsec:high}
 In the high-interference test, the same \texttt{test cases} are conducted as before, but an additional pair of Raspberry Pis is introduced.  
 This second pair operates on the same frequency and with the same bandwidth, transmitting as many packets as possible via \texttt{iperf3}.  
-The second pair of Raspberry Pis, referred to in the following as the \emph{noisy neighbour}, is equipped with an Atheros AR5BXB92 Wi-Fi card, as described in Section \ref{sec:used_hardware}.  
+The second pair of Raspberry Pis, referred to in the following as the \texttt{noisy neighbour}, is equipped with an Atheros AR5BXB92 Wi-Fi card, as described in Section \ref{sec:used_hardware}.  
 However, since this card only supports Wi-Fi 4, only \texttt{test cases} in the 2.4 GHz and 5 GHz bands are considered.  
-For the \texttt{test cases} with 80 MHz bandwidth, the noisy neighbour uses only 40 MHz channels, as Wi-Fi 4 does not support wider channels.  
+For the \texttt{test cases} with 80 MHz bandwidth, the \texttt{noisy neighbour} uses only 40 MHz channels, as Wi-Fi 4 does not support wider channels.  
 This setup allows the simulation of a worst-case scenario for the 2.4 GHz and 5 GHz bands, in which another Wi-Fi network in close proximity fully occupies the same channel on the same frequency band.  
 
 The results are shown in Figures  \ref{fig:high_tcp} and \ref{fig:high_udp}, again distinguishing between \ac{TCP} and \ac{UDP} \texttt{test cases}.  
@@ -319,7 +320,7 @@ Furthermore, it is noticeable that the \texttt{test case} 6-6-160-1-* remained a
 This is because the associated \texttt{test run} was recorded as a reference and was not affected by interference in its frequency band.  
 Accordingly, it can be seen that the \texttt{test cases} are not disturbed across frequency bands, which was expected.  
 Surprisingly, however, the \texttt{test cases} with 80 MHz bandwidth did not perform better but often worse than the 40 MHz \texttt{test cases}.  
-Since the noisy neighbour operates only on a 40 MHz channel, merely half of the frequency spectrum of the 80 MHz channels was interfered with, yet no improvement was observed.  
+Since the \texttt{noisy neighbour} operates only on a 40 MHz channel, merely half of the frequency spectrum of the 80 MHz channels was interfered with, yet no improvement was observed.  
 
 This chapter has examined how Wi-Fi behaves under heavy load in the worst possible interference scenario, the following section discusses the results of all three test series.  
 
@@ -359,7 +360,7 @@ This represents the average percentage difference between the two \texttt{test c
 If \ac{QoS} 1 performs better than \ac{QoS} 0, the result is added to the variable of \ac{QoS} 1 as a negative value, i.e., subtracted.  
 This procedure is repeated for all comparable combinations.  
 However, not all combinations are comparable.
-For instance, regarding the \emph{standard} factor, only a limited number of Standard~6 \texttt{test cases} can be compared, since all other factors must remain identical.  
+For instance, regarding the factor \texttt{standard}, only a limited number of Standard~6 \texttt{test cases} can be compared, since all other factors must remain identical.  
 Because only Standard~6 supports the 6~GHz frequency, all \texttt{test cases} involving this frequency are not comparable to others.  
 
 In Figure~\ref{fig:r_mid}, the radar chart consists of five parameters corresponding to the five factors.  
@@ -471,15 +472,15 @@ $C_{mt7925e}$-4-5-40-1-tcp & 0.34 ms & 0.04 ms & 6.31 ms & 6.69 ms  \\
 \label{tab:wcet}
 \end{table}
 
-In Table~\ref{tab:wcet}, the \acp{WCET} of the \texttt{Application}, \ac{Qdisc} and \texttt{Driver and \ac{MAC}} phases are presented.  
-These phases are described in Section~\ref{subsec:monitoring}.  
+In Table~\ref{tab:wcet}, the \acp{WCET} of the \texttt{Application}, \ac{Qdisc} and \texttt{Driver and \ac{MAC}} intervals are presented.  
+These intervals are described in Section~\ref{subsec:monitoring}.  
 In the table, the longest duration of each phase for both the client and the server is summed.  
 Thus, the value of \texttt{\ac{WCET} Application} is composed of the intervals $t1_{max} + t4_{max} + t5_{max} + t8_{max}$, as described in Section~\ref{subsec:monitoring}.  
 Here, $t1_{max}$ and $t8_{max}$ represent the maximum time spent in the application, transport, and network layers on the server side, while $t4_{max}$ and $t5_{max}$ represent the corresponding durations on the client side.  
 The phase \texttt{\ac{WCET} \ac{Qdisc}} is formed by the intervals $t2_{max} + t6_{max}$, representing the sum of the maximum queuing durations (server and client) within the \ac{Qdisc}.  
 The \texttt{\ac{WCET} Driver and MAC} phase consists of the intervals $t3_{max} + t7_{max}$, representing the sum of the maximum transmission times between the handover of a packet to the driver and the reception of the corresponding acknowledgment in the NAPI, again for both, the server- and the client-side .  
-Table~\ref{tab:wcet} also shows the total \ac{WCET}, obtained by summing all previous phases, ensuring that the actual \ac{WCET} of the system is represented.  
-The observed \ac{WCET} during testing is significantly lower, as the maximum values of all phases never occurred simultaneously.  
+Table~\ref{tab:wcet} also shows the total \ac{WCET}, obtained by summing all previous intervals, ensuring that the actual \ac{WCET} of the system is represented.  
+The observed \ac{WCET} during testing is significantly lower, as the maximum values of all intervals never occurred simultaneously.  
 
 The configurations analyzed correspond to those shown in Figure~\ref{fig:percent}.  
 In addition, the configurations \texttt{std:4-freq:5-b:40-qos:1-prot:tcp} with two different firmware versions (\texttt{ath9k} and \texttt{mt7925e}) were examined.  
