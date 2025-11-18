@@ -29,16 +29,16 @@ Both devices run the same \ac{OS}.
 \end{figure}
 
 There are two communication links between the server and the client.
-One link which transfers \ac{rt-data} and another one for transferring \ac{non-rt-data}.
+One link which transfers real-time-data and another one for transferring bulk data.
 These two links are illustrated in Figure \ref{fig:pi_wifi_general} in blue and red.
 These connections are handled by separate processes but operate within the same network. 
-The server provides an access point to which the client connects.
+The server provides an \ac{AP} to which the client connects.
 So an exclusive Wi-Fi network is used in this work.
 
-In summary, the goal of the test environment is to transmit both \ac{rt-data} and bulk-data\footnote{The bulk-data does not have any real-time constraints.} over the same wireless network interface. 
+In summary, the goal of the test environment is to transmit both real-time-data and bulk-data\footnote{The bulk-data does not have any real-time constraints.} over the same wireless network interface. 
 While the bulk data throughput should be maximized, the primary focus is to ensure that no real-time violations occur on the real-time connection.
 
-Since the test system is intended to transmit \ac{rt-data} among normal data, it must fulfill the requirements of a \ac{rt-system}. 
+Since the test system is intended to transmit real-time-data among normal data, it must fulfill the requirements of a \ac{rt-system}. 
 Therefore, the following section first outlines the general requirements of \acp{rt-system}. 
 Subsequently, additional requirements that go beyond standard real-time criteria and are specifically relevant for this system within the given test environment are discussed in more detail.
 
@@ -76,7 +76,7 @@ Thus, these languages are also suitable for real-time application development, p
 
 The chosen programming languages and specific implementation-level requirements for achieving real-time capability and how these are addressed, are discussed in detail in Chapter \ref{subsec:impl}.
 
-Furthermore, the test system must be capable of transmitting both real-time and non-real-time data concurrently over the same network, with the real-time traffic maintaining a \ac{RTT} as low as possible. 
+Furthermore, the test system must be capable of transmitting both real-time and bulk data concurrently over the same network, with the real-time traffic maintaining a \ac{RTT} as low as possible. 
 This timing constraint stems from the fact that this work seeks to characterize Wi‑Fi’s real-time capabilities and the factors that influence them and to assess whether Wi‑Fi can be employed in an industrial real-time environment. 
 The lower the achievable real-time capable \ac{RTT}, the wider the range of industrial applications in which Wi-Fi could be employed. 
 This is because the requirements in industrial environments can vary substantially, resulting in different levels of real-time constraints.
@@ -121,7 +121,7 @@ For the non‑real‑time traffic, as much data as possible should be transmitte
 This means, only throughput and packet‑loss metrics need be considered for this traffic in the monitoring.
 
 Moreover, this study will compare the real-time performance of the algorithms underpinning different Wi‑Fi standards. 
-For that, the server must support access points for Wi-Fi 4, 5 and 6 across all relevant frequency bands (2.4 GHz, 5 GHz and 6 GHz). 
+For that, the server must support \acp{AP}  for Wi-Fi 4, 5 and 6 across all relevant frequency bands (2.4 GHz, 5 GHz and 6 GHz). 
 The impact of QoS on real-time capability will also be evaluated, so the test system must be able to mark network packets with QoS parameters. 
 Given the large number of combinations of Wi‑Fi standards, frequency bands and QoS settings, an automated test framework is required to generate a comprehensive dataset for all test cases, from which reliable insights can be derived.
 
@@ -221,9 +221,9 @@ The \ac{OS} is excluded from the discussion and the focus is placed solely on th
 The server part of the test system is controlled via the \textbf{Server Test Suite}, which is responsible for executing test runs and automating the overall testing process. 
 For the evaluation of real-time performance, the factors \textbf{Wi-Fi standard, frequency, bandwidth, \ac{QoS}} and \textbf{protocol} are considered in Chapter~\ref{sec:eval}.
 Therefore, these factors must be configurable within the test suite.
-The Wi-Fi standard, frequency and bandwidth are set through the access point configuration, whereas \ac{QoS} and the protocol type are configured within the test suite itself.
-Thus it follows that for each combination of access point configuration, QoS level and protocol type, the test suite performs a complete test run, so with the test suites a factorial design can be assured.
-Therefore, the total number of test runs is defined as $N_T = N_{AP} \times N_{QoS} \times N_{Prot}$, where $N_T$ is the total number of test runs, $N_{AP}$ is the number of different access point configurations, $N_{QoS}$ is the number of different considered QoS levels and $N_{Prot}$ is the number of different protocols used in this work. 
+The Wi-Fi standard, frequency and bandwidth are set through the \ac{AP} configuration, whereas \ac{QoS} and the protocol type are configured within the test suite itself.
+Thus it follows that for each combination of \ac{AP} configuration, QoS level and protocol type, the test suite performs a complete test run, so with the test suites a factorial design can be assured.
+Therefore, the total number of test runs is defined as $N_T = N_{AP} \times N_{QoS} \times N_{Prot}$, where $N_T$ is the total number of test runs, $N_{AP}$ is the number of different \ac{AP} configurations, $N_{QoS}$ is the number of different considered QoS levels and $N_{Prot}$ is the number of different protocols used in this work. 
 The Server Test Suite is essential for the automated execution of these test runs, thereby fulfilling the previously specified requirement for test automation.
 
 \begin{figure}[ht]
@@ -241,7 +241,7 @@ Hostapd allows the configuration of various Wi-Fi standards, frequencies and ban
 
 Once the \ac{AP} is established, the server for non-real-time applications is launched using \textbf{Iperf3}. 
 This software supports differentiation between UDP and TCP traffic, various packet sizes and data rates. 
-It also provides metrics such as packet loss and jitter, thus fulfilling all previously defined requirements for non-RT data transmission.
+It also provides metrics such as packet loss and jitter, thus fulfilling all previously defined requirements for bulk data transmission.
 
 Finally, the \textbf{Rust-RT Server} is started. 
 This component is implemented in Rust and makes use of \ac{BPF}. 
@@ -266,7 +266,7 @@ The reason for this design choice is explained in more detail in Section \ref{su
 After describing the architecture and functionality of the test system and how it satisfies the specified requirements, the following section discusses the selection of technologies and their configuration within the Yocto environment.
 
 \section{Used Technologies} \label{subsec:used_technologies}
-To create an access point on the server, the software \texttt{hostapd} is used, as previously described.  
+To create an \ac{AP} on the server, the software \texttt{hostapd} is used, as previously described.  
 As Anderson states in \cite{hostapd}, this is one of the most widely used tools to create an AP that can be configured in detail.  
 With this software, the Wi-Fi standard, frequency, bandwidth and encryption can be configured, as shown in \cite{hostapd2}.  
 Thus, all previously specified requirements regarding the configurable properties of the Wi-Fi are met by this software.  
@@ -444,7 +444,7 @@ In the \texttt{network} category, marked in orange in Figure~\ref{fig:yocto_own}
 Other \texttt{.bb} and \texttt{.bbappend} files in this section install applications from a custom Git repository onto the target system.  
 The \texttt{hostapd.bbappend} file installs multiple \ac{AP} configurations into \texttt{/etc/hostapd/}.  
 Additionally, it modifies the original recipe to compile \texttt{hostapd} using a custom configuration that supports the Wi-Fi 6E standard.  
-By default, \texttt{hostapd} does not support access points operating in the 6~GHz band.  
+By default, \texttt{hostapd} does not support \acp{AP}  operating in the 6~GHz band.  
 
 The \texttt{setup.bb} file installs Python-based test suites from a GitHub repository.  
 As these applications are written in Python, no prior compilation is required.
@@ -850,7 +850,7 @@ The following describes the operation of \acp{kprobe} and \acp{kretprobe}:
           The trampoline handler is executed and transfers control to the return handler.  
           After execution of the return handler, the instruction pointer is restored to the original return address stored in \texttt{kretprobe\_instance}.  
           Essentially, the trampoline acts as a NOP instruction with an additional \ac{kprobe}.  
-    \item The \textbf{Return-handler} corresponds to the second \ac{kprobe} in the \ac{kretprobe} and is used to execute user-specific code at the end of the probed function.  
+    \item The \textbf{return handler} corresponds to the second \ac{kprobe} in the \ac{kretprobe} and is used to execute user-specific code at the end of the probed function.  
 \end{itemize}
 
 As described in \cite{kprobe_doc}, the \texttt{fault\_handler} is only invoked if the probed function ends in a fault, but not if a handler itself triggers a fault.  
@@ -1209,11 +1209,11 @@ If this is not possible due to lack of support or disproportionately high effort
 Since the basics to monitoring and the functionalities of event sources, which are needed for the implementation, were described, the following chapter focuses on the implementation details of the test system itself.
 
 \section{Test system}
-In this chapter, the test system is divided into the four components test application Server and Client, Test Automation and Access Point Configuration. 
+In this chapter, the test system is divided into the four components test application Server and Client, Test Automation and \ac{AP} Configuration. 
 For the implementation of the client and server, the test application, which is generating the data, is required.
 Therefore the test application will be described first.  
 Afterwards the implementation of the client and server will be explained.  
-Subsequently, the focus shifts to test automation, and finally to the creation of the access point.  
+Subsequently, the focus shifts to test automation, and finally to the creation of the \ac{AP} .  
 
 \subsection{Test Application} \label{subsec:appl}
 
