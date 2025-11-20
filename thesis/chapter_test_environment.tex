@@ -107,7 +107,7 @@ These enhancements primarily concern functionality related to Wi-Fi 6E and Wi-Fi
 Since these standards are also within the scope of this work, the \ac{OS} should support the most recent possible version of the mt7925e driver to ensure full access to these capabilities.
 
 In addition to hardware compatibility, the \ac{OS} must also ensure compatibility with the required software components. 
-This includes the availability of essential programming languages, user-space networking and diagnostic tools which are necessary to run the test-system.
+This includes the availability of essential programming languages, user space networking and diagnostic tools which are necessary to run the test-system.
 
 Moreover, the \textbf{\ac{OS} should be as minimal as possible}, containing only the components explicitly required for the test environment. 
 This reduces background activity and minimizes potential sources of interference or error, thereby ensuring a more stable and predictable testing environment.
@@ -330,7 +330,7 @@ And it offers nearly the same functionality as the widely used profiling tool \t
 Furthermore, it is also employed in practice for network monitoring.
 This is evident in \cite{network_obser} and \cite{9359159}.
 However, it integrates better with Rust and is more flexible due to its scriptability and access to a broader range of event sources than \texttt{perf}.  
-BPF supports more event sources such as tracepoints, kprobes, uprobes and performance counters, enabling more detailed and application-specific monitoring.  
+BPF supports more event sources such as tracepoints, \acp{kprobe}, \acp{uprobe} and performance counters, enabling more detailed and application-specific monitoring.  
 
 In summary, the programming languages Python, Rust and BPF, as well as the tools \texttt{hostapd}, \texttt{iperf3} and \texttt{wpa\_supplicant}, must be provided by the \ac{OS} for the test system.  
 The following section describes how this can be realized using the Yocto Project.
@@ -508,8 +508,8 @@ Configurations or interactions are represented in blue circles, while external L
 The \ac{BPF} workflow begins with a \ac{BPF} program.  
 As explained by Gbadamosi et~al.\ in \cite[p.~7]{gbadamosi2024ebpfruntimelinuxkernel}, this program is compiled using \texttt{clang}.  
 For this compilation, the \texttt{bpf} target must be set.  
-This process produces the \ac{BPF} bytecode, which is then loaded into kernel space via a userspace loader, such as one of the available libraries like \texttt{libbpf}, to the verifier.  
-As described by Gbadamosi et~al.\ in \cite[p.~4]{gbadamosi2024ebpfruntimelinuxkernel}, the userspace loader employs the \texttt{BPF\_PROG\_LOAD} system call.  
+This process produces the \ac{BPF} bytecode, which is then loaded into kernel space via a user space loader, such as one of the available libraries like \texttt{libbpf}, to the verifier.  
+As described by Gbadamosi et~al.\ in \cite[p.~4]{gbadamosi2024ebpfruntimelinuxkernel}, the user space loader employs the \texttt{BPF\_PROG\_LOAD} system call.  
 Additionally, the necessary kernel hooks and maps are created and linked to the \ac{BPF} program.  
 
 The verifier checks that the program does not perform any illegal operations and that the integrity and safety of the kernel are not compromised.  
@@ -529,7 +529,7 @@ It is a compact, binary-encoded representation of type information, designed to 
 With \ac{BTF}, tools such as \texttt{bpftool} can inspect kernel data structures, and debuggers can provide symbolic names instead of raw memory addresses or offsets.  
 \ac{BTF} forms the foundation for \ac{CO-RE}.  
 In order for \ac{BPF} code to run anywhere after compilation, the used \texttt{struct} definitions must be precisely described in the \ac{BTF}.  
-This information must be passed to both the userspace loader and the verifier.  
+This information must be passed to both the user space loader and the verifier.  
 Since \ac{CO-RE} is not used in this work, it will not be described further here.
 
 If the program is accepted by the verifier, it is either compiled by the \ac{JIT} compiler or executed by the interpreter.  
@@ -567,33 +567,33 @@ These maps are created using the command \texttt{BPF\_MAP\_CREATE}, as described
 
 As Gregg discusses in \cite[Chap.~2.2]{Gregg_2020}, \ac{BPF} programs can exchange data among each other through using maps.  
 Furthermore, the maps are synchronized, allowing parallel memory accesses.  
-Maps can be accessed from userspace, providing a way to transfer collected data from the virtual machine back to userspace.  
+Maps can be accessed from user space, providing a way to transfer collected data from the virtual machine back to user space.  
 Command-line tools such as \texttt{bpftrace} use these maps to display statistics, for example.  
 
-As Gregg explains in \cite[Chap.~2.2]{Gregg_2020}, this has the advantage that no communication between user- and kernelspace is necessary.  
-Since the program runs entirely in kernelspace at runtime, different event sources can be filtered and processed there.  
-Event sources or network packets can also be discarded in kernelspace if they are harmful or would endanger further processing in userspace due to their value ranges.  
-Thus, the mechanism of maps and the virtual machine specified therein ensure security and efficiency by preventing unnecessary kernel-to-userspace interactions.  
+As Gregg explains in \cite[Chap.~2.2]{Gregg_2020}, this has the advantage that no communication between user and kernel space is necessary.  
+Since the program runs entirely in kernel space at runtime, different event sources can be filtered and processed there.  
+Event sources or network packets can also be discarded in kernel space if they are harmful or would endanger further processing in user space due to their value ranges.  
+Thus, the mechanism of maps and the virtual machine specified therein ensure security and efficiency by preventing unnecessary kernel-to-user-space interactions.  
 
 Gregg uses in \cite[Chap. 2.6]{Gregg_2020} the event source as an umbrella term for events and probes, so for static and dynamic event sources.
 Since this term is inconvenient, in literature often the term static and dynamic events is used.
 So to be more precise in the following, the term event is only used for static event sources and the term probes is only used for dynamic event sources.
 
-As shown in Figure~\ref{fig:bpf:working_principle}, the event configuration from userspace interacts with the virtual machine in kernelspace.  
+As shown in Figure~\ref{fig:bpf:working_principle}, the event configuration from user space interacts with the virtual machine in kernel space.  
 The event configuration particularly refers to the settings of command-line tools.  
 Among other things, it can be configured which event sources should be tracked, for how long they should be tracked, and how they should be processed.  
 Since command-line tools are not used in this work, the event configuration will not be discussed further here, but it is mentioned for completeness and illustrated in the figure.  
 
-As shown in Figure~\ref{fig:bpf:working_principle}, the virtual machine provides another method for transferring data from the kernel to userspace.  
+As shown in Figure~\ref{fig:bpf:working_principle}, the virtual machine provides another method for transferring data from the kernel to user space.  
 
-The ring buffer, which Gregg in \cite[Chap.~2.3]{Gregg_2020} also describes as perf buffer, is used to continuously transfer data from the kernel to userspace.  
+The ring buffer, which Gregg in \cite[Chap.~2.3]{Gregg_2020} also describes as perf buffer, is used to continuously transfer data from the kernel to user space.  
 There are also other variants for sharing data between user and kernel space, including RelayFS.  
 
 RelayFS was developed by Tom Zanussi and has been integrated into the Linux kernel since 2003, as evident from the patch thread in \cite{relayfs}.  
-As explained by Zanussi in \cite{Wisniewski2003relayfsA}, it is also a mechanism to efficiently transfer data from kernelspace to userspace.  
-In this approach, a ring-shaped buffer is allocated per \ac{CPU}, which can be read from userspace using \texttt{mmap()}.  
-This minimizes copy operations because both the kernel and userspace access the same memory region directly without intermediate data duplication.  
-Writing to these buffers is performed sequentially by the kernel, while the userspace continuously reads and only updates the read pointers.  
+As explained by Zanussi in \cite{Wisniewski2003relayfsA}, it is also a mechanism to efficiently transfer data from kernel space to user space.  
+In this approach, a ring-shaped buffer is allocated per \ac{CPU}, which can be read from user space using \texttt{mmap()}.  
+This minimizes copy operations because both the kernel and user space access the same memory region directly without intermediate data duplication.  
+Writing to these buffers is performed sequentially by the kernel, while the user space continuously reads and only updates the read pointers.  
 As described in \cite[p.~498]{Wisniewski2003relayfsA}, it was originally introduced as a standalone filesystem under \texttt{/mnt/relay}.  
 It is now integrated into the tracing subsystem and is used, among other things, by the kernel tracing tool LTTng, as described in \cite[p.~89]{Pierre}.  
 
@@ -603,11 +603,11 @@ However, neither of them mentions any method other than perf buffer and maps for
 This tendency is reflected not only in theory but also in practice.
 
 Nair et al. developed GAPP in \cite{Nair_2020}, a tool to identify serialization bottlenecks in parallel Linux applications.  
-For monitoring, \ac{BPF} is also used, and maps and perf buffers are employed for data exchange between kernel and userspace.  
+For monitoring, \ac{BPF} is also used, and maps and perf buffers are employed for data exchange between kernel and user space.  
 Another example are Liu et al., who built a protocol-independent network observability system in \cite{9359159}.  
 Furthermore, both Kannan et al., presenting a network monitoring agent in \cite{network_obser}, and Gowda et al., proposing kernel-level request tracing for microservice visibility in \cite{V_2022}, use \ac{BPF} along with maps and perf buffers.
 
-All these works utilize \ac{BPF} for monitoring and rely on maps and perf buffers for communication between kernel and userspace.  
+All these works utilize \ac{BPF} for monitoring and rely on maps and perf buffers for communication between kernel and user space.  
 These examples confirm, on one hand, that \ac{BPF} is widely used in network observability.  
 On the other hand, it is evident that no alternative methods for kernel-user communication are employed in practice.  
 This is likely because maps and perf buffers are well integrated with \ac{BPF} and offer excellent performance.  
@@ -647,8 +647,8 @@ As illustrated in Figure~\ref{fig:bpf:working_principle}, beside \ac{BPF} helper
 These syscalls are specific to the \ac{BPF} environment and provide the same functionality as conventional syscalls, but operate differently.  
 
 Syscalls have existed since the early 1980s, as evidenced by the first official Unix Programmer's Manual~\cite{bell}.  
-As described by Tanenbaum in~\cite[p.~50--53]{Tanenbaum_2014}, syscalls constitute the programming interface for userspace programs to request services from the kernelspace.  
-Thus, syscalls act as a mechanism for the userspace to interact with the kernelspace.  
+As described by Tanenbaum in~\cite[p.~50--53]{Tanenbaum_2014}, syscalls constitute the programming interface for user space programs to request services from the kernel space.  
+Thus, syscalls act as a mechanism for the user space to interact with the kernel space.  
 
 According to Tanenbaum~\cite[p.~54--55]{Tanenbaum_2014}, syscalls can be divided into the four fundamental categories process management, file management, directory and file system management, and miscellaneous.  
 System calls for process management include, among others, the \texttt{fork()} command, which creates a child process.  
@@ -669,14 +669,14 @@ int bpf(int cmd, union bpf_attr *attr, unsigned int size);
 The \texttt{cmd} parameter specifies the particular \ac{BPF} operation to be performed.  
 It is an integer value provided through an enum.  
 As Gregg describes it in \cite[Chap.~2.3.6]{Gregg_2020}, the \texttt{BPF\_PROG\_LOAD} enum value instructs the verifier to check a \ac{BPF} program and subsequently load it into the kernel.  
-Similarly, maps can be accessed or modified from userspace using commands such as \texttt{BPF\_MAP\_CREATE} or \texttt{BPF\_MAP\_LOOKUP\_ELEM}.  
+Similarly, maps can be accessed or modified from user space using commands such as \texttt{BPF\_MAP\_CREATE} or \texttt{BPF\_MAP\_LOOKUP\_ELEM}.  
 
 The key difference between conventional syscalls and the \ac{BPF} syscall is that there is only one syscall for the entire \ac{BPF} subsystem.  
 Nevertheless, as explained above, this single syscall can provide multiple functionalities.  
 In contrast, conventional syscalls are monofunctional, with one syscall per functionality.  
 Thus, while traditional syscalls are monofunctional, the \texttt{bpf()} syscall is polyfunctional.  
 Compared to traditional syscalls, \texttt{bpf()} does not directly implement a single syscall in the classical sense, but rather acts as a wrapper for the syscalls of the \ac{BPF} subsystem.  
-However, the fundamental purpose of syscalls, to provide a communication interface between userspace and kernelspace, remains unchanged in the \ac{BPF} implementation.  
+However, the fundamental purpose of syscalls, to provide a communication interface between user space and kernel space, remains unchanged in the \ac{BPF} implementation.  
 
 As shown in Figure~\ref{fig:bpf:working_principle}, event sources also interact with \ac{BPF}.  
 As described by Gregg in~\cite[Chap.~1]{Gregg_2020}, the primary functionality of \ac{BPF} is to execute user-defined code in response to event sources.  
@@ -895,14 +895,14 @@ As Corbet notes in \cite{uprobe}, \acp{uprobe} were added to the mainline kernel
 Thus, they were introduced approximately three years after \acp{kprobe}.
 
 As described by Gregg in \cite[Chap. 2.8]{Gregg_2020}, \acp{uprobe} are very similar to \acp{kprobe} in both functionality and implementation.  
-In contrast to \acp{kprobe}, \acp{uprobe} are used to dynamically trace userspace programs.  
+In contrast to \acp{kprobe}, \acp{uprobe} are used to dynamically trace user space programs.  
 Similar to \acp{kprobe}, there exist both \acp{uprobe} and the derived \acp{uretprobe}, which probe the return of a function.  
 
-Unlike \acp{kprobe}, \acp{uprobe} are attached to a function in an executable file in userspace.  
-As described in \cite{uprobe_doc}, this can be achieved by registering uprobes in the file \\
+Unlike \acp{kprobe}, \acp{uprobe} are attached to a function in an executable file in user space.  
+As described in \cite{uprobe_doc}, this can be achieved by registering \acp{uprobe} in the file \\
 \texttt{/sys/kernel/tracing/uprobe\_events}.  
 For instance, using the command \\
-\texttt{echo 'p /usr/test:0x5329c0' > /sys/kernel/tracing/uprobe\_events} attaches an uprobe to the executable \texttt{test} at offset \texttt{0x5329c0}.  
+\texttt{echo 'p /usr/test:0x5329c0' > /sys/kernel/tracing/uprobe\_events} attaches an \ac{uprobe} to the executable \texttt{test} at offset \texttt{0x5329c0}.  
 In other words, the function to be probed in \texttt{test} starts at byte \texttt{0x5329c0}.  
 This implies that the function and offset must always be provided when registering a \ac{uprobe}.  
 
@@ -928,9 +928,9 @@ The beginning of the function, i.e., the location in the file pointed to by the 
 However, the breakpoint instruction is not set immediately upon registering the \ac{uprobe}, as noted in \cite{uprobe_mail}, but only when the file is loaded by a process.  
 This ensures that the file is modified only if necessary.  
 
-As described by Zhen et al. in \cite[p. 2, 3]{zheng2023bpftimeuserspaceebpfruntime}, a context switch from userspace to kernel space occurs when the \ac{CPU} reaches the breakpoint instruction.  
+As described by Zhen et al. in \cite[p. 2, 3]{zheng2023bpftimeuserspaceebpfruntime}, a context switch from user space to kernel space occurs when the \ac{CPU} reaches the breakpoint instruction.  
 Subsequently, as with \acp{kprobe}, the handlers are executed in kernel space in a virtual machine.  
-Once the \ac{uprobe} has been fully executed in kernel space, another context switch from kernel to userspace occurs, and the program continues normally.  
+Once the \ac{uprobe} has been fully executed in kernel space, another context switch from kernel to user space occurs, and the program continues normally.  
 
 As described in \cite{uprobe_mail}, the instructions are loaded into a separate area.  
 This area is implemented using a page where the instructions are single-stepped.  
@@ -938,7 +938,7 @@ Therefore, the instructions are executed per process.
 Dronamraju refers to this area, where instructions are executed per process using single-stepping, as the XOL area.
 In this context XOL means execute out of line.  
 The main difference in the execution flow of a \ac{uprobe} is that it requires two context switches and is executed per process.  
-As described by Zhen et al. in \cite[p. 2]{zheng2023bpftimeuserspaceebpfruntime}, these context switches can increase the runtime of an uprobe by a factor of ten.  
+As described by Zhen et al. in \cite[p. 2]{zheng2023bpftimeuserspaceebpfruntime}, these context switches can increase the runtime of an \ac{uprobe} by a factor of ten.  
 
 Furthermore, at the time of this work, no optimizations exist for \acp{uprobe} that are part of the kernel mainline.  
 Optimization of \acp{uprobe} by using a jump instruction, as in the case of \acp{kprobe}, is not possible because, due to per process execution in the XOL area, the jump instruction would otherwise overwrite the original instructions of other processes that are not currently executing the \ac{uprobe}.  
@@ -964,15 +964,15 @@ This can be explained by the fact that \acp{uretprobe} do not introduce an addit
 There are already initial optimization approaches that specifically target \acp{uprobe}.  
 One such approach was presented by Zheng et al. in \cite{zheng2023bpftimeuserspaceebpfruntime}.  
 They optimized the behavior of \acp{uprobe} by reducing context switches.  
-This is achieved by handling \acp{uprobe} entirely in userspace.  
+This is achieved by handling \acp{uprobe} entirely in user space.  
 The approach is limited to the use of \acp{uprobe} in the context of \ac{BPF}.  
-In the proposed program \texttt{bpftime}, the virtual machine for \ac{BPF} is implemented in userspace instead of in the kernel.  
-Thus, the entire execution of a \ac{BPF} program, as described before, takes place in userspace.  
-It would go beyond the scope here to explain the execution flow in detail, but Zheng et al. were able to fully implement \acp{uprobe} in userspace.  
+In the proposed program \texttt{bpftime}, the virtual machine for \ac{BPF} is implemented in user space instead of in the kernel.  
+Thus, the entire execution of a \ac{BPF} program, as described before, takes place in user space.  
+It would go beyond the scope here to explain the execution flow in detail, but Zheng et al. were able to fully implement \acp{uprobe} in user space.  
 The per process principle was preserved in this implementation.  
 As a result, all context switches were eliminated, which is also reflected in the performance results.  
 
-The performance of userspace \acp{uprobe} and \acp{uretprobe} is approximately 10 times better than that of the original probes.  
+The performance of user space \acp{uprobe} and \acp{uretprobe} is approximately 10 times better than that of the original probes.  
 In \cite[p. 7]{zheng2023bpftimeuserspaceebpfruntime} values of about 314~ns for \acp{uprobe} and 381~ns for \acp{uretprobe} were achieved.  
 These results are already very close to those of optimized \acp{kprobe}.  
 In particular, the values of optimized \acp{uretprobe} show no significant difference compared to \texttt{bpftime}.  
@@ -980,7 +980,7 @@ In particular, the values of optimized \acp{uretprobe} show no significant diffe
 However, at the time of this work, \texttt{bpftime} is still a work in progress and suffers from several bugs and an unstable API, as described in \cite{bpftime}.  
 Nevertheless, \texttt{bpftime} is mentioned here to illustrate that the performance of \acp{uprobe} could soon approach that of \acp{kprobe}.  
 
-After having explained what a probe is, and how it is implemented in Linux, both in the kernel and in userspace, the following section explains what an event is.  
+After having explained what a probe is, and how it is implemented in Linux, both in the kernel and in user space, the following section explains what an event is.  
 Furthermore, it will be discussed how events are implemented and what differences exist compared to probes.  
  \subsection{Tracepoints}
 An event, as Gregg describes in \cite[Chap. 2.9, Chap. 2.10]{Gregg_2020}, serves the purpose of static instrumentation in both user space and kernel space.  
@@ -1115,7 +1115,7 @@ There are no reliable data indicating whether optimized \acp{kprobe} or tracepoi
 However, in both cases, the overhead is very small.  
 
 Besides the tracepoints for the kernel space, there also exist \acp{USDT} for the user space.  
-In the following section the userspace equivalent of tracepoints will be explained,
+In the following section the user space equivalent of tracepoints will be explained,
 
 \subsection{User-level statically defined tracing}
 As Gregg describes in \cite[Chap.~2.10]{Gregg_2020}, they work in a very similar way to kernel tracepoints.  
@@ -1165,7 +1165,7 @@ Moreover, tracepoints are preserved in future kernel versions.
 A performance improvement over dynamic event sources\footnote{For the overhead of dynamic event sources, the minimum values correspond to the minimal reported latency of a simple probe, i.e. a \ac{kprobe} or \ac{uprobe}, and the maximum values correspond to the maximum reported latency of the respective return probes.} can also be observed.  
 
 On the kernel side, tracepoints are similar fast as optimized \acp{kprobe}.  
-Since kprobes, however, cannot always be optimized, the overall performance of tracepoints is generally better.  
+Since \acp{kprobe}, however, cannot always be optimized, the overall performance of tracepoints is generally better.  
 On the user-level side, the performance of \acp{USDT} is significantly better than that of \acp{uprobe} and only slightly worse than that of tracepoints.
 Therefore their performance is, depending on the tracer, between 10 and 40 times faster than a \ac{uprobe}.  
 
@@ -1200,7 +1200,7 @@ Gregg \cite[Chap.~2.9]{Gregg_2020} explains that tracepoints should always be us
 Kprobes should only be employed as a fallback when no tracepoints exist for a specific use case.  
 Gregg's opinion is further supported by Calavera et al. \cite[Chap.~4]{Calavera_Fontana_Frazelle_2020}.  
 
-For monitoring in user space, uprobes are also considered insufficient, as argued by Zheng et al. \cite[p.~3]{zheng2023bpftimeuserspaceebpfruntime}.  
+For monitoring in user space, \acp{uprobe} are also considered insufficient, as argued by Zheng et al. \cite[p.~3]{zheng2023bpftimeuserspaceebpfruntime}.  
 They explain that, due to the relatively high overhead of \acp{uprobe} and the additional required context switches, these are not suitable for time-critical or real-time monitoring tasks.  
 
 In summary, considering the advantages and disadvantages of the respective event sources, it is considered best practice to prefer static ones.  
@@ -1623,12 +1623,12 @@ Although these points are very close to each other, they may still cause measura
 \begin{figure}[H]
     \centering
     \includegraphics[width=\textwidth]{figures/Uprobe.drawio.pdf}
-    \caption{Presentation of the synchronization between User- and Kernelspace}
+    \caption{Presentation of the synchronization between user space and kernel space}
     \label{fig:uprobe}
 \end{figure}
 
 The exact composition of the difference between the two time measurements will be described later in this chapter.  
-The implementation of the User- and Kernelspace synchronization is shown in Figure~\ref{fig:uprobe}.  
+The implementation of the user space and kernel space synchronization is shown in Figure~\ref{fig:uprobe}.  
 For synchronization, a uretprobe is used.  
 The goal is to establish a common time base simultaneously in user space and kernel space by means of the \ac{uretprobe}.  
 This common base then allows the times measured in user and kernel space to be related to each other.  
@@ -1642,18 +1642,18 @@ The following section discusses the technical implementation of the synchronizat
 This process is illustrated in Figure~\ref{fig:uprobe}.  
 As can be seen, a \ac{uretprobe} is used for time synchronization.  
 Two timelines are depicted, one for user space and one for kernel space.  
-The user-space timeline starts at time $tu_0$, while the kernel-space timeline begins at time $t_{k0}$.  
+The user space timeline starts at time $tu_0$, while the kernel space timeline begins at time $t_{k0}$.  
 As previously mentioned, the problem is that $t_{u0} \neq t_{k0}$.  
 Therefore, it is desirable to establish a common reference point on both timelines from which times can be measured relative to each other.  
 This is achieved by the \ac{uretprobe}.  
 
 As discussed in Section~\ref{subsec:monitoring}, the implementation of a \ac{uretprobe} requires a \ac{uprobe}.  
-The \ac{uprobe} is attached to a user-space function and is triggered upon entering this function.  
+The \ac{uprobe} is attached to a user space function and is triggered upon entering this function.  
 In Figure~\ref{fig:uprobe}, the function is entered at $t_{u1}$ in user space, and via the \texttt{int3} breakpoint, control is passed to the \ac{uprobe} in kernel space, which receives control at $t_{k1}$.  
 It holds that $t_{k1} > t_{u1}$\footnote{Like stated before, these timers can not be compared, because at this point no shared time basis is available. But if they were comparable, the described statement would apply}, since the context switch to the \ac{uprobe} requires time.  
 This interval is highlighted in blue in Figure~\ref{fig:uprobe} and corresponds to $t_{k1} - t_{u1}$, which can not be determined.  
 As described in Section~\ref{subsec:monitoring}, the \ac{uprobe} only manipulates the return address in order to prepare the trampoline for the \ac{uretprobe}.  
-Thus, the \ac{uprobe} terminates at $t_{k2}$ and returns control to the user-space function.  
+Thus, the \ac{uprobe} terminates at $t_{k2}$ and returns control to the user space function.  
 The duration of the \ac{uprobe} is marked in yellow in Figure~\ref{fig:uprobe} and has the value $t_{k2} - t_{k1}$.  
 
 At $t_{u2}$, the function in user space regains control.  
@@ -1661,7 +1661,7 @@ It then sets a timer using the system call \texttt{clock\_gettime()}.
 This syscall again requires a transition into kernel space.  
 The duration of this transition is shown in green in Figure~\ref{fig:uprobe}.  
 The syscall executes in kernel space starting at $t_{k3}$ and completes at $t_{k4}$.  
-At $t_{u3}$, the user-space function regains control, and the timer is set.  
+At $t_{u3}$, the user space function regains control, and the timer is set.  
 This point is marked by a orange dot in the figure and represents the relative moment from which measurements can be taken.  
 Since the function returns at this point, the \ac{uretprobe} is triggered.  
 
@@ -1669,17 +1669,17 @@ The \ac{uretprobe} again switches to kernel space.
 This transition is slightly longer than the syscall transition and is indicated in blue, analogous to the \ac{uprobe}.  
 At $t_{k5}$, the \ac{uretprobe} receives control and, using the function \texttt{bpf\_ktime\_get\_ns()}, measures the system time in nanoseconds.  
 Thus, at $t_{k6}$, the relative program start time in kernel space is set.  
-At $t_{k7}$, the \ac{uretprobe} terminates and returns control to the user-space function, which resumes execution at $t_{u4}$.  
+At $t_{k7}$, the \ac{uretprobe} terminates and returns control to the user space function, which resumes execution at $t_{u4}$.  
 
 At this point, reference values have been established in both kernel and user space that can be used for future measurements.  
-When a tracepoint such as \texttt{consume\_skb} is triggered, a timestamp can be obtained in kernel space that can be correlated with the corresponding user-space timestamp.  
+When a tracepoint such as \texttt{consume\_skb} is triggered, a timestamp can be obtained in kernel space that can be correlated with the corresponding user space timestamp.  
 As shown in Figure~\ref{fig:uprobe}, at $t_{k8}$ the tracepoint is triggered and at $t_{k9}$ the time is measured using \texttt{bpf\_ktime\_get\_ns()}.  
 The tracepoint is exited at $t_{k10}$, and control flows through the network layers back to the application in user space, as illustrated in Figure~\ref{fig:tx}.  
 The application regains control at $t_{u6}$ and measures the time at $t_{u7}$ using \texttt{Instant::now()}.  
-The time difference $d_u$ between the program start at $t_{u3}$ and the measurement at $t_{u7}$ can thus be related to the time difference $d_k$, which is defined as the difference between the kernel-space program start $t_{k6}$ and the tracepoint entry $t_{k9}$.  
+The time difference $d_u$ between the program start at $t_{u3}$ and the measurement at $t_{u7}$ can thus be related to the time difference $d_k$, which is defined as the difference between the kernel space program start $t_{k6}$ and the tracepoint entry $t_{k9}$.  
 Consequently, the time needed by $t_4$ and $t_8$ in Figure~\ref{fig:tx} can be determined as $d_u - d_k$.  
 
-It is difficult to determine the delay between the user-space time $t_{u3}$ and the kernel-space time $t_{k6}$.  
+It is difficult to determine the delay between the user space time $t_{u3}$ and the kernel space time $t_{k6}$.  
 This delay reflects the accuracy of the synchronization between user space and kernel space.  
 Zheng et al.\ report in \cite{zheng2023bpftimeuserspaceebpfruntime} that the \ac{uretprobe} introduces an overall overhead of approximately $4\,\mu$s.  
 However, since the delay does not account for the entire duration of the \ac{uretprobe}, it is expected to be significantly smaller.  
@@ -1723,7 +1723,7 @@ In addition, the experiments were carried out once with real-time priority enabl
  Avg Jitter & 380 ns & 350 ns & 320 ns & 280 ns \\ 
  \hline
 \end{tabular}
-\caption{Comparison of the time synchronization between User- and Kernelspace with different timer and priority}
+\caption{Comparison of the time synchronization between user space and kernel space with different timer and priority}
 \label{tab:timer_comparison}
 \end{table}
 
@@ -1739,7 +1739,7 @@ Zheng et al.\ report in \cite[p.~7]{zheng2023bpftimeuserspaceebpfruntime} that t
 In the measurement results shown in Table~\ref{tab:timer_comparison}, the times for both probes are higher.  
 This can be explained by the fact that this work uses a Raspberry Pi~5, which presumably has lower computational power compared to the \ac{CPU} used by Zheng et al.  
 Although \cite{zheng2023bpftimeuserspaceebpfruntime} does not specify the exact \ac{CPU}, it is reasonable to assume that a more powerful processor was employed, as the paper was published in 2023 and the \ac{CPU} of the Raspberry Pi~5 cannot match the performance of a desktop \ac{CPU} from this time.  
-Furthermore, additional overhead may be introduced by performing the measurements with Rust user-space functions.  
+Furthermore, additional overhead may be introduced by performing the measurements with Rust user space functions.  
 Nevertheless, the results do not deviate substantially from the values reported in \cite{zheng2023bpftimeuserspaceebpfruntime}, which supports the conclusion that the values obtained for $d_{ku}$ are reliable.  
 
 As a final conclusion, the measurements demonstrate that synchronization between user space and kernel space can be achieved with the \ac{uretprobe} at an accuracy of approximately $1$--$1.5\,\mu$s.  
@@ -1780,7 +1780,7 @@ Subsequently, memory is reserved in the ring buffer using the function \texttt{b
 After the message is submitted into the ring buffer the user space gets a notification that there is a message to collect, like described in \cite{buffer_submit}.
 The event consists of a type identifier \texttt{event\_type}, a data structure containing the parameters \texttt{msg\_type} and \texttt{seq} and a timestamp.  
 For the \ac{uretprobe}, only the event type and the timestamp are relevant.  
-The event type allows the user-space program to determine how the event should be processed.  
+The event type allows the user space program to determine how the event should be processed.  
 For this reason, a unique event type is assigned to each \ac{BPF} function\footnote{Each event source can be associated with a different \ac{BPF} function.  
 In this work, a distinct \ac{BPF} function is attached to the \ac{uretprobe} as well as to the three tracepoints discussed earlier in this chapter.}.  
 For the \ac{BPF} function of the \ac{uretprobe}, this type is set to $0$.  
@@ -1810,7 +1810,7 @@ int trace_measure_instant(struct pt_regs *ctx) {
 \label{lst:bpf_uprobe}
 \end{listing}
 
-Having explained how user-space and kernel-space synchronization is achieved, the following section describes how client-server synchronization is implemented.  
+Having explained how user space and kernel space synchronization is achieved, the following section describes how client-server synchronization is implemented.  
 This synchronization is carried out in three phases, namely \ac{NTP}, \ac{PTP} and Check.  
 As previously mentioned, these phases are named after time-synchronization protocols.
 However, only their functionality is implemented, not the full protocol specification.  
