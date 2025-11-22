@@ -1397,17 +1397,17 @@ Consequently, the state machine in Figure~\ref{fig:state_machine} is a \ac{DFSM}
 It can be observed that the server consists of nine states.  
 
 The application, as described in Section~\ref{subsec:appl}, occupies only two of these states.  
-Steps~\circnum{1} to \circnum{7} of Figure~\ref{fig:application} are executed in the state \textit{Calculation}, and Step~\circnum{8} is executed in the state \textit{Save}.  
+Steps~\circnum{1} to \circnum{7} of Figure~\ref{fig:application} are executed in the state \texttt{Calculation}, and Step~\circnum{8} is executed in the state \texttt{Save}.  
 
 The states in Figure~\ref{fig:state_machine} can be classified into four categories.  
 First, there are the start and end nodes, as is common for finite state machines.  
 Second, the regular states in Figure~\ref{fig:state_machine} are distinguished into states without real-time requirements, shown in green, and states with real-time requirements, shown in red.  
-It can be seen that the automaton starts in the state \textit{Setup} and can terminate in the two states \textit{Error} and \textit{End}.  
-Furthermore, only the state \textit{Calculation} has real-time requirements.  
+It can be seen that the automaton starts in the state \texttt{Setup} and can terminate in the two states \texttt{Error} and \texttt{End}.  
+Furthermore, only the state \texttt{Calculation} has real-time requirements.  
 
 The following describes the function of each state and how it is implemented.  
 
-The state \textit{Setup} is the initial state.  
+The state \texttt{Setup} is the initial state.  
 It sets the priority to real-time priority, loads and initializes the \ac{BPF} program, and starts the server.  
 As shown in Listing~\ref{lst:setup}, line~3, the real-time priority is set to 99, which, as described in Section~\ref{subsec:real_time_kernel}, corresponds to a priority of 139.  
 For monitoring, \ac{BPF} is used, which is integrated into Rust through \texttt{libbpf\_rs}.  
@@ -1492,7 +1492,7 @@ The \texttt{SetupContext} is a structure encompassing all data required in subse
 After its initialization, in line 31, the main program flow, managed by the \texttt{run\_state\_machine()} function, is started.  
 The setup is identical for both server and client, with the exception that the client initializes a client object to connect to the server, whereas the server sets up a \ac{TCP} server.  
 
-In the \textit{Start} state, which is illustrated in Figure~\ref{fig:state_machine} and represents the next state after setupt, the server waits until the client has established a connection and transmitted the start message.  
+In the \texttt{Start} state, which is illustrated in Figure~\ref{fig:state_machine} and represents the next state after \texttt{Setup}, the server waits until the client has established a connection and transmitted the start message.  
 
 For the communication, different message types are employed.  
 These are shown in Listing~\ref{lst:msg_types}.  
@@ -1520,10 +1520,10 @@ enum MessageType {
 \label{lst:msg_types}
 \end{listing}
 
-In the \textit{Start} state, the server waits until it receives a message of type \texttt{Start}.  
+In the \texttt{Start} state, the server waits until it receives a message of type \texttt{Start}.  
 Subsequently, it transitions into the next derive phase of the protocol.  
 
-After the state \emph{Start}, the three states \ac{NTP}, \ac{PTP}, and \emph{Check} follow.  
+After the state \texttt{Start}, the three states \texttt{\ac{NTP}}, \texttt{\ac{PTP}}, and \texttt{Check} follow.  
 All three states serve the purpose of time synchronization.  
 Contrary to what their names suggest, \ac{NTP} and \ac{PTP} are not directly applied.  
 Instead, the names merely describe the functionality of the corresponding synchronization protocols.  
@@ -1811,7 +1811,7 @@ int trace_measure_instant(struct pt_regs *ctx) {
 \end{listing}
 
 Having explained how user space and kernel space synchronization is achieved, the following section describes how client-server synchronization is implemented.  
-This synchronization is carried out in three phases, namely \ac{NTP}, \ac{PTP} and Check.  
+This synchronization is carried out in three states, namely \texttt{\ac{NTP}}, \texttt{\ac{PTP}} and \texttt{Check}.  
 As previously mentioned, these phases are named after time-synchronization protocols.
 However, only their functionality is implemented, not the full protocol specification.  
 
@@ -1838,7 +1838,7 @@ This figure shows both a flow chart of the three states and their respective ite
     \label{fig:flow_chart}
 \end{figure}
 
-The time synchronization begins with the \ac{NTP} phase, which is represented by the \ac{NTP} state in Figure~\ref{fig:state_machine}.  
+The time synchronization begins with the \ac{NTP} phase, which is represented by the \texttt{\ac{NTP}} state in Figure~\ref{fig:state_machine}.  
 A predefined number of repetitions is executed until the \ac{RTT} falls below the specified requirement $RTT_{Req}$.  
 An \ac{NTP} repetition is illustrated in Figure~\ref{fig:flow_chart}.  
 In this process, the server first synchronizes its user space with kernel space, as described earlier.  
@@ -1849,7 +1849,7 @@ This ensures that the server and client are roughly synchronized, with an error 
 This assumption holds only under symmetric network conditions, which Wi-Fi does not reliably provide.  
 Nevertheless, it guarantees that the time deviation between client and server is less than $RTT_{NTP}$.  
 Therefore, it is advantageous to minimize the \ac{RTT}, which is why the \ac{NTP} phase enforces the requirement $\ac{RTT}_{NTP} < RTT_{Req}$.  
-If this condition is not satisfied, the \ac{NTP} repetition is repeated, otherwise, the state changes to \ac{PTP}.  
+If this condition is not satisfied, the \ac{NTP} repetition is repeated, otherwise, the state changes to \texttt{\ac{PTP}}.  
 
 The resulting $\ac{RTT}_{NTP}$ serves as the basis for fine synchronization.  
 The procedure of the \ac{PTP} phase is illustrated as \ac{PTP} repetition in Figure~\ref{fig:flow_chart}.  
@@ -1858,12 +1858,12 @@ Unlike in the \ac{NTP} phase, the server does not synchronize its user and kerne
 Specifically, it waits for $\frac{\ac{RTT}_{NTP}}{2}$ after sending the message, before performing synchronization.  
 The client behaves identically to the \ac{NTP} phase, except that it returns a packet of type \ac{PTP} to the server.  
 The server measures $\ac{RTT}_{PTP}$ and checks whether $|\ac{RTT}_{NTP} - \ac{RTT}_{PTP}| < \ac{PTP}_{Req}$ holds.  
-If the condition is satisfied, the process transitions to the Check state, otherwise, the repetition is executed again.  
+If the condition is satisfied, the process transitions to the \texttt{Check} state, otherwise, the repetition is executed again.  
 This approach ensures that the server can predict the client's reception time of the packet, thereby improving synchronization accuracy.  
 In the case of a symmetric network, the maximum synchronization error is $PTP_{Req}$.  
 However, $\ac{RTT}_{NTP}$ may not always be reproducible, since it could have been obtained under exceptionally favorable conditions that cannot be recreated.  
 For this reason, the \ac{PTP} phase is limited to a maximum number of repetitions.  
-If this limit is exceeded, $\ac{RTT}_{NTP}$ must be redetermined, and the system transitions back to the \ac{NTP} state.  
+If this limit is exceeded, $\ac{RTT}_{NTP}$ must be redetermined, and the system transitions back to the \texttt{\ac{NTP}} state.  
 
 The final phase of the time-synchronization process is the Check state.  
 This step is necessary because Wi-Fi is not always symmetric.  
@@ -1873,14 +1873,14 @@ It then returns these values to the server in a message of type Check.
 Upon reception, the server records another timestamp $t_{sr}$.  
 From these values, the one-way delay from server to client is computed as $t_{s-c} = t_{cr} - t_{ss}$, and the delay from client to server as $t_{c-s} = t_{sr} - t_{cs}$.  
 If the Wi-Fi connection is symmetric and the synchronization is correct, then $t_d = t_{s-c} - t_{c-s} = 0$.  
-In the Check phase, this procedure is repeated several thousand times, after which the median $M_{Check}$ of the $t_d$ values is calculated.  
-If $M_{Check} < Latency_{Req}$, real-time computation is initiated, otherwise, the system returns to the \ac{PTP} state.  
+In the \texttt{Check} phase, this procedure is repeated several thousand times, after which the median $M_{Check}$ of the $t_d$ values is calculated.  
+If $M_{Check} < Latency_{Req}$, real-time computation is initiated, otherwise, the system returns to the \texttt{\ac{PTP}} state.  
 Although Wi-Fi tends to be symmetric on average over longer periods, this is not guaranteed for individual packets.  
 Therefore, the median\footnote{In this case, the median is used because it is less sensitive to outliers and thus provides more stable results.} is used to determine whether synchronization is sufficiently accurate.  
 While deviations still occur, under the assumption of long-term Wi-Fi symmetry, the maximum synchronization error between client and server is bounded by $Latency_{Req}$.  
 In this work, a threshold of $10\,\mu$s is applied.  
 
-Following the Check state is the Calc state.  
+Following the \texttt{Check} state is the \texttt{Calc} state.  
 As shown in Figure~\ref{fig:state_machine}, this is the only state with a real-time requirement.  
 The implementation of this state has already been explained in Figures~\ref{fig:application} and \ref{fig:tx}.  
 The number of repetitions depends, as illustrated in Figure~\ref{fig:application}, on the number of measurement points.  
@@ -2009,8 +2009,8 @@ Finally, the server checks whether the interval between start and end time excee
 If this is the case, the previously mentioned penalty is applied to $y$.  
 
 After this state, only two states remain, as shown in Figure~\ref{fig:state_machine}.  
-The first is the \textit{Error} state, which is also a terminal state.  
-It can be reached from any synchronization state as well as from the \textit{Calc} state.  
+The first is the \texttt{Error} state, which is also a terminal state.  
+It can be reached from any synchronization state as well as from the \texttt{Calc} state.  
 This state is entered under one of the following conditions:  
 \begin{itemize}  
     \item \textbf{Client timeout:} If the client terminates the \ac{TCP} connection or does not respond in the case of \ac{UDP}.  
@@ -2018,11 +2018,11 @@ This state is entered under one of the following conditions:
           In other words, if not all points contain measurements or if certain data for specific points are missing.  
 \end{itemize}  
 
-The error state terminates both the server and the client and informs the test automation system that the test must be repeated.  
+The \texttt{Error} state terminates both the server and the client and informs the test automation system that the test must be repeated.  
 
-The second state, which has not yet been described, is the \textit{Save} state.  
-In this state, the data collected during \textit{Calculation} are written to a file, where they can later be retrieved and visualized.  
-This state concludes in the \textit{End} state, which marks the successful completion of the \texttt{test run}.  
+The second state, which has not yet been described, is the \texttt{Save} state.  
+In this state, the data collected during \texttt{Calculation} are written to a file, where they can later be retrieved and visualized.  
+This state concludes in the \texttt{End} state, which marks the successful completion of the \texttt{test run}.  
 
 This chapter has described the application, its functionality, and its implementation.  
 The following section will address how the application is embedded into a \texttt{test run} and how the test executions are managed.  
@@ -2049,7 +2049,7 @@ In the figure the test suite for the server is shown, it will be explained, when
 The test suite begins by compiling the Rust code in order to ensure that the latest version is used.  
 Subsequently, in the \texttt{Server Test Suite}, the iperf3 server is started in a separate thread.  
 This step does not exist in the \texttt{Client Test Suite}.  
-On the client side, the iperf3 client is not launched by the test suite itself, but rather by the application once the check state has been successfully finished.  
+On the client side, the iperf3 client is not launched by the test suite itself, but rather by the application once the \texttt{Check} state has been successfully finished.  
 
 In both test suites, the next step is the selection of the \texttt{test run}.  
 For this purpose, the status file is first checked, which contains a digit specifying which \texttt{test run} should be executed next.  
