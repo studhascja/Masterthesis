@@ -218,13 +218,13 @@ First, the structure of the test system is explained in more detail, followed by
 The test environment in Figure \ref{fig:technologies} is divided into several elements. 
 The \ac{OS} is excluded from the discussion and the focus is placed solely on the components of the test system.
 
-The server part of the test system is controlled via the \textbf{Server Test Suite}, which is responsible for executing test runs and automating the overall testing process. 
+The server part of the test system is controlled via the \textbf{Server Test Suite}, which is responsible for executing \texttt{test runs} and automating the overall testing process. 
 For the evaluation of real-time performance, the factors \textbf{Wi-Fi standard, frequency, bandwidth, \ac{QoS}} and \textbf{protocol} are considered in Chapter~\ref{sec:eval}.
 Therefore, these factors must be configurable within the test suite.
 The Wi-Fi standard, frequency and bandwidth are set through the \ac{AP} configuration, whereas \ac{QoS} and the protocol type are configured within the test suite itself.
-Thus it follows that for each combination of \ac{AP} configuration, QoS level and protocol type, the test suite performs a complete test run, so with the test suites a factorial design can be assured.
-Therefore, the total number of test runs is defined as $N_T = N_{AP} \times N_{QoS} \times N_{Prot}$, where $N_T$ is the total number of test runs, $N_{AP}$ is the number of different \ac{AP} configurations, $N_{QoS}$ is the number of different considered QoS levels and $N_{Prot}$ is the number of different protocols used in this work. 
-The \texttt{Server Test Suite} is essential for the automated execution of these test runs, thereby fulfilling the previously specified requirement for test automation.
+Thus it follows that for each combination of \ac{AP} configuration, QoS level and protocol type, the test suite performs a complete \texttt{test run}, so with the test suites a factorial design can be assured.
+Therefore, the total number of \texttt{test runs} is defined as $N_T = N_{AP} \times N_{QoS} \times N_{Prot}$, where $N_T$ is the total number of \texttt{test runs}, $N_{AP}$ is the number of different \ac{AP} configurations, $N_{QoS}$ is the number of different considered QoS levels and $N_{Prot}$ is the number of different protocols used in this work. 
+The \texttt{Server Test Suite} is essential for the automated execution of these \texttt{test runs}, thereby fulfilling the previously specified requirement for test automation.
 
 \begin{figure}[ht]
     \centering
@@ -234,9 +234,9 @@ The \texttt{Server Test Suite} is essential for the automated execution of these
 \end{figure}
 
 A \textbf{server-side test run} comprises the three components Hostapd, Iperf Bulk Server and Rust-RT Server. 
-Each test run contributes to the overall test automation by ensuring that the required steps to establish both a real-time and a non-real-time network link within the same network are executed in the correct order.
+Each \texttt{test run} contributes to the overall test automation by ensuring that the required steps to establish both a real-time and a non-real-time network link within the same network are executed in the correct order.
 
-The first step in a server-side test run is the creation of the \ac{AP}, which is achieved using the \textbf{Hostapd} software. 
+The first step in a server-side \texttt{test run} is the creation of the \ac{AP}, which is achieved using the \textbf{Hostapd} software. 
 Hostapd allows the configuration of various Wi-Fi standards, frequencies and bandwidths, thereby meeting the requirement to support multiple Wi-Fi standards.
 
 Once the \ac{AP} is established, the server for non-real-time applications is launched using \textbf{Iperf3}. 
@@ -249,18 +249,18 @@ This enables both compliance with real-time requirements and integrated monitori
 The rationale behind the choice of programming languages is discussed after the explanation of the test system architecture in Section \ref{subsec:used_technologies}.
 
 The \textbf{client-side test system} is structurally similar to the server-side system. 
-As shown in Figure \ref{fig:technologies}, it also consists of a \texttt{Client Test Suite} and a test run. 
-The functionality of the client-side test suite and test run mirrors that of the server-side system. 
-However, the client-side test run differs slightly in structure.
+As shown in Figure \ref{fig:technologies}, it also consists of a \texttt{Client Test Suite} and a \texttt{test run}. 
+The functionality of the client-side test suite and \texttt{test run} mirrors that of the server-side system. 
+However, the client-side \texttt{test run} differs slightly in structure.
 
-The client-side test run comprises two phases. 
+The client-side \texttt{test run} comprises two phases. 
 First, a connection to the server’s \ac{AP} must be established. This is handled using the \textbf{$wpa\_supplicant$} software, which utilizes a configuration file specifying details such as the network password and encryption algorithm. 
-For this reason, client and server test runs must be synchronized.
+For this reason, client and server \texttt{test runs} must be synchronized.
 Any mismatch in Wi-Fi standards will prevent the client from connecting to the server’s \ac{AP}.
 
 Once a connection is established, the \textbf{Rust-RT Client} is launched. 
 This client establishes a connection to the Rust-RT Server. 
-Unlike the server-side test run, the Iperf client is not launched directly as part of the test run but is instead initiated from within the Rust-RT Client. 
+Unlike the server-side \texttt{test run}, the Iperf client is not launched directly as part of the \texttt{test run} but is instead initiated from within the Rust-RT Client. 
 The reason for this design choice is explained in more detail in Section \ref{subsec:impl}.
 
 After describing the architecture and functionality of the test system and how it satisfies the specified requirements, the following section discusses the selection of technologies and their configuration within the Yocto environment.
@@ -2022,10 +2022,10 @@ The error state terminates both the server and the client and informs the test a
 
 The second state, which has not yet been described, is the \textit{Save} state.  
 In this state, the data collected during \textit{Calculation} are written to a file, where they can later be retrieved and visualized.  
-This state concludes in the \textit{End} state, which marks the successful completion of the test run.  
+This state concludes in the \textit{End} state, which marks the successful completion of the \texttt{test run}.  
 
 This chapter has described the application, its functionality, and its implementation.  
-The following section will address how the application is embedded into a test run and how the test executions are managed.  
+The following section will address how the application is embedded into a \texttt{test run} and how the test executions are managed.  
 
 \subsection{Test Automatization}
 
@@ -2051,8 +2051,8 @@ Subsequently, in the \texttt{Server Test Suite}, the iperf3 server is started in
 This step does not exist in the \texttt{Client Test Suite}.  
 On the client side, the iperf3 client is not launched by the test suite itself, but rather by the application once the check state has been successfully finished.  
 
-In both test suites, the next step is the selection of the test run.  
-For this purpose, the status file is first checked, which contains a digit specifying which test run should be executed next.  
+In both test suites, the next step is the selection of the \texttt{test run}.  
+For this purpose, the status file is first checked, which contains a digit specifying which \texttt{test run} should be executed next.  
 Afterwards, the test specific configuration file is opened.
 Each configuration corresponds to one line in this file, specifying the Wi-Fi standard, frequency, bandwidth, \ac{QoS} status, protocol and \ac{AP} configuration name.  
 For instance, the line \texttt{4 2.4 20 0 udp wifi4} specifies that the Wi-Fi connection should use standard 4, a frequency of 2.4 GHz and a bandwidth of 20 MHz.  
@@ -2089,19 +2089,19 @@ This ensures that the desired configurations are validated and enforced.
 After the application finishes, the status file is updated.  
 If the application terminates successfully in the state \texttt{End}, the digit in the status file is incremented by one.  
 If, however, the application terminates in the state \texttt{Error}, the digit remains unchanged.  
-In this way, the current test run will be repeated.  
+In this way, the current \texttt{test run} will be repeated.  
 The next step is to clean up the entire configuration.  
 This means that \ac{QoS} parameters are reset if necessary, and the \ac{AP} is terminated.  
 On the client side, the \ac{WPA} configuration is reset.  
 
 Finally, the iperf3 server thread is terminated.  
-Figure~\ref{fig:test-suite} illustrates a test run.  
+Figure~\ref{fig:test-suite} illustrates a \texttt{test run}.  
 This represents the section that is repeated at least once for each configuration entry in the configuration file.  
 Consequently, the Rust project is compiled only once for both client and server.  
 On the server side, the iperf3 server is also started only once, since it remains persistent.  
-By contrast, the iperf3 client reconnects for each test run, since it may require a different configuration.  
+By contrast, the iperf3 client reconnects for each \texttt{test run}, since it may require a different configuration.  
 
-Having now described the organization of the test runs, the following section addresses the implementation of the \acp{AP} using hostapd.  
+Having now described the organization of the \texttt{test runs}, the following section addresses the implementation of the \acp{AP} using hostapd.  
 
 \subsection{Access point configuration} \label{subsec:hostapd}
 As described in Chapter~\ref{subsec:impl}, the \acp{AP} must support the three configurable properties Wi-Fi standard, frequency, and bandwidth.  
