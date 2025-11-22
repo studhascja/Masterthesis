@@ -224,7 +224,7 @@ Therefore, these factors must be configurable within the test suite.
 The Wi-Fi standard, frequency and bandwidth are set through the \ac{AP} configuration, whereas \ac{QoS} and the protocol type are configured within the test suite itself.
 Thus it follows that for each combination of \ac{AP} configuration, QoS level and protocol type, the test suite performs a complete test run, so with the test suites a factorial design can be assured.
 Therefore, the total number of test runs is defined as $N_T = N_{AP} \times N_{QoS} \times N_{Prot}$, where $N_T$ is the total number of test runs, $N_{AP}$ is the number of different \ac{AP} configurations, $N_{QoS}$ is the number of different considered QoS levels and $N_{Prot}$ is the number of different protocols used in this work. 
-The Server Test Suite is essential for the automated execution of these test runs, thereby fulfilling the previously specified requirement for test automation.
+The \texttt{Server Test Suite} is essential for the automated execution of these test runs, thereby fulfilling the previously specified requirement for test automation.
 
 \begin{figure}[ht]
     \centering
@@ -249,7 +249,7 @@ This enables both compliance with real-time requirements and integrated monitori
 The rationale behind the choice of programming languages is discussed after the explanation of the test system architecture in Section \ref{subsec:used_technologies}.
 
 The \textbf{client-side test system} is structurally similar to the server-side system. 
-As shown in Figure \ref{fig:technologies}, it also consists of a Client Test Suite and a test run. 
+As shown in Figure \ref{fig:technologies}, it also consists of a \texttt{Client Test Suite} and a test run. 
 The functionality of the client-side test suite and test run mirrors that of the server-side system. 
 However, the client-side test run differs slightly in structure.
 
@@ -283,7 +283,7 @@ As shown in \cite{iperf}, this tool allows the generation of network traffic and
 Furthermore, no separate monitoring needs to be developed, as the tool already includes it.  
 For example, latency and packet loss can be directly observed using \texttt{iperf3}.  
 
-Both the Server Test Suite and the Client Test Suite are implemented in Python.  
+Both the \texttt{Server Test Suite} and the \texttt{Client Test Suite} are implemented in Python.  
 This is possible because there are no real-time requirements for these components.  
 Only the server responsible for the RT connection must fulfill real-time constraints.  
 In this case, Python is a suitable choice because, as described in \cite{10209340}, it is very popular and widely used in embedded programming.  
@@ -2034,21 +2034,21 @@ As described in Chapter~\ref{subsec:used_technologies}, this suite is implemente
 There is one test suite for the client and one for the server.  
 However, these are largely similar in their structure and functionality.  
 
-Figure~\ref{fig:test-suite} illustrates the workflow of the server test suite.  
+Figure~\ref{fig:test-suite} illustrates the workflow of the \texttt{Server Test Suite}.  
 Based on this figure, the workflow of the test suite will be explained in the following.  
-The workflow of the client test suite is also explained on this basis.
-In the figure the test suite for the server is shown, it will be explained, when the client test suite differs from it.  
+The workflow of the \texttt{Client Test Suite} is also explained on this basis.
+In the figure the test suite for the server is shown, it will be explained, when the \texttt{Client Test Suite} differs from it.  
 
 \begin{figure}[ht]
     \centering
     \includegraphics[width=0.7\linewidth]{figures/Test-Suite.drawio.pdf}
-    \caption{Sequence diagram illustrating the interaction and execution flow between the server and client test suites.}
+    \caption{Sequence diagram illustrating the interaction and execution flow between the Server and Client Test Suites.}
     \label{fig:test-suite}
 \end{figure}
 
 The test suite begins by compiling the Rust code in order to ensure that the latest version is used.  
-Subsequently, in the server test suite, the iperf3 server is started in a separate thread.  
-This step does not exist in the client test suite.  
+Subsequently, in the \texttt{Server Test Suite}, the iperf3 server is started in a separate thread.  
+This step does not exist in the \texttt{Client Test Suite}.  
 On the client side, the iperf3 client is not launched by the test suite itself, but rather by the application once the check state has been successfully finished.  
 
 In both test suites, the next step is the selection of the test run.  
@@ -2057,7 +2057,7 @@ Afterwards, the test specific configuration file is opened.
 Each configuration corresponds to one line in this file, specifying the Wi-Fi standard, frequency, bandwidth, \ac{QoS} status, protocol and \ac{AP} configuration name.  
 For instance, the line \texttt{4 2.4 20 0 udp wifi4} specifies that the Wi-Fi connection should use standard 4, a frequency of 2.4 GHz and a bandwidth of 20 MHz.  
 Moreover, no \ac{QoS} parameters should be applied, the application should use \ac{UDP} and the corresponding hostapd configuration for the Wi-Fi parameters is included in the config file \texttt{wifi4}.  
-The last parameter is not relevant for the client test suite since it does not have to start an \ac{AP} with hostapd.  
+The last parameter is not relevant for the \texttt{Client Test Suite} since it does not have to start an \ac{AP} with hostapd.  
 
 The next step on the server side is to start the \ac{AP} with the respective hostapd configuration.  
 Instead of launching hostapd, the client establishes a connection to the server using wpa-supplicant.  
@@ -2070,7 +2070,7 @@ This is achieved by executing the shell command \texttt{ps -eLo comm,pri | grep 
 As described in~\cite{ps}, this command lists all processes including threads and outputs only the name and the priority.  
 The client side checkes the priorities analogously.  
 Additionally, it is verified that Wi-Fi version, bandwidth and frequency match the values specified in the configuration.  
-In other words, the client test suite checks that the server's \ac{AP} configuration is correct and actually usable\footnote{The fact that an \ac{AP} provides certain features, such as Wi-Fi standard 6, does not automatically imply that these features are active in the client connection.  
+In other words, the \texttt{Client Test Suite} checks that the server's \ac{AP} configuration is correct and actually usable\footnote{The fact that an \ac{AP} provides certain features, such as Wi-Fi standard 6, does not automatically imply that these features are active in the client connection.  
 For example, if the client connects to the \ac{AP} with an incompatible \ac{WPA} configuration, the Wi-Fi standard may be downgraded.  
 Therefore, it is necessary to perform the verification on the client side to guarantee that all configurations are applied correctly.}.  
 
