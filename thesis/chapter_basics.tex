@@ -1,7 +1,7 @@
 \chapter{Basics} \label{sec:basics}
 In this chapter, the necessary fundamentals are established in order to provide the basis for the following chapters.  
 First, Chapter \ref{sec:used_hardware} describes and justifies the hardware used in this work.  
-Subsequently, Chapters \ref{subsec:yocto} and \ref{subsec:linux_stack} introduce the basics of Yocto Linux and explain how \ac{WLAN} is implemented in Linux.  
+Subsequently, Chapters \ref{subsec:yocto} and \ref{subsec:linux_stack} introduce the basics of Yocto Linux and explain how Wi-Fi is implemented in Linux.  
 Chapters \ref{subsec:mac} through \ref{subsec:qos} then cover \ac{QoS}, the characteristics of Wi-Fi 4 to 7 and the different types and functionalities of \ac{MAC}.  
 Finally, the fundamentals of real-time are presented in Chapter \ref{sec:real_time}.  
 As mentioned above, the next section focuses on the selected hardware.  
@@ -14,7 +14,7 @@ In addition, the drivers and firmware of the card should be open, as this ensure
 Moreover, different Wi-Fi cards with different drivers and firmware are required.  
 This makes it possible to compare the impact of components that cannot be replaced or are largely vendor-dependent.  
 For the underlying computing unit, compatibility with the Wi-Fi card and affordability are the most relevant criteria.  
-Specialized real-time hardware is deliberately avoided, since \ac{WLAN} is not a real-time standard and is more commonly used in mixed systems\footnote{In this context, mixed systems refer to systems that include both real-time and non-real-time requirements or processes. In other words, a system that is not purely designed for real-time but still needs to fulfill such properties, albeit to a lesser extent.}.  
+Specialized real-time hardware is deliberately avoided, since Wi-Fi is not a real-time capbable by default and is more commonly used in mixed systems\footnote{In this context, mixed systems refer to systems that include both real-time and non-real-time requirements or processes. In other words, a system that is not purely designed for real-time but still needs to fulfill such properties, albeit to a lesser extent.}.  
 
 \begin{figure}[ht]
     \centering
@@ -197,7 +197,7 @@ Once protocol-specific processing is complete, the method \texttt{sk\_data\_read
 
 In the final step, \circnum{11}, a system call transfers the data from the kernel sockets to user space.
 
-Having described the packet path within the Linux networking stack, the following section addresses fundamentals of \ac{WLAN} and characteristics of the standards 4 through 7.
+Having described the packet path within the Linux networking stack, the following section addresses fundamentals of Wi-Fi and characteristics of the standards 4 through 7.
 
 \section{Wi-Fi standards} \label{subsec:stand}
 As described in \cite[p. 56]{ofdm}, IEEE 802.11 is one of the most widely used wireless communication protocols.  
