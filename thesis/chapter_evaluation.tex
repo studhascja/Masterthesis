@@ -303,7 +303,7 @@ After discussing in this chapter how an environment with medium interference aff
 \section{High disturbance test} \label{subsec:high}
 In the high-interference test, the same \texttt{test cases} are conducted as before, but an additional pair of Raspberry Pis is introduced.  
 This second pair operates on the same frequency and with the same bandwidth, transmitting as many packets as possible via \texttt{iperf3}.  
-The second pair of Raspberry Pis, referred to in the following as the \texttt{noisy neighbour}, is equipped with an Atheros AR5BXB92 Wi-Fi card, as described in Section \ref{sec:used_hardware}.  
+The second pair of Raspberry Pis, referred to in the following as the \texttt{noisy neighbour}, is equipped with an Atheros \texttt{AR5BXB92} Wi-Fi card, as described in Section \ref{sec:used_hardware}.  
 However, since this card only supports Wi-Fi 4, only \texttt{test cases} in the 2.4 GHz and 5 GHz bands are considered.  
 For the \texttt{test cases} with 80 MHz bandwidth, the \texttt{noisy neighbour} uses only 40 MHz channels, as Wi-Fi 4 does not support wider channels.  
 This setup allows the simulation of a worst-case scenario for the 2.4 GHz and 5 GHz bands, in which another Wi-Fi network in close proximity fully occupies the same channel on the same frequency band.  
@@ -486,7 +486,7 @@ The observed \ac{WCET} during testing is significantly lower, as the maximum val
 The configurations analyzed correspond to those shown in Figure~\ref{fig:percent}.  
 In addition, the configurations \texttt{4-5-40-1-tcp} with two different firmware versions (\texttt{ath9k} and \texttt{mt7925e}) were examined.  
 These two \texttt{test cases} were included because the intervals involving firmware execution represent the largest share of total time, allowing for an evaluation of firmware influence.  
-The \texttt{ath9k} firmware was used in conjunction with the AR5BXB92 Wi-Fi card, as described in Section~\ref{sec:used_hardware}.  
+The \texttt{ath9k} firmware was used in conjunction with the \texttt{AR5BXB92} Wi-Fi card, as described in Section~\ref{sec:used_hardware}.  
 In Table~\ref{tab:wcet}, the best-performing \texttt{test configuration} of the \texttt{ath9k} driver is used.
 Furthermore the tests were conducted under medium interference conditions.  
 

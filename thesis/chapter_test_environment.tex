@@ -93,7 +93,7 @@ The following section defines the requirements for the test environment which ar
 For both the test system and the \ac{OS}, the previously defined criteria for real-time capability are assumed to be fulfilled.
 
 The requirements for the \ac{OS} include providing appropriate \textbf{support for both the hardware and the software components} of the test environment. 
-As described in Chapter \ref{sec:used_hardware}, this work utilizes a Raspberry Pi 5, to which a MediaTek 7925B22M and an Atheros AR5BXB92 Wi-Fi module can be connected via PCIe.
+As described in Chapter \ref{sec:used_hardware}, this work utilizes a Raspberry Pi 5, to which a MediaTek 7925B22M and an Atheros \texttt{AR5BXB92} Wi-Fi module can be connected via PCIe.
 Accordingly, the \ac{OS} has to support the Raspberry Pi 5 architecture and offer compatibility with the drivers mt76, mt7925e and ath9k.
 
 Furthermore, the mt7925e driver is only available starting from Linux kernel version 6.8 and receives extended feature support with newer versions. 
@@ -215,11 +215,11 @@ The \texttt{Server Test Suite} is essential for the automated execution of these
     \label{fig:technologies}
 \end{figure}
 
-A \textbf{server-side test run} comprises the three components Hostapd, Iperf Bulk Server and Rust-RT Server. 
+A \textbf{server-side test run} comprises the three components \texttt{hostapd}, \texttt{Iperf Bulk Server} and \texttt{Rust-RT Server}. 
 Each \texttt{test run} contributes to the overall test automation by ensuring that the required steps to establish both a real-time and a non-real-time network link within the same network are executed in the correct order.
 
 The first step in a server-side \texttt{test run} is the creation of the \ac{AP}, which is achieved using the \textbf{Hostapd} software. 
-Hostapd allows the configuration of various Wi-Fi standards, frequencies and bandwidths, thereby meeting the requirement to support multiple Wi-Fi standards.
+\texttt{Hostapd} allows the configuration of various Wi-Fi standards, frequencies and bandwidths, thereby meeting the requirement to support multiple Wi-Fi standards.
 
 Once the \ac{AP} is established, the server for non-real-time applications is launched using \textbf{Iperf3}. 
 This software supports differentiation between UDP and TCP traffic, various packet sizes and data rates. 
@@ -241,8 +241,8 @@ For this reason, client and server \texttt{test runs} must be synchronized.
 Any mismatch in Wi-Fi standards will prevent the client from connecting to the server’s \ac{AP}.
 
 Once a connection is established, the \textbf{Rust-RT Client} is launched. 
-This client establishes a connection to the Rust-RT Server. 
-Unlike the server-side \texttt{test run}, the Iperf client is not launched directly as part of the \texttt{test run} but is instead initiated from within the Rust-RT Client. 
+This client establishes a connection to the \texttt{Rust-RT Server}. 
+Unlike the server-side \texttt{test run}, the \texttt{Iperf Bulk Client} is not launched directly as part of the \texttt{test run} but is instead initiated from within the \texttt{Rust-RT Client}. 
 The reason for this design choice is explained in more detail in Section \ref{subsec:impl}.
 
 After describing the architecture and functionality of the test system and how it satisfies the specified requirements, the following section discusses the selection of technologies and their configuration within the Yocto environment.
@@ -256,7 +256,7 @@ Thus, all previously specified requirements regarding the configurable propertie
 To allow the client to connect to the AP, the software \texttt{wpa\_supplicant} is used.  
 As shown in \cite{hostapd2} and \cite{wpa}, it can be configured at the same level as \texttt{hostapd}.  
 This allows for a fine-grained configuration of the connection to the AP.  
-An alternative on Linux would be the NetworkManager.  
+An alternative on Linux would be the \texttt{NetworkManager}.  
 However, it includes more background processes and is therefore more heavyweight, which would impact the system more strongly.  
 Moreover, it cannot be configured as precisely in coordination with \texttt{hostapd} as \texttt{wpa\_supplicant}.  
 
@@ -397,11 +397,11 @@ Specifically, the overlay must be added to the \texttt{RPI\_KERNEL\_DEVICETREE\_
 \texttt{meta-raspberrypi/conf/machine/include/rpi-base.inc}.  
 After this adjustment, the overlay was successfully deployed and referenced in the \texttt{config.txt} of the generated image.
 
-To make the \ac{OS} real-time capable, the Linux kernel must be extended using the RT patch.  
+To make the \ac{OS} real-time capable, the Linux kernel must be extended using the RT-patch.  
 This is handled within the \texttt{recipes-kernel} section of the \texttt{meta-masterthesis} layer.  
 The Linux recipe provided by the \texttt{meta-raspberrypi} layer, which is based on version 6.12.1, is extended via a \texttt{.bbappend} file.  
-However, the RT patch is officially only available for kernel version 6.12.28.  
-Since this version is not compatible with 6.12.1, an older RT patch developed for version 6.12.8 was tested and found to work reliably.  
+However, the RT-patch is officially only available for kernel version 6.12.28.  
+Since this version is not compatible with 6.12.1, an older RT-patch developed for version 6.12.8 was tested and found to work reliably.  
 This patch was applied by integrating it into the Linux recipe using the \texttt{.bbappend} mechanism.
 
 It is also essential to modify the kernel configuration to select the appropriate preemption model.  
@@ -707,9 +707,9 @@ However, the mailing list \cite{kprobe_early} indicates that \acp{kprobe} were p
 \subsection{Kprobes}
 A \ac{kprobe} allows instrumentation of any kernel instruction or function.  
 This is achieved, as described in \cite[p. 101-104]{Mavinakayanahalli_Panchamukhi_Keniston_Keshavamurthy_Hiramatsu_2006}, by replacing an instruction with a software breakpoint and redirecting control to a handler.  
-As described in \cite[p. 102]{Mavinakayanahalli_Panchamukhi_Keniston_Keshavamurthy_Hiramatsu_2006}, a \texttt{kprobe struct} exists.  
+As described in \cite[p. 102]{Mavinakayanahalli_Panchamukhi_Keniston_Keshavamurthy_Hiramatsu_2006}, a \texttt{\ac{kprobe} struct} exists.  
 This struct can be used to manage and configure probes.  
-BPF tools, such as bpftrace, also utilize this struct in the background to register \acp{kprobe}.  
+BPF tools, such as \texttt{bpftrace}, also utilize this struct in the background to register \acp{kprobe}.  
 The relevant fields include \texttt{addr}, \texttt{pre\_handler}, \texttt{post\_handler}, and \texttt{fault\_handler}.  
 The \texttt{addr} field specifies the location where the \ac{kprobe} should be registered.  
 The handler fields indicate the actions to be executed before, after, or instead of the probed instruction.  
@@ -735,17 +735,17 @@ The following describes the operation of \acp{kprobe} and \acp{kretprobe}:
           The normal function flow is interrupted, and control is transferred to the \ac{kprobe} handler.  
           As described in \cite{kprobe_doc}, all registers are saved and control is passed to the handler via the \texttt{notifier\_call\_chain}.  
     \item During the \textbf{\ac{kprobe}-Handler} the \texttt{pre\_handler} is executed first, followed by emulation of the original instruction, and then the \texttt{post\_handler} is executed.  
-          In the \texttt{pre\_handler}, the address of the \ac{kprobe} struct is passed to the handler.  
+          In the \texttt{pre\_handler}, the address of the \texttt{\ac{kprobe} struct}  is passed to the handler.  
           Another function of the \texttt{pre\_handler} is to initialize the \ac{kretprobe}.  
-          As can be seen in \cite{linux_kprobes_616}, this is performed by \texttt{pre\_handler\_kretprobe(struct kprobe *p, struct pt\_regs *regs)}, where \texttt{*p} is the \ac{kprobe} struct and \texttt{*regs} contains registers saved during the trap.  
+          As can be seen in \cite{linux_kprobes_616}, this is performed by \texttt{pre\_handler\_kretprobe(struct kprobe *p, struct pt\_regs *regs)}, where \texttt{*p} is the \texttt{\ac{kprobe} struct}  and \texttt{*regs} contains registers saved during the trap.  
           This function replaces the return address of the probed function on the stack with the trampoline address and stores the original return in the \texttt{kretprobe\_instance} struct.  
           This has the affect that the trampoline is triggered when the original function returns.  
           Aside from this kretprobe-specific \texttt{pre-handler}, regular \ac{kprobe} can execute user-defined code before the actual function.  
           After the \texttt{pre\_handler}, the copied instruction is executed in a single-step manner, as described in \cite{kprobe_doc}.  
           Copying the instruction is necessary to avoid removing the breakpoint, which would allow other \acp{CPU} to skip the \ac{kprobe}.  
           Execution then proceeds to either the trampoline or the \texttt{post-handler}.  
-          In the post-handler, the return value can be further processed, or additional user code executed.  
-          For a \ac{kretprobe}, the post-handler is not executed, as it is replaced by the next \ac{kprobe} triggered via the trampoline.  
+          In the \texttt{post-handler}, the return value can be further processed, or additional user code executed.  
+          For a \ac{kretprobe}, the \texttt{post-handler} is not executed, as it is replaced by the next \ac{kprobe} triggered via the trampoline.  
           If the function terminates in a fault, such as a page fault, the previously mentioned fault handler is invoked.
           This handler prevents the function from crashing immediately and implements a user-defined routine for handling the error condition.
     \item The \textbf{Trampoline} typically consists, as described in \cite{kprobe_doc}, of a NOP instruction.  
@@ -886,8 +886,8 @@ The following section will first take a closer look at the implementation of tra
 
 Tracepoints were developed in 2008 by Desnoyers.  
 They were introduced as the successor to kernel markers, which had also been merged into mainline in 2008 with the release of version 2.6.24, as can be seen in \cite{kernel_markers-changelog}.  
-Kernel markers are also static event sources and were developed in the context of the tracing tool LTTng, as described by Desnoyers in \cite{lttng_kernel_markers}.  
-As Desnoyers explains in \cite[p. 170]{Desnoyers2009}, the original motivation for kernel markers was to provide an alternative to \acp{kprobe}, since their overhead was too high for the development of LTTng.  
+Kernel markers are also static event sources and were developed in the context of the tracing tool \texttt{LTTng}, as described by Desnoyers in \cite{lttng_kernel_markers}.  
+As Desnoyers explains in \cite[p. 170]{Desnoyers2009}, the original motivation for kernel markers was to provide an alternative to \acp{kprobe}, since their overhead was too high for the development of \texttt{LTTng}.  
 Tracepoints were implemented shortly thereafter as an extension of kernel markers.  
 As Desnoyers notes in \cite[p. 171]{Desnoyers2009}, the essential difference is a stable\footnote{Tracepoints are static and therefore normally remain unchanged, but as Gregg describes in \cite[Chap. 2.9]{Gregg_2020}, the API of tracepoints may change, although this happens only rarely.} API.  
 This ensures that both the user and the callee side have a well defined agreement about the arguments of a given function.  
@@ -914,7 +914,7 @@ It represents the tracepoint in its inactive state.
 When the tracepoint is activated, the kernel replaces the NOP instruction with a JMP instruction of also 5-bytes that points to a trampoline.  
 In addition, a callback routine is registered for the tracepoint.  
 The trampoline in this context is a small routine that executes all callback functions registered for this tracepoint and forwards the arguments collected by the tracepoint.  
-Multiple callback functions can be registered per tracepoint, typically by tracers such as ftrace, perf, or LTTng.  
+Multiple callback functions can be registered per tracepoint, typically by tracers such as \texttt{ftrace}, \texttt{perf}, or \texttt{LTTng}.  
 As described by Desnoyers in \cite[p.~218]{Ecole23165}, the results of these callback functions are usually delivered to the tracers in user space via a ring buffer.  
 
 In the following, the structure of a tracepoint function is described.  
@@ -1016,8 +1016,8 @@ In the following section the user space equivalent of tracepoints will be explai
 \subsection{User-level statically defined tracing}
 As Gregg describes in \cite[Chap.~2.10]{Gregg_2020}, they work in a very similar way to kernel tracepoints.  
 \acp{USDT} were developed to enable static tracing in user space.  
-The functionality was first implemented in 2004 as part of DTrace \cite{USDT,269899}, but was only added to Linux later.  
-From 2016 onwards, an integration with \ac{BPF} was available through BCC.  
+The functionality was first implemented in 2004 as part of \texttt{DTrace} \cite{USDT,269899}, but was only added to Linux later.  
+From 2016 onwards, an integration with \ac{BPF} was available through \texttt{BCC}.  
 
 Technically, at the designated location in the program, a \ac{USDT} is placed, which initially exists as a NOP.  
 When the probe is enabled by a tracer, the kernel tracing subsystem replaces the instruction with a software breakpoint.  
@@ -1185,7 +1185,7 @@ These time points are always separated by the period $p_i$.
 The period usually remains constant, such that $\forall i,j \in [0, k]$, $k \in \mathbb{N}\setminus \{0\}: p_i = p_j$.  
 The period therefore also defines the length of the scheduling window.  
 
-Besides the original workload model proposed by Liu et al., there exist other models, such as the three-parameter sporadic task model, which is introduced by Baruah et al. in \cite[p.~15, 16]{Baruah2015}.  
+Besides the original workload model proposed by Liu et al., there exist other models, such as the three-parameter \texttt{sporadic task model}, which is introduced by Baruah et al. in \cite[p.~15, 16]{Baruah2015}.  
 This model is structured similarly to the periodic model but differs in two essential aspects.  
 
 First, it includes an explicit parameter for the deadline, which allows the deadline to occur either before or after the release of the next job.  
@@ -1203,8 +1203,8 @@ In the context of network communication, there also exist two models, as describ
 These are categorized into the time-triggered and the event-triggered models.  
 They define the conditions under which network data is transmitted in an application.  
 
-In the time-triggered variant, data is sent at fixed time intervals, analogous to the periodic task model.  
-In contrast, the event-triggered variant transmits data only when a specific event occurs, which resembles the sporadic task model.  
+In the time-triggered variant, data is sent at fixed time intervals, analogous to the \texttt{periodic task model}.  
+In contrast, the event-triggered variant transmits data only when a specific event occurs, which resembles the \texttt{sporadic task model}.  
 According to Khojasteh et al. \cite[p.~6]{khojasteh2017timetriggeringversuseventtriggeringcontrol}, the event-triggered approach requires less bandwidth and, for the same stability requirements, achieves a lower transmission frequency compared to the time-triggered approach.  
 Thus, the event-triggered model is described as the more efficient option.  
 
@@ -1452,8 +1452,8 @@ For the measurements, tracepoints are used, since they provide the advantages de
 \begin{itemize}
     \item \textbf{Interval $t_1$}\label{itm:t1} measures the time the application requires to compute the X-coordinate and to transfer the packet from user space to kernel space.  
           Therfore it starts in the application on the server, i.e., at position \circnum{1} in Figure~\ref{fig:application}.  
-          It ends at the tracepoint \texttt{net\_dev\_queue}, which marks the entry into the \ac{Qdisc} and thus the TX-API.  
-          The TX-API is described in detail in Section~\ref{subsec:linux_stack}.  
+          It ends at the tracepoint \texttt{net\_dev\_queue}, which marks the entry into the \ac{Qdisc} and thus the TX API.  
+          The TX API is described in detail in Section~\ref{subsec:linux_stack}.  
           As shown in Figure~\ref{fig:tx}, the packet already traverses the transport and network layers and ends at the entry into the link layer.  
           This point is of particular interest, since packets can accumulate in the \ac{Qdisc} and an unfavorable scheduler may delay real-time packets.  
           Therefore, this point is also relevant to enable the measurement of the \ac{Qdisc}.  
@@ -1944,26 +1944,26 @@ In the figure the test suite for the server is shown, it will be explained, when
 \end{figure}
 
 The test suite begins by compiling the Rust code in order to ensure that the latest version is used.  
-Subsequently, in the \texttt{Server Test Suite}, the iperf3 server is started in a separate thread.  
+Subsequently, in the \texttt{Server Test Suite}, the \texttt{Iperf-Bulk Server} is started in a separate thread.  
 This step does not exist in the \texttt{Client Test Suite}.  
-On the client side, the iperf3 client is not launched by the test suite itself, but rather by the application once the \texttt{Check} state has been successfully finished.  
+On the client side, the \texttt{Iperf-Bulk Client} is not launched by the test suite itself, but rather by the application once the \texttt{Check} state has been successfully finished.  
 
 In both test suites, the next step is the selection of the \texttt{test run}.  
 For this purpose, the status file is first checked, which contains a digit specifying which \texttt{test run} should be executed next.  
 Afterwards, the test specific configuration file is opened.
 Each configuration corresponds to one line in this file, specifying the Wi-Fi standard, frequency, bandwidth, \ac{QoS} status, protocol and \ac{AP} configuration name.  
 For instance, the line \texttt{4 2.4 20 0 udp wifi4} specifies that the Wi-Fi connection should use standard 4, a frequency of 2.4 GHz and a bandwidth of 20 MHz.  
-Moreover, no \ac{QoS} parameters should be applied, the application should use \ac{UDP} and the corresponding hostapd configuration for the Wi-Fi parameters is included in the config file \texttt{wifi4}.  
-The last parameter is not relevant for the \texttt{Client Test Suite} since it does not have to start an \ac{AP} with hostapd.  
+Moreover, no \ac{QoS} parameters should be applied, the application should use \ac{UDP} and the corresponding \texttt{hostapd} configuration for the Wi-Fi parameters is included in the config file \texttt{wifi4}.  
+The last parameter is not relevant for the \texttt{Client Test Suite} since it does not have to start an \ac{AP} with \texttt{hostapd}.  
 
-The next step on the server side is to start the \ac{AP} with the respective hostapd configuration.  
-Instead of launching hostapd, the client establishes a connection to the server using wpa-supplicant.  
-The hostapd configurations are explained in more detail in Chapter~\ref{subsec:hostapd}.  
+The next step on the server side is to start the \ac{AP} with the respective \texttt{hostapd} configuration.  
+Instead of launching \texttt{hostapd}, the client establishes a connection to the server using wpa-supplicant.  
+The \texttt{hostapd} configurations are explained in more detail in Chapter~\ref{subsec:hostapd}.  
 
 In the subsequent step, both test suites set or reset the \ac{QoS} parameters.
 Afterwards the application, either the server or the client, is started in a thread.    
-On the server side, only the application priority is checked to ensure that it is set to 139, i.e., real-time priority, while the iperf process runs at a lower priority.  
-This is achieved by executing the shell command \texttt{ps -eLo comm,pri | grep server/iperf} in Python and verifying that the server process runs at priority 139, whereas the iperf process does not.  
+On the server side, only the application priority is checked to ensure that it is set to 139, i.e., real-time priority, while the \texttt{iperf} process runs at a lower priority.  
+This is achieved by executing the shell command \texttt{ps -eLo comm,pri | grep server/iperf} in Python and verifying that the server process runs at priority 139, whereas the \texttt{iperf} process does not.  
 As described in~\cite{ps}, this command lists all processes including threads and outputs only the name and the priority.  
 The client side checkes the priorities analogously.  
 Additionally, it is verified that Wi-Fi version, bandwidth and frequency match the values specified in the configuration.  
@@ -1991,20 +1991,20 @@ The next step is to clean up the entire configuration.
 This means that \ac{QoS} parameters are reset if necessary, and the \ac{AP} is terminated.  
 On the client side, the \ac{WPA} configuration is reset.  
 
-Finally, the iperf3 server thread is terminated.  
+Finally, the \texttt{Iperf-Bulk Server} thread is terminated.  
 Figure~\ref{fig:test-suite} illustrates a \texttt{test run}.  
 This represents the section that is repeated at least once for each configuration entry in the configuration file.  
 Consequently, the Rust project is compiled only once for both client and server.  
-On the server side, the iperf3 server is also started only once, since it remains persistent.  
-By contrast, the iperf3 client reconnects for each \texttt{test run}, since it may require a different configuration.  
+On the server side, the \texttt{Iperf-Bulk Server} is also started only once, since it remains persistent.  
+By contrast, the \texttt{Iperf-Bulk Client} reconnects for each \texttt{test run}, since it may require a different configuration.  
 
-Having now described the organization of the \texttt{test runs}, the following section addresses the implementation of the \acp{AP} using hostapd.  
+Having now described the organization of the \texttt{test runs}, the following section addresses the implementation of the \acp{AP} using \texttt{hostapd}.  
 
 \subsection{Access point configuration} \label{subsec:hostapd}
 As described in Chapter~\ref{subsec:impl}, the \acp{AP} must support the three configurable properties Wi-Fi standard, frequency, and bandwidth.  
-These properties can be configured using hostapd in a configuration file.  
+These properties can be configured using \texttt{hostapd} in a configuration file.  
 The following section explains which parameters must be set to achieve the desired network configuration.  
-Furthermore, it also addresses how the client’s wpa\_supplicant must be configured to connect to the network.  
+Furthermore, it also addresses how the client’s \texttt{wpa\_supplicant} must be configured to connect to the network.  
 
 The configuration can be divided into several parts:  
 \begin{itemize}
@@ -2020,10 +2020,10 @@ The configuration can be divided into several parts:
           For standard 4, \texttt{ieee80211n=1} must be set, while for standard 5, \texttt{ieee80211ac=1} and for standard 6, \texttt{ieee80211ax=1} is necessary.  
           Additionally, for standard 6, \texttt{ieee80211w=2} must be set, which indicates that management frame protection is required.  
           Without this, it is not possible to create a Wi-Fi standard 6 \ac{AP}, as explained in~\cite{hostapd-config}.  
-          The parameters \texttt{ieee80211w=2} and \texttt{key\_mgmt=SAE} must also be included in the client’s wpa\_supplicant configuration.  
+          The parameters \texttt{ieee80211w=2} and \texttt{key\_mgmt=SAE} must also be included in the client’s \texttt{wpa\_supplicant} configuration.  
           This is the only configuration on the client side that must be adjusted when Wi-Fi property, like the standard, change.
 
-    \item \textbf{Frequency:} To configure the frequency, the hostapd parameters \texttt{hw\_mode}, \texttt{channel}, and \texttt{op\_class} must be set.  
+    \item \textbf{Frequency:} To configure the frequency, the \texttt{hostapd} parameters \texttt{hw\_mode}, \texttt{channel}, and \texttt{op\_class} must be set.  
           Frequencies of 2.4\,GHz, 5\,GHz and 6\,GHz can be selected.  
           For 2.4\,GHz, \texttt{hw\_mode=g} must be set.  
           For 5\,GHz and 6\,GHz, \texttt{hw\_mode=a} must be set.  
@@ -2032,7 +2032,7 @@ The configuration can be divided into several parts:
           Since \texttt{hw\_mode} and \texttt{channel} alone cannot clearly distinguish between 5\,GHz and 6\,GHz, the \texttt{op\_class} parameter is used.  
           According to~\cite[p.~2]{operating-class}, all values of 131 or higher correspond only to 6\,GHz.
 
-    \item \textbf{Bandwidth:} To configure the bandwidth in hostapd, the parameters \texttt{channel}, \\
+    \item \textbf{Bandwidth:} To configure the bandwidth in \texttt{hostapd}, the parameters \texttt{channel}, \\
           \texttt{centr\_freq\_idx}, \texttt{oper\_chwidth} and \texttt{op\_class} are relevant.  
           Each channel has a center frequency $f_c$, which can be calculated, like stated in \cite[p.~2829]{9363693}, as $f_c = f_{start} + 5 \times n$, where $f_{start}$ is the start frequency of the respective band and $n$ is the channel number.  
           For 2.4\,GHz, bandwidths of 20\,MHz and 40\,MHz are available, whereas for 5\,GHz and 6\,GHz, 20\,MHz, 40\,MHz, 80\,MHz and 160\,MHz are possible.  
@@ -2048,5 +2048,5 @@ The configuration can be divided into several parts:
 
 \end{itemize}
 
-Having now explained how the desired settings can be applied in hostapd, the following section examines further measures regarding network characteristics, prioritization and their influence on the real-time performance of the Wi-Fi connection.
+Having now explained how the desired settings can be applied in \texttt{hostapd}, the following section examines further measures regarding network characteristics, prioritization and their influence on the real-time performance of the Wi-Fi connection.
 

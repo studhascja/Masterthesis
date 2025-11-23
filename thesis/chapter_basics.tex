@@ -27,14 +27,14 @@ As the computing unit, a Raspberry Pi 5B is employed.
 This model is widely available and used.  
 Earlier models, such as the Raspberry Pi 3, are, as described in \cite{raspy}, the third most sold computer of all time.  
 
-For the Wi-Fi cards, the MT7925B22M from Mediatek was used.  
+For the Wi-Fi cards, the \texttt{MT7925B22M }from Mediatek was used.  
 As stated in \cite{mt7925}, it supports Wi-Fi 7 and thus covers frequencies from 2.4 GHz to 6 GHz and Wi-Fi standards 4 through 6e.  
 The card was released at the end of 2024, which is why the Wi-Fi 7 standard was not yet implemented in the driver at the time of this work, as indicated in \cite{mt76}.  
 Nevertheless, the drivers are open source, although the firmware remains closed source.  
 While changes are still being made to the driver, all standards up to Wi-Fi 6e can be used without errors.  
 
 The most recent Wi-Fi cards with both open drivers and open firmware are those that use the ath9k driver, as shown in \cite{ath9k}.  
-To include different drivers and firmware in the evaluation and to have access to fully open firmware, the AR5BXB92 from Qualcomm Atheros is used as an additional card.  
+To include different drivers and firmware in the evaluation and to have access to fully open firmware, the \texttt{AR5BXB92} from Qualcomm Atheros is used as an additional card.  
 This card was released in 2008 and only supports Wi-Fi 4 with 2.4 GHz and 5 GHz, as noted in \cite{ar5b}.  
 Thus, it provides a strong contrast to the Mediatek card.  
 
@@ -73,21 +73,21 @@ According to Salvador \cite[Chap. 1]{10251255}, the Yocto Project evolved from t
 In this context, BitBake emerged as the build tool, comparable to \texttt{make} or \texttt{cmake}, but significantly more powerful.  
 
 One of OpenEmbedded’s main challenges was that its codebase quickly became unstable due to a lack of structure.  
-As a result, Poky was introduced.
-Poky is a minimal Linux distribution that now serves as the default reference distribution within the Yocto Project.  
-As Salvador explains, Poky consists of a collection of tools, configurations, and metadata provided through recipes.  
+As a result, \texttt{Poky} was introduced.
+\texttt{Poky} is a minimal Linux distribution that now serves as the default reference distribution within the Yocto Project.  
+As Salvador explains, \texttt{Poky} consists of a collection of tools, configurations, and metadata provided through recipes.  
 
 Figure \ref{fig:yocto} illustrates part of Yocto’s structure and workflow.  
 To build a Linux distribution, several essential types of information are required:
 
 \begin{itemize}
     \item \textbf{Metadata}: Provided through recipes, which are organized into layers.  
-          As shown in Figure \ref{fig:yocto}, layers include OE-Core and meta-yocto, which are the OpenEmbedded core metadata and Yocto-specific layer, both included in Poky.  
+          As shown in Figure \ref{fig:yocto}, layers include \texttt{OE-Core} and \texttt{meta-yocto}, which are the OpenEmbedded core metadata and Yocto-specific layer, both included in \texttt{Poky}.  
           Additional layers such as \texttt{meta-raspberrypi} provide \ac{BSP} support, while other layers may cover tools or custom extensions.  
           Each layer contains a \texttt{/conf/layer.conf} file specifying metadata and structure.  
 
     \item \textbf{\ac{BSP} Configuration}: Hardware descriptions are provided through \ac{BSP} layers.  
-          Poky includes a default \ac{BSP} for QEMU.  
+          \texttt{Poky} includes a default \ac{BSP} for QEMU (Quick Emulator).  
 
     \item \textbf{User and Policy Configuration}: User configurations are typically defined in \texttt{local.conf}, e.g., selecting the target machine.  
           For instance, with the \texttt{meta-raspberrypi} layer, the specific Raspberry Pi model must be declared.  
@@ -122,7 +122,7 @@ The following section discusses the general implementation of Wi-Fi in Linux.
 \section{Linux Network Stack} \label{subsec:linux_stack}
 
 A simplified representation of the Linux network stack is shown in Figure \ref{fig:network_stack}.
-In this illustration, the link-layer is depicted in greater detail.
+In this illustration, the link layer is depicted in greater detail.
 The figure highlights both the path of an outgoing network packet from the application layer through the \ac{NIC} to the network, as well as the path of an incoming network packet.
 The reception path is indicated in green, while the transmission path is highlighted in purple.
 
@@ -391,8 +391,8 @@ This corresponds to an improvement in data rate of approximately 1150\% compared
 However, measurements reported in \cite{5_160_f} indicate real-world data rates of only around 1.1 Gbit/s.
 Since the 600 Mbit/s reported for Wi-Fi 4 were also calculated theoretically, these two values can be compared.
 
-In addition to throughput-enhancing measures, Wi-Fi 5 introduced beamforming and \ac{MU-MIMO} in the downlink.
-As described by Chellappa et al. in \cite{MARS2018585}, beamforming can focus the signal strength towards a specific client by exploiting constructive interference.
+In addition to throughput-enhancing measures, Wi-Fi 5 introduced \texttt{beamforming} and \ac{MU-MIMO} in the downlink.
+As described by Chellappa et al. in \cite{MARS2018585}, \texttt{beamforming} can focus the signal strength towards a specific client by exploiting constructive interference.
 Thus, the signal is particularly strong at a specific spatial location where the client is located, as the multiple antennas cause the signals to combine constructively at that point.
 \ac{MU-MIMO}, as described in \cite[p. 17]{Cisco2012}, allows the \ac{AP} to transmit to multiple clients simultaneously.
 This is possible due to the spatial streams, so in \ac{MU-MIMO}, each client receives one of these streams.
