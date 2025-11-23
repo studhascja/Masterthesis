@@ -4,7 +4,6 @@ First, Chapter \ref{sec:used_hardware} describes and justifies the hardware used
 Subsequently, Chapters \ref{subsec:yocto} and \ref{subsec:linux_stack} introduce the basics of Yocto Linux and explain how Wi-Fi is implemented in Linux.  
 Chapters \ref{subsec:mac} through \ref{subsec:qos} then cover \ac{QoS}, the characteristics of Wi-Fi 4 to 7 and the different types and functionalities of \ac{MAC}.  
 Finally, the fundamentals of real-time are presented in Chapter \ref{sec:real_time}.  
-As mentioned above, the next section focuses on the selected hardware.  
 
 \section{Used Hardware} \label{sec:used_hardware}
 First, the requirements for the hardware, particularly for the Wi-Fi cards, are discussed in order to provide the basis for the subsequent explanation of the hardware selection.   
@@ -51,8 +50,7 @@ The Mediatek card, however, requires an M.2 Key E connector.
 Therefore, as also shown in Figure \ref{fig:hardware}, a mini PCIe to M.2 Key E adapter is installed.  
 It must be ensured that the adapter supports M.2 Key E, since, as outlined in \cite[p. 24]{pcie}, Wi-Fi cards can use Key A, Key E or Key A+E.  
 
-Since this section has described the hardware used, the following section introduces the fundamentals of Yocto Linux.  
-These are necessary to understand the configuration of the operating system, which is described in Chapter \ref{sec:os}.  
+The following section introduces the fundamentals of Yocto Linux.   
 
 \section{Yocto Project} \label{subsec:yocto}
 The Yocto Project was initiated by the Linux Foundation in 2010, as reported in \cite{The_Linux_Foundation_2011}.  
@@ -119,7 +117,7 @@ Thus, the packages highlighted in yellow in Figure~\ref{fig:yocto} are generated
 These packages are then integrated into an image during the image generation process\footnote{The image generation shown in Figure~\ref{fig:yocto} is strongly simplified.  
 Additional intermediate steps exist but are not presented or further discussed, as they are not relevant for this work.}.  
 
-After explaining how the Linux system used in this work is generated, the following section discusses the general implementation of Wi-Fi in Linux.  
+The following section discusses the general implementation of Wi-Fi in Linux.  
 
 \section{Linux Network Stack} \label{subsec:linux_stack}
 
@@ -197,7 +195,7 @@ Once protocol-specific processing is complete, the method \texttt{sk\_data\_read
 
 In the final step, \circnum{11}, a system call transfers the data from the kernel sockets to user space.
 
-Having described the packet path within the Linux networking stack, the following section addresses fundamentals of Wi-Fi and characteristics of the standards 4 through 7.
+The following section addresses fundamentals of Wi-Fi and characteristics of the standards 4 through 7.
 
 \section{Wi-Fi standards} \label{subsec:stand}
 As described in \cite[p. 56]{ofdm}, IEEE 802.11 is one of the most widely used wireless communication protocols.  
@@ -216,9 +214,6 @@ Each frequency band is divided into channels, which are spaced at intervals of 5
 For the 2.4 GHz band, as described in \cite[p. 2790]{9363693}, 13 channels exist, ranging from 2.412 GHz to 2.472 GHz.
 Each channel has a minimum bandwidth of 20 MHz.
 Since the channels are arranged in 5 MHz steps, they overlap, as shown in Figure \ref{fig:channel}.
-Li et al. state in \cite[p.888]{li_pan} that the channel width is 22 MHz.
-However, Nicolade et al. clarify in \cite[p. 1]{8088188} that this applies only to the legacy 802.11 standard.
-This standard employs DSSS (Direct Sequence Spread Spectrum), which uses a channel width of 22 MHz.
 With 802.11b, which is also considered in this work, \ac{OFDM} is used, which has a minimum channel width of 20 MHz.
 
 The channel number always indicates only the center frequency.
@@ -468,11 +463,9 @@ $Wi-Fi$ $Version$ & $Modulation$ & $Frequencies$ & $\ac{MIMO}$ & $Bandwidth_{max
 \label{tab:standards}
 \end{table}
 
-
 The following section will address the concept of the medium access mechanism and the different types that exist.  
 
-\subsection{Medium Access Control} \label{subsec:mac}
-In Section \ref{subsec:stand}, \ac{OFDM} and \ac{OFDMA} were discussed in the context of how messages from the sender are transmitted over the medium.  
+\subsection{Medium Access Control} \label{subsec:mac} 
 The task of the \ac{MAC} is to determine which sender is allowed to transmit its message.  
 Thus, the \ac{MAC} is located one layer above the modulation, which contains \ac{OFDM} and \ac{OFDMA}.  
 Nevertheless, within the OSI model, the \ac{MAC} is still considered part of the lowest layer, i.e. the physical layer.  
@@ -551,8 +544,6 @@ In this way, throughput and the maximum number of packets to be sent can be cons
 
 \ac{QoS} can also be defined using a \ac{DSCP} value in the packet header.  
 As described in \cite[p. 2]{8002923}, this allows classification into 22 different configurations, each with its own weighting of the four \ac{QoS} properties mentioned above.  
-
-After explained the fundamentals of \ac{QoS} in this chapter, the only remaining background required for this work concerns real-time aspects, which will be discussed in the following chapter.  
 
 \section{Real Time Systems} \label{sec:real_time}
 In this chapter, the fundamentals of real-time systems are explained.  

@@ -5,12 +5,6 @@ The test environment comprises both the test system and the \ac{OS}.
 The test system refers exclusively to the applications that are part of the test environment and run on top of the \ac{OS}. 
 Accordingly, the test system does not include the underlying hardware or the \ac{OS} itself.
 
-This chapter is divided into the three parts requirements, test system and the \ac{OS}. 
-A detailed analysis of the requirements is provided at the outset, as they serve as the basis for both the development of the \ac{OS} and the test concept. 
-Thus, the requirements constitute the foundation for the overall design of the test environment.
-Afterwards the \ac{OS}, as it forms the foundation on which the test system will later be implemented, will be described.
-Finally, the test system itself will be discussed in more detail.
-
 \section{Requirements}
 In this section, the requirements of the test environment are analyzed in greater detail. 
 The discussion begins with a description of the system architecture, followed by an outline of general real-time requirements. 
@@ -165,12 +159,6 @@ While RT-Linux can be used as a standalone system, to match these requirements, 
 Also in this study a Raspberry Pi 4 was used as the hardware platform. 
 The results are showing that pure \ac{RTOS}, especially FreeRTOS, nevertheless deliver better real-time performance.
 
-Mariesk et al. \cite{6140739} distinguish between the two fundamental \ac{RTOS} types kernel-based \ac{RTOS} and embedded \ac{RTOS}. 
-In their study, they evaluate systems based on interrupt latency, task switching time and preemption time. 
-RT-Linux and Xenomai are considered kernel-based \ac{RTOS}, while eCos represents the embedded type. 
-The results show that kernel-based \ac{RTOS} are more suitable for multi-task applications due to their lower task-switching overhead. 
-Since this work requires the execution of multiple concurrent tasks, frequent scheduling switches are expected, making a kernel-based \ac{RTOS} the preferable choice.
-
 In summary, the optimal \ac{RTOS} depends heavily on the specific application and real-time requirements. 
 Based on the referenced studies, FreeRTOS appears to offer the best real-time capabilities. 
 However, additional constraints beyond real-time performance must be considered when selecting the \ac{OS}, like stated in the previous section.
@@ -179,11 +167,7 @@ The MediaTek 7925B22M Wi-Fi card used in this work lacks drivers outside the Lin
 
 Considering the experience with RT-Linux on Raspberry Pi systems stated by the studies before and the demonstrated maximum scheduling latency of 125 microseconds along with a maximum jitter of 380 microseconds of the test-system, RT-Linux proves sufficient for the purposes of this work. 
 This jitter is considered acceptable, since the expected \ac{RTT} is in the range of several milliseconds. 
-Furthermore, since Wi-Fi is inherently not real-time capable
-and as discussed in Chapter \ref{sec:used_hardware}, the employed hardware which has, among other shared resources, a split L3 cache, is not optimized for real-time processing.
-So the minor limitations of RT-Linux do not significantly impact this test-environment.
 
-There are various ways to implement an RT-Linux system. 
 As described by Rostedt in \cite{rt_patch}, a  RT-Linux system can be created by extending the kernel with the $PREEMPT\_RT$ patch. 
 This results in two primary approaches for building an RT-Linux system. 
 One can either use an existing Linux distribution such as Ubuntu and apply the $PREEMPT\_RT$ patch, or build a complete Linux system from scratch using a build system.
@@ -222,8 +206,6 @@ The server part of the test system is controlled via the \textbf{Server Test Sui
 For the evaluation of real-time performance, the factors \textbf{Wi-Fi standard, frequency, bandwidth, \ac{QoS}} and \textbf{protocol} are considered in Chapter~\ref{sec:eval}.
 Therefore, these factors must be configurable within the test suite.
 The Wi-Fi standard, frequency and bandwidth are set through the \ac{AP} configuration, whereas \ac{QoS} and the protocol type are configured within the test suite itself.
-Thus it follows that for each combination of \ac{AP} configuration, QoS level and protocol type, the test suite performs a complete \texttt{test run}, so with the test suites a factorial design can be assured.
-Therefore, the total number of \texttt{test runs} is defined as $N_T = N_{AP} \times N_{QoS} \times N_{Prot}$, where $N_T$ is the total number of \texttt{test runs}, $N_{AP}$ is the number of different \ac{AP} configurations, $N_{QoS}$ is the number of different considered QoS levels and $N_{Prot}$ is the number of different protocols used in this work. 
 The \texttt{Server Test Suite} is essential for the automated execution of these \texttt{test runs}, thereby fulfilling the previously specified requirement for test automation.
 
 \begin{figure}[ht]
@@ -411,7 +393,8 @@ The recipe installs the locally available overlay into the \texttt{/boot/overlay
 
 By setting the variables \texttt{RPI\_USE\_OVERLAYS} and \texttt{RPI\_EXTRA\_CONFIG} in \texttt{local.conf}, the overlay can be included in the \texttt{config.txt} file.  
 To fully integrate the overlay into the \ac{OS}, the \texttt{meta-raspberrypi} layer must be modified.  
-Specifically, the overlay must be added to the \texttt{RPI\_KERNEL\_DEVICETREE\_OVERLAYS} section of the file \texttt{meta-raspberrypi/conf/machine/include/rpi-base.inc}.  
+Specifically, the overlay must be added to the \texttt{RPI\_KERNEL\_DEVICETREE\_OVERLAYS} section of the file \\
+\texttt{meta-raspberrypi/conf/machine/include/rpi-base.inc}.  
 After this adjustment, the overlay was successfully deployed and referenced in the \texttt{config.txt} of the generated image.
 
 To make the \ac{OS} real-time capable, the Linux kernel must be extended using the RT patch.  
@@ -524,17 +507,10 @@ Normally, this information is included with the Linux headers.
 However, in many cases, the \texttt{struct} definitions in the headers are incomplete or missing.  
 As a result, a \ac{BPF} program that, for example, relies on a syscall whose return value is an undefined \texttt{struct}, would be rejected by the verifier.  
 
-Beyond verification, \ac{BTF} also plays an important role in providing debugging information for \ac{BPF} programs.  
-It is a compact, binary-encoded representation of type information, designed to be efficiently processed by both the kernel and user space tools.  
-With \ac{BTF}, tools such as \texttt{bpftool} can inspect kernel data structures, and debuggers can provide symbolic names instead of raw memory addresses or offsets.  
-\ac{BTF} forms the foundation for \ac{CO-RE}.  
-In order for \ac{BPF} code to run anywhere after compilation, the used \texttt{struct} definitions must be precisely described in the \ac{BTF}.  
-This information must be passed to both the user space loader and the verifier.  
-Since \ac{CO-RE} is not used in this work, it will not be described further here.
-
 If the program is accepted by the verifier, it is either compiled by the \ac{JIT} compiler or executed by the interpreter.  
 For the \ac{JIT} compiler to take over, it must be both supported and enabled, which is controlled via the \texttt{bpf\_jit\_enabled} operation.  
-As described in \cite{jit}, this option can be enabled by writing the value \texttt{1} to the file \texttt{/proc/sys/net/core/bpf\_jit\_enable}.  
+As described in \cite{jit}, this option can be enabled by writing the value \texttt{1} to the file\\
+\texttt{/proc/sys/net/core/bpf\_jit\_enable}.  
 
 Like described by Gbadamosi et~al.\ in \cite[p.~4]{gbadamosi2024ebpfruntimelinuxkernel} the \ac{JIT} compiler translates the \ac{BPF} bytecode into native machine code for the running architecture at load time.  
 This eliminates the overhead of interpreting instructions during execution and significantly improves performance, especially for programs that are invoked frequently or handle large volumes of events.  
@@ -547,7 +523,7 @@ Van~Geffen describes in \cite{10.1007/978-3-030-53291-8_29} a custom \ac{JIT} co
 According to \cite[p.~566]{10.1007/978-3-030-53291-8_29}, this compiler achieves a performance improvement of 5.24$\times$ over the interpreter.  
 However, it remains 1.82$\times$ slower than the Linux \ac{JIT} compiler.  
 From these results, the performance gain of the Linux \ac{JIT} compiler over the interpreter can be calculated as $5.24 \times 1.82 = 9.53$.  
-Since this difference is close to a factor of ten, and the monitoring overhead on the test system should be minimized, this work employs the Linux \ac{JIT} compiler.  
+This work employs the \ac{JIT} compiler, since it performs significantly better.
 
 As described by Gregg in \cite[Chap.~2.3]{Gregg_2020}, once the \ac{BPF} code has been verified and translated into native instructions, it is executed within a virtual machine running in kernel space.  
 Gregg notes in \cite[Chap.~2.3]{Gregg_2020} that, particularly after \ac{JIT} compilation, this virtual machine exists only as a specification.  
@@ -555,14 +531,9 @@ In contrast to the definition of a virtual machine provided by Bugnion in \cite{
 According to Bugnion, a true virtual machine must virtualize the processor, memory, and I/O components.  
 In the context of \ac{BPF}, as Fleming explains in \cite{ebpf_intro}, the term “virtual machine” refers solely to a logical \ac{CPU} specification with a fixed instruction set and ten registers, designed to run platform-independently within the kernel.  
 Consequently, as Gregg observes, the \ac{BPF} virtual machine exists only in specification form.  
-This is particularly true when the code has already been compiled into machine instructions.  
-In such cases, these instructions are executed directly by the \ac{CPU}.  
-During the runtime of a \ac{BPF} program, there is no additional abstraction layer between the \ac{CPU} and the executing code.  
-A \ac{JIT} compiler and an interpreter exist, but there is no virtual machine in the traditional sense.  
 
 Besides the 10 registers, the virtual machine also offers 512 bytes on the stack, as Gregg describes in \cite[Chap.~2.3]{Gregg_2020}.  
-
-Additionally, more memory is available in so-called maps.  
+Additionally, more memory is available in maps.  
 These maps are created using the command \texttt{BPF\_MAP\_CREATE}, as described in \cite[p.~5]{gbadamosi2024ebpfruntimelinuxkernel}.  
 
 As Gregg discusses in \cite[Chap.~2.2]{Gregg_2020}, \ac{BPF} programs can exchange data among each other through using maps.  
@@ -572,35 +543,13 @@ Command-line tools such as \texttt{bpftrace} use these maps to display statistic
 
 As Gregg explains in \cite[Chap.~2.2]{Gregg_2020}, this has the advantage that no communication between user and kernel space is necessary.  
 Since the program runs entirely in kernel space at runtime, different event sources can be filtered and processed there.  
-Event sources or network packets can also be discarded in kernel space if they are harmful or would endanger further processing in user space due to their value ranges.  
-Thus, the mechanism of maps and the virtual machine specified therein ensure security and efficiency by preventing unnecessary kernel-to-user-space interactions.  
 
 Gregg uses in \cite[Chap. 2.6]{Gregg_2020} the event source as an umbrella term for events and probes, so for static and dynamic event sources.
 Since this term is inconvenient, in literature often the term static and dynamic events is used.
 So to be more precise in the following, the term event is only used for static event sources and the term probes is only used for dynamic event sources.
 
-As shown in Figure~\ref{fig:bpf:working_principle}, the event configuration from user space interacts with the virtual machine in kernel space.  
-The event configuration particularly refers to the settings of command-line tools.  
-Among other things, it can be configured which event sources should be tracked, for how long they should be tracked, and how they should be processed.  
-Since command-line tools are not used in this work, the event configuration will not be discussed further here, but it is mentioned for completeness and illustrated in the figure.  
-
 As shown in Figure~\ref{fig:bpf:working_principle}, the virtual machine provides another method for transferring data from the kernel to user space.  
-
 The ring buffer, which Gregg in \cite[Chap.~2.3]{Gregg_2020} also describes as perf buffer, is used to continuously transfer data from the kernel to user space.  
-There are also other variants for sharing data between user and kernel space, including RelayFS.  
-
-RelayFS was developed by Tom Zanussi and has been integrated into the Linux kernel since 2003, as evident from the patch thread in \cite{relayfs}.  
-As explained by Zanussi in \cite{Wisniewski2003relayfsA}, it is also a mechanism to efficiently transfer data from kernel space to user space.  
-In this approach, a ring-shaped buffer is allocated per \ac{CPU}, which can be read from user space using \texttt{mmap()}.  
-This minimizes copy operations because both the kernel and user space access the same memory region directly without intermediate data duplication.  
-Writing to these buffers is performed sequentially by the kernel, while the user space continuously reads and only updates the read pointers.  
-As described in \cite[p.~498]{Wisniewski2003relayfsA}, it was originally introduced as a standalone filesystem under \texttt{/mnt/relay}.  
-It is now integrated into the tracing subsystem and is used, among other things, by the kernel tracing tool LTTng, as described in \cite[p.~89]{Pierre}.  
-
-Although RelayFS is older than perf and ring buffers, it still has use cases, as Fournier describes in \cite{Pierre}.  
-Gregg and Calacera describe the functionality and usage of \ac{BPF} in great detail in their books \cite{Gregg_2020} \cite{Calavera_Fontana_Frazelle_2020}.  
-However, neither of them mentions any method other than perf buffer and maps for exchanging data between user and kernel space.  
-This tendency is reflected not only in theory but also in practice.
 
 Nair et al. developed GAPP in \cite{Nair_2020}, a tool to identify serialization bottlenecks in parallel Linux applications.  
 For monitoring, \ac{BPF} is also used, and maps and perf buffers are employed for data exchange between kernel and user space.  
@@ -608,8 +557,7 @@ Another example are Liu et al., who built a protocol-independent network observa
 Furthermore, both Kannan et al., presenting a network monitoring agent in \cite{network_obser}, and Gowda et al., proposing kernel-level request tracing for microservice visibility in \cite{V_2022}, use \ac{BPF} along with maps and perf buffers.
 
 All these works utilize \ac{BPF} for monitoring and rely on maps and perf buffers for communication between kernel and user space.  
-These examples confirm, on one hand, that \ac{BPF} is widely used in network observability.  
-On the other hand, it is evident that no alternative methods for kernel-user communication are employed in practice.  
+These examples confirm, on one hand, that \ac{BPF} is widely used in network observability.    
 This is likely because maps and perf buffers are well integrated with \ac{BPF} and offer excellent performance.  
 As a result, the effort to integrate, for example, RelayFS with \ac{BPF} is not justified.  
 Therefore, this work also relies on maps and perf buffers.
@@ -622,26 +570,13 @@ To enable access to information from the \ac{OS} context within the program, BPF
 These are defined in the BPF API in \texttt{include/uapi/linux/bpf.h}, and new helpers are constantly being added.  
 The BPF API in this context refers to the set of functions and interfaces that the kernel exposes to \ac{BPF} programs to interact with kernel and user space resources in a controlled manner.  
 As illustrated in Figure~\ref{fig:bpf:working_principle}, these helpers can be invoked via the \texttt{bpf\_call} instruction.  
-
-The following paragraphs present selected helper functions to provide an overview of their capabilities.  
+ 
 Among these restricted kernel calls is \texttt{bpf\_ktime\_get\_ns()}, which returns the time since kernel start in nanoseconds.  
 This enables access to a monotonic clock, allowing the measurement of time intervals between specific event sources at kernel level.  
 
-Other important BPF helpers are \texttt{bpf\_get\_current\_pid\_tgid()} and \\
-\texttt{bpf\_get\_current\_comm(buf, buf\_size)}.  
-Each of these functions has a return value, which will be referred to as $R_1$ and $R_2$ in the following.  
-$R_1$ returns both the TGID (Thread Group ID) and the PID (Process ID) of the current process, where TGID refers to the identifier of the process as a whole and PID refers to the specific thread within that process.  
-The 64-bit value returned by $R_1$ is composed such that the high 32 bits contain the TGID and the low 32 bits contain the PID.  
-$R_2$ returns the current task name, also known as the command name (\texttt{comm}) of the process.  
-With these two functions, process names and precise IDs can be determined both in user space and kernel space.  
-This is important for filtering and also for diagnostics when it is necessary to determine which process triggered a given event source.  
-
-Another essential kernel function accessible via helpers is \texttt{bpf\_trace\_printk}.  
-As described in \cite{print}, this function can write print messages to the kernel trace log.  
-It thus serves as the \texttt{printf} equivalent for \ac{BPF}.  
-In contrast to C, where, as explained in \cite{printf}, messages are printed to the console, \texttt{bpf\_trace\_printk} writes them to \texttt{/sys/kernel/tracing/trace}, because \ac{BPF} applications have no console available.  
-The messages can then be read via the \texttt{/sys/kernel/tracing/trace\_pipe} interface.  
-This function therefore provides a fast way to add simple debugging output.
+Other important BPF helpers, which are used in this work are \\
+\texttt{bpf\_get\_current\_pid\_tgid()} and \texttt{bpf\_get\_current\_comm(buf, buf\_size)}.  
+With this functions the current process ID and the name of the current process can be retrieved, respectively. 
 
 As illustrated in Figure~\ref{fig:bpf:working_principle}, beside \ac{BPF} helper functions, also syscalls can be invoked from the \ac{BPF} virtual machine.  
 These syscalls are specific to the \ac{BPF} environment and provide the same functionality as conventional syscalls, but operate differently.  
@@ -649,12 +584,6 @@ These syscalls are specific to the \ac{BPF} environment and provide the same fun
 Syscalls have existed since the early 1980s, as evidenced by the first official Unix Programmer's Manual~\cite{bell}.  
 As described by Tanenbaum in~\cite[p.~50--53]{Tanenbaum_2014}, syscalls constitute the programming interface for user space programs to request services from the kernel space.  
 Thus, syscalls act as a mechanism for the user space to interact with the kernel space.  
-
-According to Tanenbaum~\cite[p.~54--55]{Tanenbaum_2014}, syscalls can be divided into the four fundamental categories process management, file management, directory and file system management, and miscellaneous.  
-System calls for process management include, among others, the \texttt{fork()} command, which creates a child process.  
-The \texttt{open()} and \texttt{close()} system calls are used for file management to open or close a file.  
-The \texttt{mkdir()} command creates a new directory and falls into the category of directory and file system management.  
-The miscellaneous category contains everything that does not fit into the three categories mentioned above, such as the \texttt{chmod} system call, which modifies a file’s permissions by changing its protection bits.  
 
 As described by Gregg in~\cite[Chap.~2.3.6]{Gregg_2020}, the \ac{BPF} syscall can be invoked via the code shown in listing \ref{lst:bpf_syscall}.
 
@@ -736,7 +665,7 @@ Nevertheless, Gregg's definition of observability does not deviate substantially
 A system can only be fully understood if its internal state can be determined at all times from its outputs. 
 Also, Gregg's definition is more practically oriented, where the original definition is more oriented to the theory.
 In order for a system to produce outputs from which its internal state can be inferred, certain analysis techniques are required.  
-Gregg categorizes these techniques in \cite[Chap.~1.2]{Gregg_2020} into \emph{tracing}, \emph{snooping}, \emph{sampling} and \emph{profiling}.  
+Gregg categorizes these techniques in \cite[Chap.~1.2]{Gregg_2020} into \texttt{tracing}, \texttt{snooping}, \texttt{sampling} and \texttt{profiling}.  
 
 Tracing, as described by Gregg in \cite[Chap.~1.2]{Gregg_2020}, refers to recording the system state based on event sources.  
 The origins of tracing can be traced back to 1951, when Gill in \cite{doi:10.1098/rspa.1951.0087} described a method to rapidly diagnose errors in the code of digital computers.  
@@ -750,33 +679,8 @@ From this, it follows that tracers must, on the one hand, be capable of detectin
 Furthermore, since event sources can occur very frequently, the overhead of a tracer must remain low.
 Otherwise, the system would be significantly impaired.  
 
-As Gregg explains in \cite[Chap.~1.2]{Gregg_2020}, snooping is very similar to tracing.  
-It also describes the observation of event sources.  
-Snooping was introduced in 1983 by Ravishankar and Goodman in \cite{osti_5139336}.  
-They presented a bus snooping technique that monitors a memory block stored across multiple caches and informs other caches when this memory block has been modified.  
-This approach avoids cache incoherency.  
-Therefore, the difference between snooping and tracing lies less in functionality and more in their objectives.  
-Snooping is generally a passive observation with occasional reactions, whereas tracing often aims to thoroughly analyze and record a specific area of the system.  
-
-The two additional analysis techniques presented by Gregg in \cite[Chap.~1.2]{Gregg_2020} are also closely related to each other.  
-Sampling and profiling are both techniques that use a subset of data to represent the state of the system as accurately as possible.  
-This approach is most commonly applied for monitoring the \ac{CPU}.  
-
-Sampling also records event sources, but not all of them.
-Instead, it captures data only at specific time intervals. 
-For example, sampling may take a snapshot of the current system state every three milliseconds for a duration of 0.5 milliseconds, including information such as current events or \ac{CPU} utilization.  
-Sampling is therefore well suited for contexts in which many event sources occur.  
-Because sampling does not capture every single event source, its overhead is generally lower than that of tracing.  
-
-The recorded samples are then aggregated into a system profile.  
-This process is referred to as profiling.  
-By combining sampling and profiling, it is possible to represent contexts with many event sources as accurately as possible through regular snapshots.  
-
-One example of a sampling tool is \texttt{gprof}.  
-As shown in \cite{gprof}, this tool can be used to perform measurements at regular time intervals in order to determine how much time the program spends in various functions.  
-
-In this work, tracing is primarily used, and therefore sampling and profiling will not be discussed further at this point.  
-After having described the commonly used analysis techniques according to Gregg, all of which operate partially or exclusively with event sources, the following section explains what an event source is and which types exist in the Linux context.  
+In this work, \texttt{tracing} is primarily used, and therefore the other three techniques will not be discussed further at this point.  
+After having described tracing, the following section explains what an event source is and which types exist in the Linux context.  
 As previously mentioned and as shown in Figure \ref{fig:bpf:working_principle}, they can be classified into static and dynamic event sources.
 
 In Figure \ref{fig:probes}, the diagram is also divided into three sections, again distinguishing static and dynamic tracing.  
@@ -864,13 +768,6 @@ As stated in \cite{kprobe_doc}, almost everything in the kernel can be probed us
 There are some exceptions, which are recorded in a blacklist.  
 This list includes all functions marked with the macro \texttt{NOKPROBE\_SYMBOL()}.  
 The blacklist can also be dynamically viewed in DebugFS under \texttt{/sys/kernel/debug/kprobes/blacklist}.  
-It contains functions used in the \ac{kprobe} workflow.  
-For example, \texttt{do\_int3} is blacklisted because probing it would cause recursion, because the \ac{kprobe} would continuously probe itself.
-Another function on the blacklist is \texttt{do\_debug}.  
-As shown in \cite{linux_trap} and confirmed by Intel in \cite[p. 1468]{single_step}, this function handles the debug-exception vector $\#DB$.  
-It is used, among other things, for single stepping.  
-Since \acp{kprobe} use single stepping to execute the probed function, instrumenting this function would affect the handler used for single stepping.  
-Because \texttt{do\_debug} executes when a $\#DB$ occurs and the $TS$ flag is set, which is always the case for single stepping, probing it would lead to a deadlock.  
 
 The performance of \acp{kprobe} can be optimized, as described by Gregg in \cite[Chap. 2.7]{Gregg_2020}, by replacing the break instruction with a jump instruction.  
 This has been possible since kernel version 5.x and is applied automatically if feasible.  
@@ -1020,6 +917,40 @@ The trampoline in this context is a small routine that executes all callback fun
 Multiple callback functions can be registered per tracepoint, typically by tracers such as ftrace, perf, or LTTng.  
 As described by Desnoyers in \cite[p.~218]{Ecole23165}, the results of these callback functions are usually delivered to the tracers in user space via a ring buffer.  
 
+In the following, the structure of a tracepoint function is described.  
+A tracepoint is structured as shown in Listing~\ref{lst:tracepoint}.  
+As illustrated in line~1 and explained by Rostedt in \cite{tracepoints_3}, the definition of every tracepoint always begins with the macro \texttt{TRACE\_EVENT}.  
+This macro consists of the following six components:  
+
+\begin{enumerate}
+    \item First, a tracepoint always requires a \textbf{name}.  
+          This name corresponds to the name of the event, as described earlier.  
+          In the previous example, this would be \texttt{net\_dev\_xmit}.  
+          The function invoked to place the tracepoint also contains this name.  
+          It follows the naming convention \texttt{trace\_event-name}.  
+
+    \item Next, the \textbf{prototype} of the tracepoint function is defined.  
+          As shown in line~3 of Listing~\ref{lst:tracepoint} and explained by Desnoyers in \cite{tracepoints}, this prototype contains all arguments passed when the tracepoint is invoked.  
+
+    \item The \textbf{arguments} used in the prototype must also be explicitly declared as parameters.  
+          While this appears contradictory and redundant, it is necessary, as described by Rostedt in \cite{tracepoints_3}, because the tracepoint function executes callback functions to which these arguments must be forwarded.  
+          Therefore, the arguments need to be provided again as separate parameters using \texttt{TP\_ARGS}, as illustrated in line~7 of Listing~\ref{lst:tracepoint}.  
+
+    \item Furthermore, the \textbf{structure} of the data passed to the ring buffer must be specified.  
+          This structure can include additional macros such as \texttt{\_\_field(type1, field1)} or \texttt{\_\_array(char, arr, LEN)}, as shown in lines~9--14 of Listing~\ref{lst:tracepoint}.  
+          Here, \texttt{type1} could, for example, be an \texttt{int}, and \texttt{field1} is the name of the variable.  
+          For arrays, the same applies, with the additional parameter \texttt{LEN} which is specifying the number of elements.  
+
+    \item In addition, the \textbf{assignment} must define how the data is stored in the ring buffer.  
+          As explained by Rostedt in \cite{tracepoints_3}, this step specifies how the previously defined structure is populated with the arguments introduced in step~2.  
+          This is implemented using the parameter \texttt{TP\_fast\_assign}, as shown in line~16 of Listing~\ref{lst:tracepoint}.  
+
+    \item Finally, the \textbf{output} is defined using \texttt{TP\_printk}.  
+          As Rostedt explains in \cite{tracepoints_3}, this represents a format specification for the output of the fields contained in \texttt{TP\_STRUCT\_\_entry}.  
+\end{enumerate}  
+
+Having described how tracepoints function and the fact that they were developed to deliver better performance than \acp{kprobe},  the following section will focus on the performance of tracepoints.  
+
 \begin{listing}[H]
     \centering
 \begin{minted}[fontsize=\small, linenos, escapeinside=||]{c}
@@ -1053,41 +984,6 @@ As described by Desnoyers in \cite[p.~218]{Ecole23165}, the results of these cal
 \caption{Structure of Tracepoint}
 \label{lst:tracepoint}
 \end{listing}
-
-In the following, the structure of a tracepoint function is described.  
-
-A tracepoint is structured as shown in Listing~\ref{lst:tracepoint}.  
-As illustrated in line~1 and explained by Rostedt in \cite{tracepoints_3}, the definition of every tracepoint always begins with the macro \texttt{TRACE\_EVENT}.  
-This macro consists of the following six components:  
-
-\begin{enumerate}
-    \item First, a tracepoint always requires a \textbf{name}.  
-          This name corresponds to the name of the event, as described earlier.  
-          In the previous example, this would be \texttt{net\_dev\_xmit}.  
-          The function invoked to place the tracepoint also contains this name.  
-          It follows the naming convention \texttt{trace\_event-name}.  
-
-    \item Next, the \textbf{prototype} of the tracepoint function is defined.  
-          As shown in line~3 of Listing~\ref{lst:tracepoint} and explained by Desnoyers in \cite{tracepoints}, this prototype contains all arguments passed when the tracepoint is invoked.  
-
-    \item The \textbf{arguments} used in the prototype must also be explicitly declared as parameters.  
-          While this appears contradictory and redundant, it is necessary, as described by Rostedt in \cite{tracepoints_3}, because the tracepoint function executes callback functions to which these arguments must be forwarded.  
-          Therefore, the arguments need to be provided again as separate parameters using \texttt{TP\_ARGS}, as illustrated in line~7 of Listing~\ref{lst:tracepoint}.  
-
-    \item Furthermore, the \textbf{structure} of the data passed to the ring buffer must be specified.  
-          This structure can include additional macros such as \texttt{\_\_field(type1, field1)} or \texttt{\_\_array(char, arr, LEN)}, as shown in lines~9--14 of Listing~\ref{lst:tracepoint}.  
-          Here, \texttt{type1} could, for example, be an \texttt{int}, and \texttt{field1} is the name of the variable.  
-          For arrays, the same applies, with the additional parameter \texttt{LEN} which is specifying the number of elements.  
-
-    \item In addition, the \textbf{assignment} must define how the data is stored in the ring buffer.  
-          As explained by Rostedt in \cite{tracepoints_3}, this step specifies how the previously defined structure is populated with the arguments introduced in step~2.  
-          This is implemented using the parameter \texttt{TP\_fast\_assign}, as shown in line~16 of Listing~\ref{lst:tracepoint}.  
-
-    \item Finally, the \textbf{output} is defined using \texttt{TP\_printk}.  
-          As Rostedt explains in \cite{tracepoints_3}, this represents a format specification for the output of the fields contained in \texttt{TP\_STRUCT\_\_entry}.  
-\end{enumerate}  
-
-Having described how tracepoints function and the fact that they were developed to deliver better performance than \acp{kprobe},  the following section will focus on the performance of tracepoints.  
 
 Also for tracepoints, there are only very few reliable data regarding their overhead time.  
 A distinction must be made between inactive and active tracepoints.  
@@ -1552,6 +1448,7 @@ For the measurements, tracepoints are used, since they provide the advantages de
     \label{fig:tx}
 \end{figure}
 
+
 \begin{itemize}
     \item \textbf{Interval $t_1$}\label{itm:t1} measures the time the application requires to compute the X-coordinate and to transfer the packet from user space to kernel space.  
           Therfore it starts in the application on the server, i.e., at position \circnum{1} in Figure~\ref{fig:application}.  
@@ -1620,13 +1517,6 @@ Furthermore, \texttt{std::time::SystemTime::now()} is not reliable, as discussed
 Rust does not rely on a single system start time, but on several closely related reference points.  
 Although these points are very close to each other, they may still cause measurable drift when using \texttt{std::time::SystemTime::now()}, like stated in \cite{systemtime}.  
 
-\begin{figure}[H]
-    \centering
-    \includegraphics[width=\textwidth]{figures/Uprobe.drawio.pdf}
-    \caption{Presentation of the synchronization between user space and kernel space}
-    \label{fig:uprobe}
-\end{figure}
-
 The exact composition of the difference between the two time measurements will be described later in this chapter.  
 The implementation of the user space and kernel space synchronization is shown in Figure~\ref{fig:uprobe}.  
 For synchronization, a uretprobe is used.  
@@ -1637,6 +1527,13 @@ As described in Section~\ref{subsec:monitoring}, a \ac{USDT} is more suitable th
 Zheng et al.\ also state in \cite{zheng2023bpftimeuserspaceebpfruntime} that a \ac{uprobe} is not real-time capable and that its overhead is particularly large under high invocation frequencies.  
 Since the implementation of a \ac{USDT} via \texttt{libbpf-rs} was not successful, a \ac{uprobe} must be used.  
 However, as the synchronization is performed only once and the overhead plays only a minor role, this choice is acceptable.  
+
+\begin{figure}[ht]
+    \centering
+    \includegraphics[width=\textwidth]{figures/Uprobe.drawio.pdf}
+    \caption{Presentation of the synchronization between user space and kernel space}
+    \label{fig:uprobe}
+\end{figure}
 
 The following section discusses the technical implementation of the synchronization.  
 This process is illustrated in Figure~\ref{fig:uprobe}.  
@@ -1898,7 +1795,7 @@ These addresses are obtained from the \texttt{sk\_buff} struct, which, as descri
 To extract these fields, the function shown in Listing~\ref{lst:member_read} is used.  
 This function determines the address of a struct member using the \texttt{offsetof()} function.  
 
-\begin{listing}[H]
+\begin{listing}[ht]
     \centering
 \begin{minted}[fontsize=\small, escapeinside=||, linenos]{rust}
 
@@ -1949,7 +1846,20 @@ Since the ring buffer is not exclusively assigned to \ac{BPF} but represents a s
 Subsequently, the \texttt{net\_dev\_xmit} event is written into the send queue in user space.  
 The same procedure applies to the other events.  
 
-\begin{listing}[H]
+Listing~\ref{lst:calc} illustrates the flow of the \texttt{calculation} function on the server as pseudo-Rust code.  
+As previously mentioned, the start time is first recorded and the $x$-coordinate is computed, before the angle for which the $y$-coordinate is to be calculated is sent to the client.  
+This process is shown in lines 2--7.  
+Subsequently, the tracepoint events for \texttt{net\_dev\_xmit} and \texttt{net\_dev\_queue} are awaited.  
+This is realized through the function \texttt{wait\_for\_event()}, which takes the queue as a parameter in which the corresponding event is collected.  
+The function returns the event, from which the timestamp of its occurrence can be extracted via the \texttt{timestamp} attribute.
+
+Afterwards, the response from the client is awaited, and upon its arrival the end time is recorded.  
+The message contains the $y$-value and the client's timing data.  
+These, combined with the server's timing data, are used as shown in lines 22--26 to calculate the monitoring times described in Figure~\ref{fig:tx}.  
+Finally, the server checks whether the interval between start and end time exceeds the specified time limit, thereby violating the real-time requirement.  
+If this is the case, the previously mentioned penalty is applied to $y$.  
+
+\begin{listing}[ht]
     \centering
 \begin{minted}[fontsize=\small, escapeinside=||, linenos]{rust}
 fn calculation_phase() {
@@ -1994,19 +1904,6 @@ fn calculation_phase() {
 \caption{Presentation of Pseudo-Code of the calculation function}
 \label{lst:calc}
 \end{listing}
-
-Listing~\ref{lst:calc} illustrates the flow of the \texttt{calculation} function on the server as pseudo-Rust code.  
-As previously mentioned, the start time is first recorded and the $x$-coordinate is computed, before the angle for which the $y$-coordinate is to be calculated is sent to the client.  
-This process is shown in lines 2--7.  
-Subsequently, the tracepoint events for \texttt{net\_dev\_xmit} and \texttt{net\_dev\_queue} are awaited.  
-This is realized through the function \texttt{wait\_for\_event()}, which takes the queue as a parameter in which the corresponding event is collected.  
-The function returns the event, from which the timestamp of its occurrence can be extracted via the \texttt{timestamp} attribute.  
-
-Afterwards, the response from the client is awaited, and upon its arrival the end time is recorded.  
-The message contains the $y$-value and the client's timing data.  
-These, combined with the server's timing data, are used as shown in lines 22--26 to calculate the monitoring times described in Figure~\ref{fig:tx}.  
-Finally, the server checks whether the interval between start and end time exceeds the specified time limit, thereby violating the real-time requirement.  
-If this is the case, the previously mentioned penalty is applied to $y$.  
 
 After this state, only two states remain, as shown in Figure~\ref{fig:state_machine}.  
 The first is the \texttt{Error} state, which is also a terminal state.  
