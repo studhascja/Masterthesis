@@ -89,7 +89,7 @@ To build a Linux distribution, several essential types of information are requir
     \item \textbf{\ac{BSP} Configuration}: Hardware descriptions are provided through \ac{BSP} layers.  
           \texttt{Poky} includes a default \ac{BSP} for QEMU (Quick Emulator).  
 
-    \item \textbf{User and Policy Configuration}: User configurations are typically defined in \texttt{local.conf}, e.g., selecting the target machine.  
+    \item \textbf{User and Policy Configuration}: User configurations are typically defined in \texttt{local.conf}, like selecting the target machine.  
           For instance, with the \texttt{meta-raspberrypi} layer, the specific Raspberry Pi model must be declared.  
           The file \texttt{bblayers.conf} specifies which layers are included in the build, with priorities determining the order in which recipes are searched.  
           The policy configuration defines choices such as the package manager or the init system.  
