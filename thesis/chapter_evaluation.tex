@@ -420,6 +420,9 @@ Overall, the trend aligns with the findings presented here, with the exception t
 
 Since obtaining the \ac{WCET} is crucial for assessing real-time capability, a 24-hour \texttt{test run} using the best-performing configuration was conducted in this study.  
 This allows for a more comprehensive interpretation of the remaining results and enables an evaluation of the real-time performance of Wi-Fi achievable at the time of this work.  
+Since \ac{WCET} is a term from scheduling theory and refers only to the execution time of a task, the term \ac{MET} is used in the following.  
+This term is introduced to describe the maximum latency of a \texttt{test case}, or one of its components, as shown in Table~\ref{tab:wcet}.
+
 The selected \texttt{test configuration} was \texttt{6-6-160-3-tcp}, performed in an environment with medium interference.  
 A cycle time of 3\,ms was used again, resulting in a dataset of over 32 million samples.  
 
@@ -427,7 +430,7 @@ In Figure~\ref{fig:percent}, the Y-axis shows the number of repetitions that fal
 The figure contains four curves, each representing the best-performing \texttt{test configuration} for a given test environment, as well as the 24-hour test.  
 Avdotin et~al.\ state in~\cite[p.~1]{Avdotin_2019} that a reliability level of 99.999\% is a common requirement for many real-time systems.
 Therefore, this value is also adopted for the subsequent analysis.  
-Furthermore, Table~\ref{tab:wcet} references the \ac{WCET} and both values are compared to each other.  
+Furthermore, Table~\ref{tab:wcet} references the \ac{MET} and both values are compared to each other.  
 
 It can be observed in Figure~\ref{fig:percent} that the \texttt{test cases} conducted in the laboratory (blue) and under medium interference (yellow) perform best, achieving the 99.999\% threshold at 0.5\,ms and 2\,ms, respectively.  
 As expected, the laboratory tests yield superior results.  
@@ -436,12 +439,12 @@ This is evident from the nearly linear curve of the laboratory test, indicating 
 
 When comparing the normal \texttt{test run} under medium interference to the 24-hour test (red), it becomes apparent that the latter experienced more outliers.  
 A probability of 99.999\% for meeting the deadline is only achieved at 3.7\,ms, which is more than 1.5 times higher than in the standard test.  
-However, the most significant difference is found in the \ac{WCET}, which is discussed later in this chapter.  
+However, the most significant difference is found in the \ac{MET}, which is discussed later in this chapter.  
 
-In the \texttt{test run} under heavy load (green), the 99.999\% probability is reached only at over 20\,ms more than ten times higher than under medium interference.\footnote{In the high-load test run, the 6\,GHz band and thus the 160\,MHz bandwidth cannot be used. Therefore, the configurations in this comparison differ. The difference between the two test configurations under medium interference, however, is noticeable only in the \ac{WCET}, as shown in Table~\ref{tab:wcet} and Figure~\ref{fig:mid_tcp}. Consequently, the configurations can still be compared and used to draw conclusions.}  
+In the \texttt{test run} under heavy load (green), the 99.999\% probability is reached only at over 20\,ms more than ten times higher than under medium interference.\footnote{In the high-load test run, the 6\,GHz band and thus the 160\,MHz bandwidth cannot be used. Therefore, the configurations in this comparison differ. The difference between the two test configurations under medium interference, however, is noticeable only in the \ac{MET}, as shown in Table~\ref{tab:wcet} and Figure~\ref{fig:mid_tcp}. Consequently, the configurations can still be compared and used to draw conclusions.}  
 Avdotin et~al.\ demonstrate in~\cite[p.~2--3]{Avdotin_2019} that by modifying resource allocation in the firmware and using Wi-Fi~6, latencies below 1\,ms can be achieved.  
 Such performance could not be reached in this work without resource allocation.  
-In laboratory conditions, sub-1\,ms latencies are theoretically possible, although it must be noted that in long-term tests, the \ac{WCET} can increase drastically, making latencies below 1\,ms unattainable.  
+In laboratory conditions, sub-1\,ms latencies are theoretically possible, although it must be noted that in long-term tests, the \ac{MET} can increase drastically, making latencies below 1\,ms unattainable.  
 When interference is taken into account, the latency corresponding to a 99.999\% real-time reliability ranges between 2.5\,ms and 23\,ms.  
 
 A 99.999\% probability of meeting the deadline is already very high, however, it is still insufficient for hard real-time systems.  
@@ -449,12 +452,12 @@ This value implies that one in every 100.000 cycles would fail to meet the deadl
 An example illustrating the inadequacy of such reliability is the automotive ABS system, which relies on wheel slip control.  
 As explained in~\cite[p.~5]{7075975}, the wheel slip control operates on a 7\,ms cycle.  
 This means that with a 99.999\% success probability, the ABS would fail after approximately $7\,\text{ms} \times 100.000 = 11.\overline{6}\,\text{minutes}$.  
-Therefore, for hard real-time applications, the \ac{WCET} is the decisive parameter to ensure that no real-time violations occur.  
+Therefore, for hard real-time applications, the \ac{MET}\footnote{Normally the \ac{WCET}, but in this thesis, like stated before the \ac{MET} is the relevant factor.} is the decisive parameter to ensure that no real-time violations occur.  
 
 \begin{table}
 \begin{tabular}{||p{3.5cm}|p{2.5cm}|p{2.5cm}|p{2.5cm}|p{2.5cm}||}
 \hline\hline
-\textbf{Testcase} & \textbf{\ac{WCET} \newline Application} & \textbf{\ac{WCET} \ac{Qdisc}} & \textbf{\ac{WCET} Driver and MAC} & \textbf{\ac{WCET} whole} \\
+\textbf{Testcase} & \textbf{\ac{MET} \newline Application} & \textbf{\ac{MET} \ac{Qdisc}} & \textbf{\ac{MET} Driver and MAC} & \textbf{\ac{MET} whole} \\
 \hline\hline
 $C_{24}$-6-6-160-1-tcp & 2.19 ms & 0.14 ms & 703.56 ms & 705.89 ms \\
 \hline
@@ -469,19 +472,19 @@ $C_{ath9k}$-4-5-40-1-tcp & 0.14 ms & 0.03 ms & 6.16 ms & 6.33 ms  \\
 $C_{mt7925e}$-4-5-40-1-tcp & 0.34 ms & 0.04 ms & 6.31 ms & 6.69 ms  \\
 \hline\hline
 \end{tabular}
-\caption{Comparison of the WCET of different test runs}
+\caption{Comparison of the MET of different test runs}
 \label{tab:wcet}
 \end{table}
 
-In Table~\ref{tab:wcet}, the \acp{WCET} of the \texttt{Application}, \ac{Qdisc} and \texttt{Driver and \ac{MAC}} intervals are presented.  
+In Table~\ref{tab:wcet}, the \acp{MET} of the \texttt{Application}, \ac{Qdisc} and \texttt{Driver and \ac{MAC}} intervals are presented.  
 These intervals are described in Section~\ref{subsec:monitoring}.  
 In the table, the longest duration of each phase for both the client and the server is summed.  
-Thus, the value of \texttt{\ac{WCET} Application} is composed of the intervals $t1_{max} + t4_{max} + t5_{max} + t8_{max}$, as described in Section~\ref{subsec:monitoring}.  
+Thus, the value of \texttt{\ac{MET} Application} is composed of the intervals $t1_{max} + t4_{max} + t5_{max} + t8_{max}$, as described in Section~\ref{subsec:monitoring}.  
 Here, $t1_{max}$ and $t8_{max}$ represent the maximum time spent in the application, transport, and network layers on the server side, while $t4_{max}$ and $t5_{max}$ represent the corresponding durations on the client side.  
-The phase \texttt{\ac{WCET} \ac{Qdisc}} is formed by the intervals $t2_{max} + t6_{max}$, representing the sum of the maximum queuing durations (server and client) within the \ac{Qdisc}.  
-The \texttt{\ac{WCET} Driver and MAC} phase consists of the intervals $t3_{max} + t7_{max}$, representing the sum of the maximum transmission times between the handover of a packet to the driver and the reception of the corresponding acknowledgment in the NAPI, again for both, the server- and the client-side .  
-Table~\ref{tab:wcet} also shows the total \ac{WCET}, obtained by summing all previous intervals, ensuring that the actual \ac{WCET} of the system is represented.  
-The observed \ac{WCET} during testing is significantly lower, as the maximum values of all intervals never occurred simultaneously.  
+The phase \texttt{\ac{MET} \ac{Qdisc}} is formed by the intervals $t2_{max} + t6_{max}$, representing the sum of the maximum queuing durations (server and client) within the \ac{Qdisc}.  
+The \texttt{\ac{MET} Driver and MAC} phase consists of the intervals $t3_{max} + t7_{max}$, representing the sum of the maximum transmission times between the handover of a packet to the driver and the reception of the corresponding acknowledgment in the NAPI, again for both, the server- and the client-side .  
+Table~\ref{tab:wcet} also shows the total \ac{MET}, obtained by summing all previous intervals, ensuring that the actual \ac{MET} of the system is represented.  
+The observed \ac{MET} during testing is significantly lower, as the maximum values of all intervals never occurred simultaneously.  
 
 The configurations analyzed correspond to those shown in Figure~\ref{fig:percent}.  
 In addition, the configurations \texttt{4-5-40-1-tcp} with two different firmware versions (\texttt{ath9k} and \texttt{mt7925e}) were examined.  
@@ -490,19 +493,19 @@ The \texttt{ath9k} firmware was used in conjunction with the \texttt{AR5BXB92} W
 In Table~\ref{tab:wcet}, the best-performing \texttt{test configuration} of the \texttt{ath9k} driver is used.
 Furthermore the tests were conducted under medium interference conditions.  
 
-It is evident from Table~\ref{tab:wcet} that the \texttt{\ac{WCET} Driver and MAC} phase accounts for by far the largest proportion of the total \ac{WCET}.  
+It is evident from Table~\ref{tab:wcet} that the \texttt{\ac{MET} Driver and MAC} phase accounts for by far the largest proportion of the total \ac{MET}.  
 The relationship between the \ac{LDT}, \ac{ADT} and \ac{HDT}, is consistent with the trends already visible in Figure~\ref{fig:percent}.  
-Notably, the computed \ac{WCET} values in Table~\ref{tab:wcet} are approximately 1.5 to 2 times higher than the actual \ac{WCET} values observed during the tests.  
-Furthermore, the difference in \ac{WCET} between the 24-hour test and the regular test is particularly striking.  
-While the 99.999\% probability latency is only about 1.5 times higher, the \ac{WCET} increases by a factor of 282.  
+Notably, the computed \ac{MET} values in Table~\ref{tab:wcet} are approximately 1.5 to 2 times higher than the actual \ac{MET} values observed during the tests.  
+Furthermore, the difference in \ac{MET} between the 24-hour test and the regular test is particularly striking.  
+While the 99.999\% probability latency is only about 1.5 times higher, the \ac{MET} increases by a factor of 282.  
 This finding also indicates that, over time, even laboratory and high-interference environments would yield considerably poorer values for hard real-time performance.  
 
 Switching the firmware and Wi-Fi card, on the other hand, had only a negligible impact.  
-The difference in the \texttt{\ac{WCET} Driver and MAC} phase was merely about 2\%, and thus can be considered insignificant.  
+The difference in the \texttt{\ac{MET} Driver and MAC} phase was merely about 2\%, and thus can be considered insignificant.  
 
 Consequently, Wi-Fi can only be considered suitable for hard real-time applications if the timing requirement is greater than approximately 700\,ms.  
 It must also be ensured that the Wi-Fi link operates in an environment with minimal interference.  
-Assuming that the \ac{HDT} behaves analogously to that under medium interference, the actual \ac{WCET} would be approximately $41.6\,\text{ms} \times 281 = 11.689\,\text{s}$.  
+Assuming that the \ac{HDT} behaves analogously to that under medium interference, the actual \ac{MET} would be approximately $41.6\,\text{ms} \times 281 = 11.689\,\text{s}$.  
 
 This chapter has summarized the test results, compared them with related work, and integrated them into the current state of research.  
 The following chapter presents the conclusions of this study and provides an outlook on the future development of Wi-Fi real-time capabilities.  
