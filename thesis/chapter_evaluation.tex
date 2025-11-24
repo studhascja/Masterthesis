@@ -58,7 +58,7 @@ This decision is motivated by the fact that, in practice, the relative load caus
 50 Mbit/s & 1320 & 254612 \\
 \hline\hline
 \end{tabular}
-\caption{Comparison of the impact of different loads of bulk-data on the Wi-Fi connection on the average and maximum execution time of one cycle of the real-time application.}
+\caption{Visualization of the impact of different loads of bulk-data on the Wi-Fi connection on the average and maximum execution time of one cycle of the real-time application.}
 \label{tab:throughput}
 \end{table}
 
@@ -126,7 +126,7 @@ This results in a total of $8 \times 14 = 112$ \texttt{test cases} per \texttt{t
 \begin{figure}[ht]
     \centering
     \includegraphics[width=0.7\textwidth]{figures/Factors.drawio.pdf}
-    \caption{Illustration of the \texttt{test cases} resulting from the influencing factors.}
+    \caption{Illustration of the test cases resulting from the influencing factors.}
     \label{fig:factors}
 \end{figure}
 
@@ -172,7 +172,7 @@ However, this is not guaranteed, as illustrated by \texttt{test case} \texttt{6-
 \begin{figure}[ht]
     \centering
     \resizebox{\textwidth}{!}{\input{figures/jitter_udp_boxplot_3.pgf}}
-    \caption{Presentation of the jitter of the UDP test cases in a low-interference environment.}
+    \caption{Illustration of the jitter of the UDP test cases in a low-interference environment.}
     \label{fig:udp_low}
 \end{figure}
 
@@ -271,7 +271,7 @@ Priorities were assigned via \texttt{tc filter} for Prio and \texttt{tc class} f
 \begin{figure}[ht]
     \centering
     \includegraphics[width=\textwidth]{figures/qdisc.drawio.pdf}
-    \caption{Presentation of the Prio and the HTB qdisc used in this work.}
+    \caption{Visualization of the Prio and the HTB qdisc used in this work.}
     \label{fig:qdisc}
 \end{figure}
 
@@ -414,7 +414,7 @@ Overall, the trend aligns with the findings presented here, with the exception t
 \begin{figure}[ht]
     \centering
     \includegraphics[width=\textwidth]{figures/latency_cdf_all.pdf}
-    \caption[Visualization of cumulative probability at cycle time for different \texttt{test runs}.]{Representation of the percentage number of cycles that meet real time at a certain rate for chosen \texttt{test runs}.}
+    \caption[Visualization of cumulative probability at cycle time for different test runs.]{Representation of the percentage number of cycles that meet real time at a certain rate for chosen \texttt{test runs}.}
     \label{fig:percent}
 \end{figure}
 
@@ -469,7 +469,7 @@ $C_{ath9k}$-4-5-40-1-tcp & 0.14 ms & 0.03 ms & 6.16 ms & 6.33 ms  \\
 $C_{mt7925e}$-4-5-40-1-tcp & 0.34 ms & 0.04 ms & 6.31 ms & 6.69 ms  \\
 \hline\hline
 \end{tabular}
-\caption{Comparison of the WCET of different \texttt{test runs}}
+\caption{Comparison of the WCET of different test runs}
 \label{tab:wcet}
 \end{table}
 
