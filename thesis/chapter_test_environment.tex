@@ -807,12 +807,13 @@ This behavior can also be seen in \cite{uprobe_code}, where the function in list
 
 \begin{listing}[H]
     \centering
-\begin{minted}[fontsize=\small]{c}
+\begin{minted}[fontsize=\small, escapeinside=||]{c}
 struct uprobe *uprobe_register(
-                                struct inode *inode, 
-                                loff_t offset, 
-                                loff_t ref_ctr_offset, 
-                                struct uprobe_consumer *uc);
+    struct inode *inode, 
+    |\textbf{\textcolor{typblue}{loff\_t}}| offset, 
+    |\textbf{\textcolor{typblue}{loff\_t}}| ref_ctr_offset, 
+    struct uprobe_consumer *uc
+);
 \end{minted}
 \caption{Function blueprint to register an Uprobe}
 \label{lst:uprobe}
@@ -954,31 +955,31 @@ Having described how tracepoints function and the fact that they were developed 
 \begin{listing}[H]
     \centering
 \begin{minted}[fontsize=\small, linenos, escapeinside=||]{c}
-|\textcolor{blue}{TRACE\_EVENT}|(event_name,
+|\textbf{\textcolor{funblue}{TRACE\_EVENT}}|(event_name,
 
-    |\textcolor{blue}{TP\_PROTO}|(|\textcolor{green}{type1}| |\textcolor{magenta}{arg1}|,
-            |\textcolor{green}{type2}| |\textcolor{magenta}{arg2}|,
-            ... ),
+    |\textbf{\textcolor{funblue}{TP\_PROTO}}|(|\textbf{\textcolor{typblue}{type1}}| arg1,
+             |\textbf{\textcolor{typblue}{type2}}| arg2,
+             ... ),
 
-    |\textcolor{blue}{TP\_ARGS}|(|\textcolor{magenta}{arg1}|, |\textcolor{magenta}{arg2}|, ...),
+    |\textbf{\textcolor{funblue}{TP\_ARGS}}|(arg1, arg2, ...),
 
-    |\textcolor{blue}{TP\_STRUCT\_\_entry}|(
-        |\textcolor{blue}{\_\_field}|(|\textcolor{green}{type1}| |\textcolor{magenta}{field1}|)
-        |\textcolor{blue}{\_\_field}|(|\textcolor{green}{type2}| |\textcolor{magenta}{field2}|)
-        |\textcolor{blue}{\_\_array}|(|\textcolor{green}{char}|, |\textcolor{magenta}{arr}|, LEN)
-        |\textcolor{blue}{\_\_string}|(|\textcolor{magenta}{str\_field}|, some_pointer_to_string)
+    |\textbf{\textcolor{funblue}{TP\_STRUCT\_\_entry}}|(
+        |\textbf{\textcolor{kwgreen}{\_\_field}}|(|\textbf{\textcolor{typblue}{type1}}| field1)
+        |\textbf{\textcolor{kwgreen}{\_\_field}}|(|\textbf{\textcolor{typblue}{type2}}| field2)
+        |\textbf{\textcolor{kwgreen}{\_\_array}}|(|\textbf{\textcolor{typblue}{char}}|, arr, LEN)
+        |\textbf{\textcolor{kwgreen}{\_\_string}}|(|\textbf{\textcolor{typblue}{str\_field}}|, some_pointer_to_string)
     ),
 
-    |\textcolor{blue}{TP\_fast\_assign}|(
-        |\textcolor{magenta}{\_\_entry}|->|\textcolor{magenta}{field1}| = |\textcolor{magenta}{arg1}|;
-        |\textcolor{magenta}{\_\_entry}|->|\textcolor{magenta}{field2}| = |\textcolor{magenta}{arg2}|;
-        |\textcolor{blue}{\_\_assign\_str}|(|\textcolor{magenta}{str\_field}|, some_pointer_to_string);
+    |\textbf{\textcolor{funblue}{TP\_fast\_assign}}|(
+        |\textbf{\textcolor{kwgreen}{\_\_entry}}|->field1 = arg1;
+        |\textbf{\textcolor{kwgreen}{\_\_entry}}|->field2 = arg2;
+        |\textbf{\textcolor{funblue}{\_\_assign\_str}}|(|\textbf{\textcolor{typblue}{str\_field}}|, some_pointer_to_string);
     ),
 
-    |\textcolor{blue}{TP\_printk}|("field1=%d field2=%u str=%s",
-        |\textcolor{magenta}{\_\_entry}|->|\textcolor{magenta}{field1}|,
-        |\textcolor{magenta}{\_\_entry}|->|\textcolor{magenta}{field2}|,
-        |\textcolor{blue}{\_\_get\_str}|(|\textcolor{magenta}{str\_field}|))
+    |\textbf{\textcolor{funblue}{TP\_printk}}|("field1=%d field2=%u str=%s",
+        |\textbf{\textcolor{kwgreen}{\_\_entry}}|->field1,
+        |\textbf{\textcolor{kwgreen}{\_\_entry}}|->field2,
+        |\textbf{\textcolor{funblue}{\_\_get\_str}}|(|\textbf{\textcolor{typblue}{str\_field}}|))
 );
 \end{minted}
 \caption{Structure of Tracepoint}
@@ -1333,23 +1334,23 @@ These include, among others, the kernel UAPI headers, as depicted in lines~9--14
 
 \begin{listing}[H]
     \centering
-\begin{minted}[fontsize=\small, escapeinside=||, linenos, style=vs]{rust}
+\begin{minted}[fontsize=\small, escapeinside=||, linenos]{rust}
 use std::env;
 use libbpf_cargo::SkeletonBuilder;
 
 fn main() {
-    let |\textcolor{blue}{kernel\_headers}| = |\textcolor{teal}{env}|::|\textcolor{orange}{var(}|"KERNEL_HEADERS"|\textcolor{orange}{)}|
-        .|\textcolor{orange}{unwrap\_or(}|"/usr/src/kernel".|\textcolor{orange}{to\_string())}|;
-    |\textcolor{teal}{SkeletonBuilder}|::|\textcolor{orange}{new()}|
-        .|\textcolor{orange}{source(}|"src/bpf/monitor.bpf.c"|\textcolor{orange}{)}|
-        .|\textcolor{orange}{clang\_args(}|&format!(
+    let kernel_headers = |\textbf{\textcolor{kwgreen}{env}}|::|\textbf{\textcolor{funblue}{var}}|("KERNEL_HEADERS")
+        .|\textbf{\textcolor{funblue}{unwrap\_or}}|("/usr/src/kernel".|\textbf{\textcolor{funblue}{to\_string}}|());
+    |\textbf{\textcolor{kwgreen}{SkeletonBuilder}}|::|\textbf{\textcolor{funblue}{new()}}|
+        .|\textbf{\textcolor{funblue}{source}}|("src/bpf/monitor.bpf.c")
+        .|\textbf{\textcolor{funblue}{clang\_args}}|(&format!(
             "-I{}/arch/arm64/include/generated/uapi 
             -I{}/include 
             -I{}/include/uapi 
             -I{}/include/generated", 
-            |\textcolor{blue}{kernel\_headers}, \textcolor{blue}{kernel\_headers}, \textcolor{blue}{kernel\_headers}, \textcolor{blue}{kernel\_headers})||\textcolor{orange}{)}|
-        .|\textcolor{orange}{build\_and\_generate(}|"src/bpf/monitor.skel.rs"|\textcolor{orange}{)}|
-        .|\textcolor{orange}{unwrap()}|;
+        |\textbf{\textcolor{structmag}{kernel\_headers}}|, |\textbf{\textcolor{structmag}{kernel\_headers}}|, |\textbf{\textcolor{structmag}{kernel\_headers}}|, |\textbf{\textcolor{structmag}{kernel\_headers}}|))
+        .|\textbf{\textcolor{funblue}{build\_and\_generate}}|("src/bpf/monitor.skel.rs")
+        .|\textbf{\textcolor{funblue}{unwrap}}|();
 }
 \end{minted}
 \caption{Rust Build Script}
@@ -1657,8 +1658,8 @@ This is necessary to ensure that C code\footnote{Since \ac{BPF} is based on C co
 
 #[no_mangle]
 pub extern "C" fn measure_instant() {
-    let mut time = USER_ZERO.lock().unwrap();
-    *time = Instant::now();
+    let mut time = USER_ZERO.|\textbf{\textcolor{funblue}{lock}}|().|\textbf{\textcolor{funblue}{unwrap}}|();
+    *time = Instant::|\textbf{\textcolor{funblue}{now}}|();
 }
 
 \end{minted}
@@ -1686,19 +1687,21 @@ In addition, the generated timestamp is passed in the field \texttt{timestamp}.
 \begin{listing}[H]
     \centering
 \begin{minted}[fontsize=\small, escapeinside=||, linenos]{c}
-SEC("uretprobe//code/client_udp/target/debug/client_udp:measure_instant")
-int trace_measure_instant(struct pt_regs *ctx) {
-    __u64 timestamp = bpf_ktime_get_ns();
-    struct Event *e = bpf_ringbuf_reserve(&events, sizeof(*e), 0);
+|\textbf{\textcolor{funblue}{SEC}}|("uretprobe//code/client_udp/target/debug/client_udp:measure_instant")
+int |\textbf{\textcolor{funblue}{trace\_measure\_instant}}|(struct pt_regs *ctx) {
+    |\textbf{\textcolor{typblue}{\_\_u64}}| timestamp = |\textbf{\textcolor{funblue}{bpf\_ktime\_get\_ns}}|();
+    struct Event *e = |\textbf{\textcolor{funblue}{bpf\_ringbuf\_reserve}}|(&events, sizeof(*e), 0);
+    
     if (!e) {
         return 0;
     }
-	e->event_type = 0;
+
+    e->event_type = 0;
     e->data.msg_type = 0;
     e->data.seq = 0;
     e->timestamp = timestamp;
 
-    bpf_ringbuf_submit(e, 0);
+    |\textbf{\textcolor{funblue}{bpf\_ringbuf\_submit}}|(e, 0);
     return 0;
 }
 
@@ -1799,12 +1802,12 @@ This function determines the address of a struct member using the \texttt{offset
     \centering
 \begin{minted}[fontsize=\small, escapeinside=||, linenos]{rust}
 
-  #define member_read(destination, source_struct, source_member)               
+  |\textcolor{gray}{#define member\_read(destination, source\_struct, source\_member)}|               
   do{                                                                          
-    bpf_probe_read(                                                            
+    |\textbf{\textcolor{funblue}{bpf\_probe\_read}}|(                                                            
       destination,                                                             
-      sizeof(source_struct->source_member),                                    
-      ((char*)source_struct) + offsetof(typeof(*source_struct), source_member) 
+      |\textbf{\textcolor{kwgreen}{sizeof}}|(source_struct->source_member),                                    
+      ((char*)source_struct) + |\textbf{\textcolor{kwgreen}{offsetof}}|(typeof(*source_struct), |\textbf{\textcolor{structmag}{source\_member}}|) 
     );                                                                         
   } while(0)
 
@@ -1863,36 +1866,36 @@ If this is the case, the previously mentioned penalty is applied to $y$.
     \centering
 \begin{minted}[fontsize=\small, escapeinside=||, linenos]{rust}
 fn calculation_phase() {
-    let start_time = Instant::now();
+    let start_time = Instant::|\textbf{\textcolor{funblue}{now}}|();
     let theta = 2.0 * PI * (i as f64) / (NUM_POINTS as f64);
-    let x = RADIUS * theta.cos();
+    let x = RADIUS * theta.|\textbf{\textcolor{funblue}{cos}}|();
 
-    let encoded_msg = encode_message(MessageType::Calc, i, theta, RADIUS, 0)?;
-    stream.write_all(&encoded_msg)?;
+    let encoded_msg = |\textbf{\textcolor{funblue}{encode\_message}}|(MessageType::Calc, i, theta, RADIUS, 0)?;
+    stream.|\textbf{\textcolor{funblue}{write\_all}}|(&encoded_msg)?;
 
-    let queue_event = wait_for_event(queue);
+    let queue_event = |\textbf{\textcolor{funblue}{wait\_for\_event}}|(queue);
     let server_queue_time = queue_event.timestamp;
 
-    let send_event = wait_for_event(send);
+    let send_event = |\textbf{\textcolor{funblue}{wait\_for\_event}}|(send);
     let server_send_time = send_event.timestamp;
 
-    match stream.read(&mut buffer) {
+    match stream.|\textbf{\textcolor{funblue}{read}}|(&mut buffer) {
         Ok(_) => {
-            let end_time = Instant::now();
+            let end_time = Instant::|\textbf{\textcolor{funblue}{now}}|();
 
-            let msg: Message = *bytemuck::from_bytes::<Message>(&buffer);
+            let msg: Message = *bytemuck::from_bytes::<|\textbf{\textcolor{structmag}{Message}}|>(&buffer);
 
-            let receive_event = wait_for_event(receive);
+            let receive_event = |\textbf{\textcolor{funblue}{wait\_for\_event}}|(receive);
             let server_receive_time = receive_event.timestamp;
 
-            calc_monitoring(
+            |\textbf{\textcolor{funblue}{calc\_monitoring}}|(
                 server_queue_time,
                 ...,
                 msg.client_queue_time,
                 ...
             );
 
-            if end_time.duration_since(start_time) <= TIMEOUT_NS as u128 {
+            if end_time.|\textbf{\textcolor{funblue}{duration\_since}}|(start_time) <= TIMEOUT_NS as u128 {
                 y
             } else {
                 y - penalty

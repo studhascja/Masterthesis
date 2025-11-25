@@ -59,37 +59,37 @@
 \begin{minted}[fontsize=\small, escapeinside=||, linenos]{rust}
 include!("bpf/monitor.skel.rs");
 ...
-|\textcolor{orange}{set\_rt\_priority(}|99|\textcolor{orange}{)}|;
+|\textbf{\textcolor{funblue}{set\_rt\_priority}}|(99);
 ...
-let |\textcolor{blue}{open\_skel}| = |\textcolor{teal}{MonitorSkelBuilder}|::|\textcolor{orange}{default()}|.|\textcolor{orange}{open()}|;
-let mut | \textcolor{blue}{skel} | = | \textcolor{blue}{open\_skel}|?.|\textcolor{orange}{load()}|?;
-|\textcolor{blue}{skel}|.|\textcolor{orange}{attach()?}|;
+let open_skel = |\textbf{\textcolor{kwgreen}{MonitorSkelBuilder}}|::|\textbf{\textcolor{funblue}{default}}|().|\textbf{\textcolor{funblue}{open}}|();
+let mut skel = open_skel?.|\textbf{\textcolor{funblue}{load}}|()?;
+skel.|\textbf{\textcolor{funblue}{attach}}|()?;
 
-let |\textcolor{blue}{maps}| = |\textcolor{blue}{skel}|.|\textcolor{orange}{maps()}|;
+let maps = skel.|\textbf{\textcolor{funblue}{maps}}|();
 
-let mut |\textcolor{blue}{ringbuf\_builder}| = |\textcolor{teal}{RingBufferBuilder}|::|\textcolor{orange}{new()}|;
-|\textcolor{blue}{ringbuf\_builder}|.|\textcolor{orange}{add(}||\textcolor{blue}{maps}|.|\textcolor{orange}{events()}|, move data: &[u8] {
+let mut ringbuf_builder = |\textbf{\textcolor{kwgreen}{RingBufferBuilder}}|::|\textbf{\textcolor{funblue}{new}}|();
+ringbuf_builder.|\textbf{\textcolor{funblue}{add}}|(maps.|\textbf{\textcolor{funblue}{events}}|(), move data: &[u8] {
     // Callback function
-}|\textcolor{orange}{)}|;
+});
 
-let |\textcolor{blue}{\_handle}| = |\textcolor{teal}{thread}|::|\textcolor{orange}{spawn(}|(move ||{
+let _handle = |\textbf{\textcolor{kwgreen}{thread}}|::|\textbf{\textcolor{funblue}{spawn}}|((move ||{
     while true {
-        |\textcolor{blue}{ringbuf}|.|\textcolor{orange}{poll(}||\textcolor{teal}{Duration}|::|\textcolor{orange}{from\_millis(}|100|\textcolor{orange}{))}|.|\textcolor{orange}{unwrap()}|;
+        ringbuf.|\textbf{\textcolor{funblue}{poll}}|(|\textbf{\textcolor{kwgreen}{Duration}}|::|\textbf{\textcolor{funblue}{from\_millis}}|(100).|\textbf{\textcolor{funblue}{unwrap}}|();
     }
 });
 
-let |\textcolor{blue}{listener}| = |\textcolor{teal}{TcpListener}|::|\textcolor{orange}{bind(}|"192.168.1.1:8080"|\textcolor{orange}{)}|?;
+let listener = |\textbf{\textcolor{kwgreen}{TcpListener}}|::|\textbf{\textcolor{funblue}{bind}}|("192.168.1.1:8080")?;
 
-for |\textcolor{blue}{stream}| in |\textcolor{blue}{listener}|.|\textcolor{orange}{incoming()}|{
-    match |\textcolor{blue}{stream}| {
-        Ok(|\textcolor{blue}{stream}|) => {
-            let |\textcolor{blue}{handle}| = |\textcolor{teal}{thread}|::|\textcolor{orange}{spawn(}|(move || {
-                let |\textcolor{blue}{context}| = |\textcolor{teal}{SetupContext}| {
+for stream in listener.|\textbf{\textcolor{funblue}{incoming}}|(){
+    match stream {
+        Ok(stream) => {
+            let handle = |\textbf{\textcolor{kwgreen}{thread}}|::|\textbf{\textcolor{funblue}{spawn}}|((move || {
+                let context = SetupContext {
                         ...
                 };
-                |\textcolor{blue}{\_}| = |\textcolor{orange}{run\_state\_machine(}|context|\textcolor{orange}{)}|;
-            }|\textcolor{orange}{)}|;
-            |\textcolor{blue}{handle}|.|\textcolor{orange}{join()}|;
+                _ = |\textbf{\textcolor{funblue}{run\_state\_machine}}|(context);
+            });
+            handle.|\textbf{\textcolor{funblue}{join}}|();
         }
     }
 }
@@ -102,53 +102,53 @@ for |\textcolor{blue}{stream}| in |\textcolor{blue}{listener}|.|\textcolor{orang
 \begin{listing}[H]
     \centering
 \begin{minted}[fontsize=\small, escapeinside=||, linenos]{c}
-SEC("tracepoint/net/net_dev_xmit")
-int handle_net_dev_xmit(struct trace_event_raw_net_dev_xmit *ctx) {
-    int pid = bpf_get_current_pid_tgid() >> 32;
+|\textbf{\textcolor{funblue}{SEC}}|("tracepoint/net/net_dev_xmit")
+int |\textbf{\textcolor{funblue}{handle\_net\_dev\_xmit}}|(struct trace_event_raw_net_dev_xmit *ctx) {
+    int pid = |\textbf{\textcolor{funblue}{bpf\_get\_current\_pid\_tgid}}|() >> 32;
     char comm[16] = {};
-    bpf_get_current_comm(&comm, sizeof(comm));
+    |\textbf{\textcolor{funblue}{bpf\_get\_current\_comm}}|(&comm, sizeof(comm));
     
-    if (__builtin_strcmp(comm, "server") == 0) {
+    if (|\textbf{\textcolor{funblue}{\_\_builtin\_strcmp}}|(comm, "server") == 0) {
         struct sk_buff *skb = (struct sk_buff *)ctx->skbaddr;
         char *head;
-        u16 mac_header;
+        |\textbf{\textcolor{typblue}{u16}}| mac_header;
 
-        member_read(&head, skb, head);
-        member_read(&mac_header, skb, mac_header);
+        |\textbf{\textcolor{funblue}{member\_read}}|(&head, skb, head);
+        |\textbf{\textcolor{funblue}{member\_read}}|(&mac_header, skb, mac_header);
 
         char *ip_header_address = head + mac_header + MAC_HEADER_SIZE;
         struct iphdr iph;
-        bpf_probe_read(&iph, sizeof(iph), ip_header_address);
+        |\textbf{\textcolor{funblue}{bpf\_probe\_read}}|(&iph, sizeof(iph), ip_header_address);
 
         if (iph.protocol != IPPROTO_TCP)
             return 0;
 
-        u32 src_ip = __builtin_bswap32(iph.saddr);
-        u8 src_lat_ip = src_ip & 0xff;
+        |\textbf{\textcolor{typblue}{u32}}| src_ip = |\textbf{\textcolor{funblue}{\_\_builtin\_bswap32}}|(iph.saddr);
+        |\textbf{\textcolor{typblue}{u8}}| src_lat_ip = src_ip & 0xff;
 
-        u32 dst_ip = __builtin_bswap32(iph.daddr);
-        u8 dst_last_ip = dst_ip & 0xff;
+        |\textbf{\textcolor{typblue}{u32}}| dst_ip = |\textbf{\textcolor{funblue}{\_\_builtin\_bswap32}}|(iph.daddr);
+        |\textbf{\textcolor{typblue}{u8}}| dst_last_ip = dst_ip & 0xff;
 
         if (src_lat_ip == 1 && dst_last_ip == 43) {
-            u8 ip_header_len = iph.ihl * 4;
+            |\textbf{\textcolor{typblue}{u8}}| ip_header_len = iph.ihl * 4;
 
             char *tcp_header = ip_header_address + ip_header_len;
 
             struct tcphdr tcph = {};
-            bpf_probe_read(&tcph, sizeof(tcph), tcp_header);
+            |\textbf{\textcolor{funblue}{bpf\_probe\_read}}|(&tcph, sizeof(tcph), tcp_header);
 
-            u8 tcp_header_len = tcph.doff * 4;
+            |\textbf{\textcolor{typblue}{u8}}| tcp_header_len = tcph.doff * 4;
 
             char *payload = tcp_header + tcp_header_len;
 
             struct Message msg = {};
-            bpf_probe_read(&msg, sizeof(msg), payload);
+            |\textbf{\textcolor{funblue}{bpf\_probe\_read}}|(&msg, sizeof(msg), payload);
 
             if (msg.msg_type < 0 || msg.msg_type > 5)
                 return 0;
 
             ...
-            bpf_ringbuf_submit(event, 0);
+            |\textbf{\textcolor{funblue}{bpf\_ringbuf\_submit}}|(event, 0);
         }
     }
 
