@@ -23,16 +23,16 @@ Both devices run the same \ac{OS}.
 \end{figure}
 
 There are two communication links between the server and the client.
-One link which transfers real-time-data and another one for transferring bulk data.
+One link that transfers real-time data and another one for transferring bulk data.
 These two links are illustrated in Figure \ref{fig:pi_wifi_general} in blue and red.
 These connections are handled by separate processes but operate within the same network. 
 The server provides an \ac{AP} to which the client connects.
 So an exclusive Wi-Fi network is used in this work.
 
-In summary, the goal of the test environment is to transmit both real-time-data and bulk-data\footnote{The bulk-data does not have any real-time constraints.} over the same wireless network interface. 
+In summary, the goal of the test environment is to transmit both real-time data and bulk data\footnote{The bulk data does not have any real-time constraints.} over the same wireless network interface. 
 While the bulk data throughput should be maximized, the primary focus is to ensure that no real-time violations occur on the real-time connection.
 
-Since the test system is intended to transmit real-time-data among normal data, it must fulfill the requirements of a \ac{rt-system}. 
+Since the test system is intended to transmit real-time data among normal data, it must fulfill the requirements of a \ac{rt-system}. 
 Therefore, the following section first outlines the general requirements of \acp{rt-system}. 
 Subsequently, additional requirements that go beyond standard real-time criteria and are specifically relevant for this system within the given test environment are discussed in more detail.
 
@@ -50,7 +50,7 @@ The necessity for these mechanisms to be implemented differently in real-time ca
 
 However, these mechanisms must not only be real-time capable at the kernel level—they also need to be considered during the \textbf{development of applications} intended to operate in a real-time context. 
 As Buttazzo outlines in \cite[p. 13 - 20]{Buttazzo_2024}, particular attention must be paid to the choice of programming language, memory usage and synchronization and communication between processes.
-It follows that, as shown in Figure \ref{fig:requirements}, memory management, inter-task communication and inter-task-synchronization are not only requirements for the \ac{OS}, but must also be taken into account in the test system.
+It follows that, as shown in Figure \ref{fig:requirements}, memory management, inter-task communication and inter-task synchronization are not only requirements for the \ac{OS}, but must also be taken into account in the test system.
 
 In \cite[p. 17, 18]{Buttazzo_2024} Buttazzo emphasizes that the choice of programming language for real-time systems should avoid the use of dynamic data structures and recursion. 
 This is because dynamic memory allocation and deallocation introduce unpredictability in execution time, making it impossible to determine the program's timing behavior in advance. 
@@ -58,7 +58,7 @@ Therefore, memory must be allocated statically and prior to execution.
 Similarly, recursion poses a challenge, as it is difficult to predict the amount of memory required and the number of recursive calls during runtime.
 
 Furthermore, Buttazzo argues that a programming language suitable for real-time applications should support bounded loops, meaning that the number of iterations is fixed and known at compile time. 
-In general, programming languages for real-time systems should offer the capability to explicitly define timing constraints and ensure adherence to the aforementioned principles—ideally enforcing them.
+In general, programming languages for real-time systems should offer the capability to explicitly define timing constraints and ensure adherence to the aforementioned principles—ideally, enforcing them.
 As programming languages, Buttazzo suggests \texttt{Real-Time Concurrent C} and \texttt{Real-Time Euclid}, both of which fulfill all the stated requirements.
 
 By contrast, Michael P. Rooney et al. describe in \cite[p. 1]{10321761} a study involving the development of a \ac{SCADA} real-time application implemented in the four different programming languages C, Rust, Numba Python and Cython.
@@ -68,7 +68,7 @@ Notably, Rust demonstrated a power consumption profile comparable to C, indicati
 While the characteristics outlined by Buttazzo are not mandatory in any of these languages, they can be implemented with appropriate discipline and design. 
 Thus, these languages are also suitable for real-time application development, provided that the specific constraints related to memory management, recursion and timing predictability are consciously observed and enforced by the developer, as they are not inherently guaranteed by the language itself.
 
-The chosen programming languages and specific implementation-level requirements for achieving real-time capability and how these are addressed, are discussed in detail in Chapter \ref{subsec:impl}.
+The chosen programming languages and specific implementation-level requirements for achieving real-time capability and how these are addressed are discussed in detail in Chapter \ref{subsec:impl}.
 
 Furthermore, the test system must be capable of transmitting both real-time and bulk data concurrently over the same network, with the real-time traffic maintaining a \ac{RTT} as low as possible. 
 This timing constraint stems from the fact that this work seeks to characterize Wi‑Fi’s real-time capabilities and the factors that influence them and to assess whether Wi‑Fi can be employed in an industrial real-time environment. 
@@ -77,9 +77,9 @@ This is because the requirements in industrial environments can vary substantial
 These belong in one hand, to the duration of \ac{RTT} and in the other, the overall degree of real-time capability that a system must provide.
 
 To summarize, the requirements of the test environment are illustrated in Figure \ref{fig:requirements}.
-There the requirements are split between \ac{OS} and test system.
+There, the requirements are split between \ac{OS} and test system.
 Furthermore, a distinction is made between real-time and non-real-time requirements.
-In this section the requirements shown in blue where discussed.
+In this section, the requirements shown in blue were discussed.
 
 \begin{figure}[ht]
     \centering
@@ -89,7 +89,7 @@ In this section the requirements shown in blue where discussed.
 \end{figure}
 
 \subsection{Requirements of the Test Environment} \label{subsec:requirements}
-The following section defines the requirements for the test environment which are shown in yellow in Figure \ref{fig:requirements}.
+The following section defines the requirements for the test environment, which are shown in yellow in Figure \ref{fig:requirements}.
 For both the test system and the \ac{OS}, the previously defined criteria for real-time capability are assumed to be fulfilled.
 
 The requirements for the \ac{OS} include providing appropriate \textbf{support for both the hardware and the software components} of the test environment. 
@@ -112,7 +112,7 @@ The application under test must be instrumented so that its real-time performanc
 This requires comprehensive monitoring and debugging facilities to precisely identify and isolate any sources of real-time violations.
 
 For the non‑real‑time traffic, as much data as possible should be transmitted without degrading the real-time application’s performance. 
-This means, only throughput and packet‑loss metrics need be considered for this traffic in the monitoring.
+This means that only throughput and packet‑loss metrics need to be considered for this traffic in the monitoring.
 
 Moreover, this study will compare the real-time performance of the algorithms underpinning different Wi‑Fi standards. 
 For that, the server must support \acp{AP}  for Wi-Fi 4, 5 and 6 across all relevant frequency bands (2.4 GHz, 5 GHz and 6 GHz). 
@@ -140,15 +140,15 @@ Their study demonstrates the suitability of RT-Linux for such applications, repo
 Similarly, Arshiabanu \cite{ARSHIABANU_2014} presents a real-time system implemented using RT-Linux. 
 The study evaluates the impact of various scheduling policies on real-time performance and is executed on a Raspberry Pi. 
 Dewit et al. \cite{ae11aecebd4e4fd6896d0b8bb93fa73a} further investigate the influence of RT-Linux in combination with a Raspberry Pi 5 on scheduling latencies, reporting a maximum scheduling latency of 125 microseconds.
-This study is especially relevant for this work, because it uses the same hardware platform.
+This study is especially relevant for this work because it uses the same hardware platform.
 
-Despite these studies, there also are more critical perspectives. 
+Despite these studies, there are also more critical perspectives. 
 Siro Arthur et al. \cite{Siro_2007} also evaluated real-time capabilities of RT-Linux. 
 This study analyzes metrics such as context switch time, memory access latency and TCP latency. 
 The study reveals that while the PREEMPT\_RT patch enhances real-time capabilities, it does not reach the same level of determinism as systems natively designed for real-time applications. 
 Furthermore, this analysis was performed on single-core CPUs, where reduced shared resources can change the real-time behavior. 
 
-There are also studies with multicore platforms which question the suitability of RT-Linux for hard real-time environments. 
+There are also studies with multicore platforms that question the suitability of RT-Linux for hard real-time environments. 
 Carvalho et al. \cite{9018464} investigated RT-Linux running on a Raspberry Pi, focusing on latency metrics such as polling, timed loops, hardware interrupts and software interrupts. 
 Their results confirm that although RT-Linux offers certain real-time properties, it should only be used in non-critical real-time environments. 
 This conclusion is supported by Betz et al. \cite{5347056}, who state that RT-Linux is appropriate for soft real-time applications.
@@ -156,16 +156,16 @@ This conclusion is supported by Betz et al. \cite{5347056}, who state that RT-Li
 Yang et al. \cite{10870260} compare the real-time performance of NuttX, FreeRTOS, RT-Linux and Xenomai. 
 A noteworthy aspect of their study is the inclusion of both real-time capabilities and general-purpose features. 
 While RT-Linux can be used as a standalone system, to match these requirements, pure \acp{RTOS} like FreeRTOS and NuttX are executed alongside a general-purpose \ac{OS}. 
-Also in this study a Raspberry Pi 4 was used as the hardware platform. 
+Also in this study, a Raspberry Pi 4 was used as the hardware platform. 
 The results are showing that pure \ac{RTOS}, especially FreeRTOS, nevertheless deliver better real-time performance.
 
 In summary, the optimal \ac{RTOS} depends heavily on the specific application and real-time requirements. 
 Based on the referenced studies, FreeRTOS appears to offer the best real-time capabilities. 
-However, additional constraints beyond real-time performance must be considered when selecting the \ac{OS}, like stated in the previous section.
+However, additional constraints beyond real-time performance must be considered when selecting the \ac{OS}, as stated in the previous section.
 This means particularly hardware compatibility of the \ac{OS}. 
 The MediaTek 7925B22M Wi-Fi card used in this work lacks drivers outside the Linux ecosystem, thereby excluding FreeRTOS as a viable option.
 
-Considering the experience with RT-Linux on Raspberry Pi systems stated by the studies before and the demonstrated maximum scheduling latency of 125 microseconds along with a maximum jitter of 380 microseconds of the test-system, RT-Linux proves sufficient for the purposes of this work. 
+Considering the experience with RT-Linux on Raspberry Pi systems stated by the studies before and the demonstrated maximum scheduling latency of 125 microseconds, along with a maximum jitter of 380 microseconds of the test-system, RT-Linux proves sufficient for the purposes of this work. 
 This jitter is considered acceptable, since the expected \ac{RTT} is in the range of several milliseconds. 
 
 As described by Rostedt in \cite{rt_patch}, a  RT-Linux system can be created by extending the kernel with the $PREEMPT\_RT$ patch. 
@@ -179,7 +179,7 @@ However, this method is considerably more time-consuming compared to using a pre
 Due to the requirements defined in Chapter \ref{subsec:requirements}, the \ac{OS} must be capable of providing a foundation for both software and hardware. 
 For the Wi-Fi card drivers, it is essential, as previously mentioned, that the kernel is as recent as possible. 
 The kernel version can only be adapted with a reasonable effort, in the existing \acl{OS} for the Raspberry Pi 5.
-A build system has a possibility, to do this more easily.
+A build system has the possibility, to do this more easily.
 Moreover, certain kernel configurations must be set to support integration of these drivers. 
 These configurations can be managed much more flexibly and conveniently using a build system. 
 For this reason, the \ac{OS} used in this work is built using a build system.
@@ -211,7 +211,7 @@ The \texttt{Server Test Suite} is essential for the automated execution of these
 \begin{figure}[ht]
     \centering
      \includegraphics[width=\textwidth]{figures/Technologien_Testsystem.drawio.pdf}
-    \caption{Visualization of the test environment including used technologies.}
+    \caption{Visualization of the test environment, including used technologies.}
     \label{fig:technologies}
 \end{figure}
 
@@ -307,7 +307,7 @@ Accordingly, the RT application in this work is written in Rust.
 To implement monitoring of the real-time application, \ac{BPF} is used.  
 It can be seamlessly integrated into Rust code using \texttt{libbpf-rs}.  
 \ac{BPF}, is a technology for efficient in-kernel data processing and monitoring, originally designed for packet filtering.  
-As described by Gregg in \cite[Chap. 2.10]{Gregg_2020}, it was originally build to observe network packages.
+As described by Gregg in \cite[Chap. 2.10]{Gregg_2020}, it was originally built to observe network packages.
 And it offers nearly the same functionality as the widely used profiling tool \texttt{perf}.  
 Furthermore, it is also employed in practice for network monitoring.
 This is evident in \cite{network_obser} and \cite{9359159}.
@@ -364,7 +364,7 @@ This integration is necessary to develop the real-time application in Rust, as r
 
 All layers are built using Yocto version 5.2.1.  
 This corresponds to the \texttt{walnascar} branch.  
-As of in the mid of June, this was, besides the \texttt{master} branch, the most recent branch of the Yocto Project, as shown in~\cite{yocto-releases}.  
+As of mid-June, this was, besides the \texttt{master} branch, the most recent branch of the Yocto Project, as shown in~\cite{yocto-releases}.  
 The latest branch was selected to take advantage of the most up-to-date kernel version included therein.  
 
 The kernel version is crucial for the support of the \texttt{mt7925e} driver, which is only available starting from kernel version 6.8 and is better supported in even newer kernel releases, as described in~\cite{mt76}.  
@@ -449,7 +449,7 @@ The file can then be created using the command:
 With these extensions, the Rust applications—including binaries, source code and a local compilation environment—are fully installed on the target system.
 
 In summary, this chapter described the steps required to build an \ac{OS} using the Yocto Project that fulfills all requirements for the intended test environment.  
-To explain the implementation of the test system, an explanation of monitoring in general and the functionality of the used technologies in monitoring is necessary.
+To explain the implementation of the test system, an explanation of monitoring in general and the functionality of the technologies used in monitoring is necessary.
 So this will be described in the following chapter.
 
 \section{Monitoring} \label{subsec:monitoring}
@@ -473,7 +473,7 @@ These tools also internally rely on \texttt{libbpf} and \texttt{bcc}.
 \begin{figure}[H]
     \centering
      \includegraphics[width=\textwidth]{figures/BPF.drawio.pdf}
-    \caption{Illustration of the working principle of Berkley Package Filter}
+    \caption{Illustration of the working principle of the Berkley Package Filter}
     \label{fig:bpf:working_principle}
 \end{figure}
 
@@ -512,7 +512,7 @@ For the \ac{JIT} compiler to take over, it must be both supported and enabled, w
 As described in \cite{jit}, this option can be enabled by writing the value \texttt{1} to the file\\
 \texttt{/proc/sys/net/core/bpf\_jit\_enable}.  
 
-Like described by Gbadamosi et~al.\ in \cite[p.~4]{gbadamosi2024ebpfruntimelinuxkernel} the \ac{JIT} compiler translates the \ac{BPF} bytecode into native machine code for the running architecture at load time.  
+As described by Gbadamosi et~al.\ in \cite[p.~4]{gbadamosi2024ebpfruntimelinuxkernel} the \ac{JIT} compiler translates the \ac{BPF} bytecode into native machine code for the running architecture at load time.  
 This eliminates the overhead of interpreting instructions during execution and significantly improves performance, especially for programs that are invoked frequently or handle large volumes of events.  
  
 If the \ac{JIT} compiler is not enabled or supported, the \ac{BPF} program is executed using the in-kernel \ac{BPF} interpreter.  
@@ -536,7 +536,7 @@ Besides the 10 registers, the virtual machine also offers 512 bytes on the stack
 Additionally, more memory is available in maps.  
 These maps are created using the command \texttt{BPF\_MAP\_CREATE}, as described in \cite[p.~5]{gbadamosi2024ebpfruntimelinuxkernel}.  
 
-As Gregg discusses in \cite[Chap.~2.2]{Gregg_2020}, \ac{BPF} programs can exchange data among each other through using maps.  
+As Gregg discusses in \cite[Chap.~2.2]{Gregg_2020}, \ac{BPF} programs can exchange data among each other by using maps.  
 Furthermore, the maps are synchronized, allowing parallel memory accesses.  
 Maps can be accessed from user space, providing a way to transfer collected data from the virtual machine back to user space.  
 Command-line tools such as \texttt{bpftrace} use these maps to display statistics, for example.  
@@ -545,11 +545,11 @@ As Gregg explains in \cite[Chap.~2.2]{Gregg_2020}, this has the advantage that n
 Since the program runs entirely in kernel space at runtime, different event sources can be filtered and processed there.  
 
 Gregg uses in \cite[Chap. 2.6]{Gregg_2020} the event source as an umbrella term for events and probes, so for static and dynamic event sources.
-Since this term is inconvenient, in literature often the term static and dynamic events is used.
+Since this term is inconvenient, in literature, the terms static and dynamic events are often used.
 So to be more precise in the following, the term event is only used for static event sources and the term probes is only used for dynamic event sources.
 
 As shown in Figure~\ref{fig:bpf:working_principle}, the virtual machine provides another method for transferring data from the kernel to user space.  
-The ring buffer, which Gregg in \cite[Chap.~2.3]{Gregg_2020} also describes as perf buffer, is used to continuously transfer data from the kernel to user space.  
+The ring buffer, which Gregg in \cite[Chap.~2.3]{Gregg_2020} also describes as the perf buffer, is used to continuously transfer data from the kernel to user space.  
 
 Nair et al. developed GAPP in \cite{Nair_2020}, a tool to identify serialization bottlenecks in parallel Linux applications.  
 For monitoring, \ac{BPF} is also used, and maps and perf buffers are employed for data exchange between kernel and user space.  
@@ -563,7 +563,7 @@ As a result, the effort to integrate, for example, RelayFS with \ac{BPF} is not 
 Therefore, this work also relies on maps and perf buffers.
 
 The modules not yet mentioned from Figure~\ref{fig:bpf:working_principle} are BPF helpers, event sources, and BPF syscalls.  
-All of these are shown as yellow boxes, which, as explained earlier, indicates that they represent components, which do not belong fully to \ac{BPF}, but influence the execution of the \ac{BPF} program.  
+All of these are shown as yellow boxes, which, as explained earlier, indicate that they represent components, that do not belong fully to \ac{BPF}, but influence the execution of the \ac{BPF} program.  
 
 As described by Gregg in \cite[Chap.~2.3.6]{Gregg_2020}, a \ac{BPF} program cannot execute arbitrary kernel functions.  
 To enable access to information from the \ac{OS} context within the program, BPF helper functions are used.  
@@ -572,11 +572,11 @@ The BPF API in this context refers to the set of functions and interfaces that t
 As illustrated in Figure~\ref{fig:bpf:working_principle}, these helpers can be invoked via the \texttt{bpf\_call} instruction.  
  
 Among these restricted kernel calls is \texttt{bpf\_ktime\_get\_ns()}, which returns the time since kernel start in nanoseconds.  
-This enables access to a monotonic clock, allowing the measurement of time intervals between specific event sources at kernel level.  
+This enables access to a monotonic clock, allowing the measurement of time intervals between specific event sources at the kernel level.  
 
-Other important BPF helpers, which are used in this work are \\
+Other important BPF helpers, which are used in this work, are \\
 \texttt{bpf\_get\_current\_pid\_tgid()} and \texttt{bpf\_get\_current\_comm(buf, buf\_size)}.  
-With this functions the current process ID and the name of the current process can be retrieved, respectively. 
+With these functions, the current process ID and the name of the current process can be retrieved, respectively. 
 
 As illustrated in Figure~\ref{fig:bpf:working_principle}, beside \ac{BPF} helper functions, also syscalls can be invoked from the \ac{BPF} virtual machine.  
 These syscalls are specific to the \ac{BPF} environment and provide the same functionality as conventional syscalls, but operate differently.  
@@ -621,12 +621,12 @@ This illustration indicates, among other aspects, where specific static and dyna
 \end{figure}
 
 In Figure~\ref{fig:probes}, only three monitoring techniques are distinguished: dynamic tracing, static tracing, and sampling.  
-In the following the available monitoring techniques are discussed, their differences highlighted and it will be explained what a probe is and how probes can be classified.  
+In the following, the available monitoring techniques are discussed, their differences highlighted and it will be explained what a probe is and how probes can be classified.  
 
 Gregg describes in \cite[Chap.~1.2]{Gregg_2020} that monitoring techniques serve the purpose of observability.  
-He defines the term \emph{observability} as the ability to understand a system by means of monitoring tools.  
+He defines the term observability as the ability to understand a system by means of monitoring tools.  
 
-The term \emph{observability} was originally introduced in 1960 by Kalman in \cite{Klmn1960ContributionsTT}.  
+The term observability was originally introduced in 1960 by Kalman in \cite{Klmn1960ContributionsTT}.  
 He defines observability as the property that the internal state of a system at any given time can be completely determined from its outputs over a finite period of time.  
 
 \begin{equation} \label{eq:obser}
@@ -645,7 +645,7 @@ According to Kalman \cite{Klmn1960ContributionsTT}, a system is observable if th
 The variables $A$ and $C$ in equation \ref{eq:matrix} have the same meaning, like in equation \ref{eq:obser}.
 The product $C A^i$ describes how the output at time step $k+i$ depends on the initial state $x_k$.
 To $i$ applies $i \in [0, n-1]$.
-The observability matrix in equation \ref{eq:matrix} has one column for each state variable, in other words $n$ columns if $x_k \in \mathbb{R}^n$.
+The observability matrix in equation \ref{eq:matrix} has one column for each state variable, in other words, $n$ columns if $x_k \in \mathbb{R}^n$.
 \begin{equation} \label{eq:matrix}
 \mathcal{O} =
 \begin{bmatrix}
@@ -663,7 +663,7 @@ This condition ensures that the current state $x_k$ can be fully reconstructed f
 
 Nevertheless, Gregg's definition of observability does not deviate substantially from Kalman's original formulation.  
 A system can only be fully understood if its internal state can be determined at all times from its outputs. 
-Also, Gregg's definition is more practically oriented, where the original definition is more oriented to the theory.
+Also, Gregg's definition is more practically oriented, whereas the original definition is more oriented to the theory.
 In order for a system to produce outputs from which its internal state can be inferred, certain analysis techniques are required.  
 Gregg categorizes these techniques in \cite[Chap.~1.2]{Gregg_2020} into \texttt{tracing}, \texttt{snooping}, \texttt{sampling} and \texttt{profiling}.  
 
@@ -673,13 +673,13 @@ This topic is closely related to debugging, yet Gill already employed several te
 He also emphasized that his error detection method should have as little impact on the system as possible.  
 Furthermore, he employed monitoring and reacting to event sources, as can be seen in \cite[p.~540, 547]{doi:10.1098/rspa.1951.0087}.  
 He's not using the term ``tracing`` in his paper yet, but he describes a method that nowadays is considered between debugging and tracing.
-Like Gregg describes in \cite[Chap. 1.2]{Gregg_2020} nowadays there are various tools in the Linux context that enable tracing, such as \texttt{strace} \cite{strace} or \texttt{top}.  
+Like Gregg describes in \cite[Chap. 1.2]{Gregg_2020} nowadays, there are various tools in the Linux context that enable tracing, such as \texttt{strace} \cite{strace} or \texttt{top}.  
 According to Gregg, \texttt{top} internally also works with event sources and subsequently outputs a summary of the information extracted from these event sources to the console.  
-From this, it follows that tracers must, on the one hand, be capable of detecting event sources, and on the other hand, also be able to read their metadata in order to fully understand their context.  
+From this, it follows that tracers must, on that hand, be capable of detecting event sources, and on the other hand, also be able to read their metadata in order to fully understand their context.  
 Furthermore, since event sources can occur very frequently, the overhead of a tracer must remain low.
 Otherwise, the system would be significantly impaired.  
 
-In this work, \texttt{tracing} is primarily used, and therefore the other three techniques will not be discussed further at this point.  
+In this work, \texttt{tracing} is primarily used, and therefore, the other three techniques will not be discussed further at this point.  
 After having described tracing, the following section explains what an event source is and which types exist in the Linux context.  
 As previously mentioned and as shown in Figure \ref{fig:bpf:working_principle}, they can be classified into static and dynamic event sources.
 
@@ -734,12 +734,12 @@ The following describes the operation of \acp{kprobe} and \acp{kretprobe}:
     \item A \textbf{Trap} occurs when the CPU reaches the address specified during registration, triggering the \ac{kprobe} dispatcher.  
           The normal function flow is interrupted, and control is transferred to the \ac{kprobe} handler.  
           As described in \cite{kprobe_doc}, all registers are saved and control is passed to the handler via the \texttt{notifier\_call\_chain}.  
-    \item During the \textbf{\ac{kprobe}-Handler} the \texttt{pre\_handler} is executed first, followed by emulation of the original instruction, and then the \texttt{post\_handler} is executed.  
+    \item During the \textbf{\ac{kprobe}-Handler}, the \texttt{pre\_handler} is executed first, followed by emulation of the original instruction, and then the \texttt{post\_handler} is executed.  
           In the \texttt{pre\_handler}, the address of the \texttt{\ac{kprobe} struct}  is passed to the handler.  
           Another function of the \texttt{pre\_handler} is to initialize the \ac{kretprobe}.  
           As can be seen in \cite{linux_kprobes_616}, this is performed by \texttt{pre\_handler\_kretprobe(struct kprobe *p, struct pt\_regs *regs)}, where \texttt{*p} is the \texttt{\ac{kprobe} struct}  and \texttt{*regs} contains registers saved during the trap.  
           This function replaces the return address of the probed function on the stack with the trampoline address and stores the original return in the \texttt{kretprobe\_instance} struct.  
-          This has the affect that the trampoline is triggered when the original function returns.  
+          This has the effect that the trampoline is triggered when the original function returns.  
           Aside from this kretprobe-specific \texttt{pre-handler}, regular \ac{kprobe} can execute user-defined code before the actual function.  
           After the \texttt{pre\_handler}, the copied instruction is executed in a single-step manner, as described in \cite{kprobe_doc}.  
           Copying the instruction is necessary to avoid removing the breakpoint, which would allow other \acp{CPU} to skip the \ac{kprobe}.  
@@ -750,7 +750,7 @@ The following describes the operation of \acp{kprobe} and \acp{kretprobe}:
           This handler prevents the function from crashing immediately and implements a user-defined routine for handling the error condition.
     \item The \textbf{Trampoline} typically consists, as described in \cite{kprobe_doc}, of a NOP instruction.  
           As outlined by Stallings in \cite[p. 545]{Stallings_2018}, the NOP instruction means no operation.
-          So this operation only acts as placeholder and makes space in the instruction stream.
+          So this operation only acts as a placeholder and makes space in the instruction stream.
           The trampoline handler is executed and transfers control to the return handler.  
           After execution of the return handler, the instruction pointer is restored to the original return address stored in \texttt{kretprobe\_instance}.  
           Essentially, the trampoline acts as a NOP instruction with an additional \ac{kprobe}.  
@@ -834,8 +834,8 @@ As described in \cite{uprobe_mail}, the instructions are loaded into a separate 
 This area is implemented using a page where the instructions are single-stepped.  
 Therefore, the instructions are executed per process.  
 Dronamraju refers to this area, where instructions are executed per process using single-stepping, as the XOL area.
-In this context XOL means execute out of line.  
-The main difference in the execution flow of a \ac{uprobe} is that it requires two context switches and is executed per process.  
+In this context, XOL means execute out of line.  
+The main difference in the execution flow of a \ac{uprobe} is that it requires two context switches and is executed per-process.  
 As described by Zhen et al. in \cite[p. 2]{zheng2023bpftimeuserspaceebpfruntime}, these context switches can increase the runtime of an \ac{uprobe} by a factor of ten.  
 
 Furthermore, at the time of this work, no optimizations exist for \acp{uprobe} that are part of the kernel mainline.  
@@ -844,7 +844,7 @@ This is because, as described in \cite[p. 3-333]{jmp}, the jump instruction load
 As a result, all processes executing the code containing the probed function would execute the \ac{uprobe} handler using single-stepping.  
 This behavior contradicts the design principle of \acp{uprobe}, which is that they are executed per process.
 Therefore, the breakpoint instruction \texttt{int3} is used, which triggers an exception and causes a context switch into kernel space, where execution is redirected to the XOL area.  
-Since there exists one XOL area per process, the per process design can be preserved.  
+Since there exists one XOL area per process, the per-process design can be preserved.  
 
 Because \acp{uprobe} cannot be optimized and additionally involve context switches, they are slower than \acp{kprobe}.  
 There is less documentation and fewer studies available on \acp{uprobe} compared to \acp{kprobe}, which is why there are only limited reliable data regarding the overhead of \acp{uprobe}.  
@@ -867,7 +867,7 @@ The approach is limited to the use of \acp{uprobe} in the context of \ac{BPF}.
 In the proposed program \texttt{bpftime}, the virtual machine for \ac{BPF} is implemented in user space instead of in the kernel.  
 Thus, the entire execution of a \ac{BPF} program, as described before, takes place in user space.  
 It would go beyond the scope here to explain the execution flow in detail, but Zheng et al. were able to fully implement \acp{uprobe} in user space.  
-The per process principle was preserved in this implementation.  
+The per-process principle was preserved in this implementation.  
 As a result, all context switches were eliminated, which is also reflected in the performance results.  
 
 The performance of user space \acp{uprobe} and \acp{uretprobe} is approximately 10 times better than that of the original probes.  
@@ -878,7 +878,7 @@ In particular, the values of optimized \acp{uretprobe} show no significant diffe
 However, at the time of this work, \texttt{bpftime} is still a work in progress and suffers from several bugs and an unstable API, as described in \cite{bpftime}.  
 Nevertheless, \texttt{bpftime} is mentioned here to illustrate that the performance of \acp{uprobe} could soon approach that of \acp{kprobe}.  
 
-After having explained what a probe is, and how it is implemented in Linux, both in the kernel and in user space, the following section explains what an event is.  
+After having explained what a probe is and how it is implemented in Linux, both in the kernel and in user space, the following section explains what an event is.  
 Furthermore, it will be discussed how events are implemented and what differences exist compared to probes.  
  \subsection{Tracepoints}
 An event, as Gregg describes in \cite[Chap. 2.9, Chap. 2.10]{Gregg_2020}, serves the purpose of static instrumentation in both user space and kernel space.  
@@ -891,7 +891,7 @@ Kernel markers are also static event sources and were developed in the context o
 As Desnoyers explains in \cite[p. 170]{Desnoyers2009}, the original motivation for kernel markers was to provide an alternative to \acp{kprobe}, since their overhead was too high for the development of \texttt{LTTng}.  
 Tracepoints were implemented shortly thereafter as an extension of kernel markers.  
 As Desnoyers notes in \cite[p. 171]{Desnoyers2009}, the essential difference is a stable\footnote{Tracepoints are static and therefore normally remain unchanged, but as Gregg describes in \cite[Chap. 2.9]{Gregg_2020}, the API of tracepoints may change, although this happens only rarely.} API.  
-This ensures that both the user and the callee side have a well defined agreement about the arguments of a given function.  
+This ensures that both the user and the callee side have a well-defined agreement about the arguments of a given function.  
 This is implemented using the library \texttt{include/trace/events}, in which the corresponding tracepoint function can be inserted into the source code at the desired location.  
 For this tracepoint function, both the parameters to be passed and the return values are well defined.  
 The structure of the tracepoints can be found under \texttt{/sys/kernel/debug/tracing/events/subsystem/event/format}.
@@ -912,7 +912,7 @@ Gregg explains in \cite[Chap. 2.9.2]{Gregg_2020} that, when compiling the kernel
 This instruction performs no operation and therefore introduces only a minimal runtime overhead.  
 It represents the tracepoint in its inactive state.  
 
-When the tracepoint is activated, the kernel replaces the NOP instruction with a JMP instruction of also 5-bytes that points to a trampoline.  
+When the tracepoint is activated, the kernel replaces the NOP instruction with a JMP instruction of 5-bytes that points to a trampoline.  
 In addition, a callback routine is registered for the tracepoint.  
 The trampoline in this context is a small routine that executes all callback functions registered for this tracepoint and forwards the arguments collected by the tracepoint.  
 Multiple callback functions can be registered per tracepoint, typically by tracers such as \texttt{ftrace}, \texttt{perf}, or \texttt{LTTng}.  
@@ -940,7 +940,7 @@ This macro consists of the following six components:
     \item Furthermore, the \textbf{structure} of the data passed to the ring buffer must be specified.  
           This structure can include additional macros such as \texttt{\_\_field(type1, field1)} or \texttt{\_\_array(char, arr, LEN)}, as shown in lines~9--14 of Listing~\ref{lst:tracepoint}.  
           Here, \texttt{type1} could, for example, be an \texttt{int}, and \texttt{field1} is the name of the variable.  
-          For arrays, the same applies, with the additional parameter \texttt{LEN} which is specifying the number of elements.  
+          For arrays, the same applies, with the additional parameter \texttt{LEN} which specifies the number of elements.  
 
     \item In addition, the \textbf{assignment} must define how the data is stored in the ring buffer.  
           As explained by Rostedt in \cite{tracepoints_3}, this step specifies how the previously defined structure is populated with the arguments introduced in step~2.  
@@ -986,7 +986,7 @@ Having described how tracepoints function and the fact that they were developed 
 \label{lst:tracepoint}
 \end{listing}
 
-Also for tracepoints, there are only very few reliable data regarding their overhead time.  
+Also, for tracepoints, there are only very few reliable data regarding their overhead time.  
 A distinction must be made between inactive and active tracepoints.  
 
 As Edge describes in \cite{min_imp}, inactive tracepoints incur an overhead of approximately 2-4 cycles.  
@@ -1001,7 +1001,7 @@ This reduces the overhead slightly.
 According to his results, raw tracepoints exhibited a maximum overhead of 9\%, regular tracepoints up to 14\%, and \acp{kprobe} up to 30\%.  
 However, he does not provide any information on whether the \acp{kprobe} used in the measurements were optimized or not.  
 These results contradict the previously mentioned findings.
-For optimized \acp{kprobe} they appear too poor, while for unoptimized ones they appear too good.  
+For optimized \acp{kprobe}, they appear too poor, while for unoptimized ones, they appear too good.  
 
 Desnoyers reports in \cite[p.~94]{Desnoyers2009} that \acp{kprobe} require 1.49\,$\mu$s.  
 This also explains why tracepoints were developed as an evolution of \acp{kprobe}.  
@@ -1012,11 +1012,11 @@ There are no reliable data indicating whether optimized \acp{kprobe} or tracepoi
 However, in both cases, the overhead is very small.  
 
 Besides the tracepoints for the kernel space, there also exist \acp{USDT} for the user space.  
-In the following section the user space equivalent of tracepoints will be explained,
+In the following section, the user space equivalent of tracepoints will be explained,
 
 \subsection{User-level statically defined tracing}
 As Gregg describes in \cite[Chap.~2.10]{Gregg_2020}, they work in a very similar way to kernel tracepoints.  
-\acp{USDT} were developed to enable static tracing in user space.  
+\acp{USDT} were developed to enable static tracing in the user space.  
 The functionality was first implemented in 2004 as part of \texttt{DTrace} \cite{USDT,269899}, but was only added to Linux later.  
 From 2016 onwards, an integration with \ac{BPF} was available through \texttt{BCC}.  
 
@@ -1059,12 +1059,12 @@ Furthermore, maintenance effort is required to ensure that they remain available
 Despite these disadvantages, the static event sources also provide several important advantages.  
 First, a stable API exists that defines exactly which information is made available by a tracepoint.  
 Moreover, tracepoints are preserved in future kernel versions.  
-A performance improvement over dynamic event sources\footnote{For the overhead of dynamic event sources, the minimum values correspond to the minimal reported latency of a simple probe, i.e. a \ac{kprobe} or \ac{uprobe}, and the maximum values correspond to the maximum reported latency of the respective return probes.} can also be observed.  
+A performance improvement over dynamic event sources\footnote{For the overhead of dynamic event sources, the minimum values correspond to the minimal reported latency of a simple probe, i.e., a \ac{kprobe} or \ac{uprobe}, and the maximum values correspond to the maximum reported latency of the respective return probes.} can also be observed.  
 
-On the kernel side, tracepoints are similar fast as optimized \acp{kprobe}.  
+On the kernel side, tracepoints are as fast as optimized \acp{kprobe}.  
 Since \acp{kprobe}, however, cannot always be optimized, the overall performance of tracepoints is generally better.  
 On the user-level side, the performance of \acp{USDT} is significantly better than that of \acp{uprobe} and only slightly worse than that of tracepoints.
-Therefore their performance is, depending on the tracer, between 10 and 40 times faster than a \ac{uprobe}.  
+Therefore, their performance is, depending on the tracer, between 10 and 40 times faster than a \ac{uprobe}.  
 
 \begin{table}[ht]
 \centering
@@ -1089,8 +1089,8 @@ Therefore their performance is, depending on the tracer, between 10 and 40 times
 \label{tab:event}
 \end{table}
 
-From this data, it follows that static event sources require more effort to maintain and to implement.  
-However, this effort is compensated by better performance and higher stability.  
+From this data, it follows that static event sources require more effort to maintain and implement.  
+However, this effort is compensated for better performance and higher stability.  
 
 This observation is also supported in the literature.  
 Gregg \cite[Chap.~2.9]{Gregg_2020} explains that tracepoints should always be used first whenever possible.  
@@ -1101,15 +1101,15 @@ For monitoring in user space, \acp{uprobe} are also considered insufficient, as 
 They explain that, due to the relatively high overhead of \acp{uprobe} and the additional required context switches, these are not suitable for time-critical or real-time monitoring tasks.  
 
 In summary, considering the advantages and disadvantages of the respective event sources, it is considered best practice to prefer static ones.  
-If this is not possible due to lack of support or disproportionately high effort, then, as also mentioned by Calavera et al. \cite[Chap.~4]{Calavera_Fontana_Frazelle_2020}, dynamic event sources can and should be used.  
+If this is not possible due to a lack of support or disproportionately high effort, then, as also mentioned by Calavera et al. \cite[Chap.~4]{Calavera_Fontana_Frazelle_2020}, dynamic event sources can and should be used.  
 
-Since the basics to monitoring and the functionalities of event sources, which are needed for the implementation, were described, the following chapter focuses on the implementation details of the test system itself.
+Since the basics of monitoring and the functionalities of event sources, which are needed for the implementation, were described, the following chapter focuses on the implementation details of the test system itself.
 
 \section{Test system}
-In this chapter, the test system is divided into the four components test application Server and Client, Test Automation and \ac{AP} Configuration. 
-For the implementation of the client and server, the test application, which is generating the data, is required.
-Therefore the test application will be described first.  
-Afterwards the implementation of the client and server will be explained.  
+In this chapter, the test system is divided into the four components test application, Server and Client, Test Automation and \ac{AP} Configuration. 
+For the implementation of the client and server, the test application, which generates the data, is required.
+Therefore, the test application will be described first.  
+Afterwards, the implementation of the client and server will be explained.  
 Subsequently, the focus shifts to test automation, and finally to the creation of the \ac{AP} .  
 
 \subsection{Test Application} \label{subsec:appl}
@@ -1125,11 +1125,11 @@ For the test application, the following three aspects are relevant:
     Therefore, influencing factors that are not related to Wi-Fi should be minimized.  
     If the execution time of the application is too long or if it requires many shared system resources such as the \ac{CPU}, cache, memory, or graphics card, then the application becomes vulnerable to real-time issues.  
     That resource contention is a common problem for real-time systems, as stated among others by Aceituno et al. in \cite[p. 1]{ACEITUNO2021102223}.
-    Especially in a multi-core environment it is not possible to avoid resource contention completely, but to restrict it as far as possible.
+    Especially in a multi-core environment, it is not possible to avoid resource contention completely, but to restrict it as far as possible.
     It is mandatory that the application achieves real-time capability, since real-time violations would otherwise directly affect the test results.  
     
     \item \textbf{Amount of data}:  
-    It is also required that the application continuously generates data that can be transmitted.  
+    It is also required that the application continuously generate data that can be transmitted.  
     This ensures that a sufficiently large number of data transmissions take place, which in turn are the foundation for reliable test results.  
     In other words, if the application only generates two data sets, only two transmissions occur.  
     From such a small number of transmissions, no reliable conclusions regarding the influencing factors on Wi-Fi performance can be drawn.  
@@ -1157,7 +1157,7 @@ It is inspired by the theory of scheduling workload models, as described by Baru
 Although this work does not investigate the real-time capability of scheduling itself, the models can nevertheless be applied in an adapted form to the network.  
 
 In scheduling theory, jobs are also used to represent workload models.  
-There a job represents an application that is executed by a thread.  
+A job represents an application that is executed by a thread.  
 Each job is characterized by three properties:  
 
 \begin{itemize}
@@ -1168,7 +1168,7 @@ Each job is characterized by three properties:
     \item The \textbf{\ac{WCET}}, which denotes the maximum execution time required by the job.  
           It corresponds to the execution time in the worst case, i.e., when the job is executed under the most unfavorable conditions.  
           Such conditions may arise due to external influences such as interrupts or blocked resources.  
-          In the networking context especially the time in the network stack can be considered as a part of these conditions.
+          In the networking context, especially the time in the network stack can be considered as a part of these conditions.
           The \ac{WCET} must be smaller than the scheduling window to guarantee that the job finishes before its deadline, thereby ensuring that the application represented by the job is real-time capable.  
 \end{itemize}
 
@@ -1180,11 +1180,11 @@ As illustrated in Figure \ref{fig:application}, the periodic model of Liu et al.
 This model has been used for more than fifty years to evaluate the real-time properties of applications.  
 The model assumes an implicit deadline, which is defined by the length of the period.  
 
-A job $J_i$ starts at its arrival time $S_i$ and should complete by its deadline $D_i$.  
+A job $J_i$ starts at its arrival time $S_i$ and should be completed by its deadline $D_i$.  
 In the case of an implicit deadline, the deadline $D_i$ is equivalent to the arrival time of the subsequent job, i.e., $S_{i+1}$.  
 These time points are always separated by the period $p_i$.  
 The period usually remains constant, such that $\forall i,j \in [0, k]$, $k \in \mathbb{N}\setminus \{0\}: p_i = p_j$.  
-The period therefore also defines the length of the scheduling window.  
+The period, therefore, also defines the length of the scheduling window.  
 
 Besides the original workload model proposed by Liu et al., there exist other models, such as the three-parameter \texttt{sporadic task model}, which is introduced by Baruah et al. in \cite[p.~15, 16]{Baruah2015}.  
 This model is structured similarly to the periodic model but differs in two essential aspects.  
@@ -1211,10 +1211,10 @@ Thus, the event-triggered model is described as the more efficient option.
 
 However, this view is contrasted by the study of Meister et al. in \cite{meister2023sharednetworkeffectstime}, where the two models are also compared.  
 Their results demonstrate that in practice, especially under network effects, the time-triggered model can outperform the event-triggered one.  
-Since the studies of Khojasteh et al. where only theoretically and the network load was not considered, the results of Meister et al. can be considered as meaningfull.
+Since the studies of Khojasteh et al. were only theoretical and the network load was not considered, the results of Meister et al. can be considered as meaningful.
 
 Since this work also considers network effects, and because the periodic model provides lower complexity, improved observability, and enhanced predictability, a periodic model is adopted in this thesis.  
-The periodic model has a lower complexity, because it has no separate parameter for a deadline or a minimum period and therefore less parameters in general.
+The periodic model has a lower complexity, because it has no separate parameter for a deadline or a minimum period and therefore fewer parameters in general.
 It can also be monitored more easily, because it is more predictable.  
 It can be determined exactly when the next job will occur and when all jobs will be completed.  
 
@@ -1236,8 +1236,8 @@ The application visualizes a unit circle.
 In the following, it is described how this circle is constructed.  
 The entire coordination is performed by the server, while the client has no information other than what the server provides.  
 The execution of the job is labeled with numbers, starting with \circnum{1} which represents $S_i$.
-The server is managing this, by starting a timer.
-In the first step, also the angle $\alpha$ is calculated, which determines the point on the circle.  
+The server is managing this by starting a timer.
+In the first step, the angle $\alpha$ is also calculated, which determines the point on the circle.  
 It is computed using $2\pi \div k \times i$ and is shown at the bottom left of the circle.  
 Here, $2\pi \div k$ denotes the step size and $i$ the step number.  
 The previously described variable $k$ defines the number of points on the circle and thus also the number of jobs.  
@@ -1256,9 +1256,9 @@ If the deadline is missed, a penalty is applied.
 As described in Section \ref{sec:real_time}, the value of a real-time application does not only depend on the result but also on the timing constraints.  
 Therefore, $y_p$ was introduced.  
 Even if $D_i$ was missed, the result would still be correct.  
-However, in order to visualize the real-time violation, the result is deliberately distorted by $y_p$, since according to the definition of a real-time application it must be considered incorrect.  
+However, in order to visualize the real-time violation, the result is deliberately distorted by $y_p$, since, according to the definition of a real-time application, it must be considered incorrect.  
 
-In step \circnum{7}, the angle $\alpha$, the calculated coordinates $(x_i, y_i)$, and the penalty $y_{pi}$, which is 0 if the real-time constraints are satisfied, are stored in a pre-allocated array.  
+In step \circnum{7}, the angle $\alpha$, the calculated coordinates $(x_i, y_i)$, and the penalty $y_{pi}$, which is zero if the real-time constraints are satisfied, are stored in a pre-allocated array.  
 This is shown in the middle of Figure \ref{fig:application}.  
 In step \circnum{8}, after all jobs are completed, the results are visualized.  
 This ensures that the real-time capability of the application is not restricted.  
@@ -1312,7 +1312,7 @@ As described in \cite{libbpf-rs}, the Rust code resides in the \texttt{/src} dir
 The \ac{BPF} file must have the extension \texttt{.bpf.c}.
 In order to integrate the \ac{BPF} program into the Rust code, a skeleton must be generated.  
 A skeleton is an automatically created binding layer that provides a type-safe interface to the maps and programs defined in the compiled \ac{BPF} object file.  
-It abstracts away low-level details of loading, attaching, and accessing kernel objects, and thus enables the interaction from rust with the \ac{BPF} subsystem in a safe and idiomatic manner.  
+It abstracts away low-level details of loading, attaching, and accessing kernel objects, and thus enables the interaction from Rust with the \ac{BPF} subsystem in a safe and idiomatic manner.  
 
 As shown in Listing~\ref{lst:setup}, line~1, this skeleton is subsequently included in the Rust code.  
 
@@ -1376,7 +1376,7 @@ Additionally, the maps defined in the \ac{BPF} file are retrieved to enable acce
 Once the \ac{BPF} file is operational in kernel space, a ring buffer is created in lines 11--14, to which a callback function is attached.  
 Although Gregg \cite[Chap. 2.1]{Gregg_2020} describes communication with the user space via a perf buffer, this work employs a ring buffer.  
 
-As described in \cite{ring-buffer}, the ring buffer is the successor of the perf buffer and was introduced in Linux kernel version 5.8 in 2020.  
+As described in \cite{ring-buffer}, the ring buffer is the successor of the perf buffer and was introduced in the Linux kernel version 5.8 in 2020.  
 Liu et al. \cite[p. 6]{10.1145/3672197.3673430} report that it provides up to 25\% lower access latency.  
 At the time of publication of \cite{Gregg_2020}, the ring buffer was not yet mainline, which explains why Gregg uses the perf buffer.  
 
@@ -1397,7 +1397,7 @@ These are shown in Listing~\ref{lst:msg_types}.
 The attribute \texttt{\#[repr(u8)]} specifies that the enumeration \texttt{MessageType} is represented internally as an unsigned 8-bit integer as described in \cite{repr}.  
 The attribute \texttt{\#[derive(Serialize, Deserialize, Debug, PartialEq)]}, like state in \cite{derive}, instructs the Rust compiler to automatically generate implementations for the traits \texttt{Serialize}, \texttt{Deserialize}, \texttt{Debug}, and \texttt{PartialEq}.  
 This allows instances of the enumeration to be easily serialized and deserialized for communication purposes.
-For this the crate \texttt{bytemuck} is used, which is described in \cite{bytemuck}.
+For this, the crate \texttt{bytemuck} is used, which is described in \cite{bytemuck}.
 This is necessary to reduce memory allocations and to ensure the correct layout of the message structures.
 
 \begin{listing}[H]
@@ -1424,8 +1424,8 @@ After the state \texttt{Start}, the three states \texttt{\ac{NTP}}, \texttt{\ac{
 All three states serve the purpose of time synchronization.  
 Contrary to what their names suggest, \ac{NTP} and \ac{PTP} are not directly applied.  
 Instead, the names merely describe the functionality of the corresponding synchronization protocols.  
-Accordingly, in the \ac{NTP} phase a coarse synchronization between client and server is performed.  
-In contrast, in the \ac{PTP} phase a finer synchronization is carried out.  
+Accordingly, in the \ac{NTP} phase, a coarse synchronization between client and server is performed.  
+In contrast, in the \ac{PTP} phase, a finer synchronization is carried out.  
 
 To understand why synchronization is necessary, the exact implementation of the monitoring process is first considered.  
 The objective of the monitoring is to represent, as precisely as possible, the duration required by the program in specific parts of the data transmission process.  
@@ -1452,7 +1452,7 @@ For the measurements, tracepoints are used, since they provide the advantages de
 
 \begin{itemize}
     \item \textbf{Interval $t_1$}\label{itm:t1} measures the time the application requires to compute the X-coordinate and to transfer the packet from user space to kernel space.  
-          Therfore it starts in the application on the server, i.e., at position \circnum{1} in Figure~\ref{fig:application}.  
+          Therfore, it starts in the application on the server, i.e., at position \circnum{1} in Figure~\ref{fig:application}.  
           It ends at the tracepoint \texttt{net\_dev\_queue}, which marks the entry into the \ac{Qdisc} and thus the TX API.  
           The TX API is described in detail in Section~\ref{subsec:linux_stack}.  
           As shown in Figure~\ref{fig:tx}, the packet already traverses the transport and network layers and ends at the entry into the link layer.  
@@ -1474,14 +1474,14 @@ For the measurements, tracepoints are used, since they provide the advantages de
           The interval starts at the end of $t_2$, i.e., at the tracepoint \texttt{net\_dev\_xmit}, and ends at the tracepoint \texttt{consume\_skb} on the client.    
           This interrupt activates the client's poll queue via the soft IRQ \texttt{net\_rc\_action}.  
           A device in this queue triggers the tracepoint \texttt{consume\_skb} to read the packet from the buffer. 
-          This is the first tracepoint which is triggered when a network packet arrives at a device. 
+          This is the first tracepoint that is triggered when a network packet arrives at a device. 
           Thus, interval $t_3$ covers the time from the server's link layer through the physical layer, across the medium, into the client's physical and link layers, more precisely into NAPI.  
           The terms NAPI, RX ring, and soft IRQ are explained in Sections~\ref{subsec:linux_stack} and \ref{subsec:real_time_kernel}.  
-          This interval involves multiple layer transitions of the \ac{OSI-model}, as well as critical points such as the RX and TX ring buffers of the drivers and the processing in both \acp{NIC}.  
+          This interval involves multiple-layer transitions of the \ac{OSI-model}, as well as critical points such as the RX and TX ring buffers of the drivers and the processing in both \acp{NIC}.  
           However, no further tracepoints exist in these areas to allow finer-grained monitoring.  
 
     \item \textbf{Interval $t_4$}\label{itm:t4} covers the time from the client's link layer, through the network and transport layers, into the application.
-          Thus it starts at the client's \texttt{consume\_skb} tracepoint and ends when the packet reaches the application in the client.    
+          Thus, it starts at the client's \texttt{consume\_skb} tracepoint and ends when the packet reaches the application in the client.    
           In this phase, a context switch from kernel space to user space and a system call are required.  
           Both the context switch and the system call may vary in duration depending on system load.  
 

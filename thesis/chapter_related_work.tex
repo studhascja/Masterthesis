@@ -1,11 +1,11 @@
 \chapter{Related Work} \label{sec:related}
 
 There are numerous studies investigating the real-time capabilities of Wi-Fi.  
-Theses studies can be divided by their focus.
+These studies can be divided by their focus.
 They prioritize either designing Wi-Fi for real-time applications or improving the real-time capability of Wi-Fi.
 
 Works which focus on Wi-Fi and hard real-time operations, like Wei et al. \cite{6728869} and Moraes et al. \cite{4638758} rely mostly on the \ac{TDMA} approach.  
-In both studies, it is reported that hard real-time can only be achieved through a deterministic \ac{MAC}, what \ac{TDMA} was developed for.  
+In both studies, it is reported that hard real-time can only be achieved through a deterministic \ac{MAC}, which \ac{TDMA} was developed for.  
 As a result, \cite{6728869} demonstrates that a frequency of real-time packets of up to 6 kHz can be sustained.  
 
 Avdotin et al. \cite{Avdotin_2019} also address the \ac{MAC} layer, but specifically for \ac{OFDMA}.  
@@ -26,7 +26,7 @@ This raises the question of how the findings of these works relate to the goal o
 As described in Chapter \ref{subsec:objective}, the goal of this thesis is to determine the minimum cycle time for real-time data without fundamentally altering the Wi-Fi standard.  
 Consequently, approaches such as \ac{TDMA} or modifications of \ac{OFDMA} resource allocation are excluded, as they require changes to the firmware.  
 Furthermore, many studies, such as \cite{10.1007/978-3-031-40564-8_14}, are based solely on simulations or controlled laboratory setups.  
-In contrast, this thesis also considers non laboratory environments and their impact on data transmission.  
+In contrast, this thesis also considers non-laboratory environments and their impact on data transmission.  
 Additionally, the focus is not only on transmitting real-time data but also on maximizing concurrent best-effort traffic.  
 The combination of operating in both laboratory and non-laboratory environments, avoiding modifications to the standard, maximizing concurrent data traffic and testing across multiple standards and \ac{QoS} configurations has not been addressed in prior research.  
 
