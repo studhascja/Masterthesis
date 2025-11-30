@@ -1539,7 +1539,7 @@ However, as the synchronization is performed only once and the overhead plays on
 The following section discusses the technical implementation of the synchronization.  
 This process is illustrated in Figure~\ref{fig:uprobe}.  
 As can be seen, a \ac{uretprobe} is used for time synchronization.  
-Two timelines are depicted, one for user space and one for kernel space.  
+Two timelines are depicted, one for the user space and one for the kernel space.  
 The user space timeline starts at time $tu_0$, while the kernel space timeline begins at time $t_{k0}$.  
 As previously mentioned, the problem is that $t_{u0} \neq t_{k0}$.  
 Therefore, it is desirable to establish a common reference point on both timelines from which times can be measured relative to each other.  
@@ -1560,7 +1560,7 @@ This syscall again requires a transition into kernel space.
 The duration of this transition is shown in green in Figure~\ref{fig:uprobe}.  
 The syscall executes in kernel space starting at $t_{k3}$ and completes at $t_{k4}$.  
 At $t_{u3}$, the user space function regains control, and the timer is set.  
-This point is marked by a orange dot in the figure and represents the relative moment from which measurements can be taken.  
+This point is marked by an orange dot in the figure and represents the relative moment from which measurements can be taken.  
 Since the function returns at this point, the \ac{uretprobe} is triggered.  
 
 The \ac{uretprobe} again switches to kernel space.  
@@ -1599,7 +1599,7 @@ For each case, 100 measurements were performed in order to determine the maximum
 The table reports both the maximum and average values for $d_{ku}$ as well as for jitter, in addition to the average durations of $t_{uretprobe}$ and $t_{uprobe}$.  
 
 Furthermore, these values are provided for two different timers in Rust.  
-Specifically, the measurements were conducted using the timer \texttt{SystemTime::now()}, which, as explained earlier, is said to be unsuitable and and the timer \texttt{Instant::now()}.  
+Specifically, the measurements were conducted using the timer \texttt{SystemTime::now()} and the timer \texttt{Instant::now()}.
 In addition, the experiments were carried out once with real-time priority enabled and once without real-time priority.  
 
 \begin{table}[ht]
@@ -1621,7 +1621,7 @@ In addition, the experiments were carried out once with real-time priority enabl
  Avg Jitter & 380 ns & 350 ns & 320 ns & 280 ns \\ 
  \hline
 \end{tabular}
-\caption{Comparison of the time synchronization between user space and kernel space with different timer and priority}
+\caption{Comparison of the time synchronization between user space and kernel space with different timers and priorities.}
 \label{tab:timer_comparison}
 \end{table}
 
@@ -1675,7 +1675,7 @@ Therefore, it is crucial that the function name remains unchanged and that the f
 In the execution of the function, a timestamp is generated first in order to keep $d_{ku}$ as small as possible.  
 The timestamp represents the point in time $t_{k6}$ in Figure~\ref{fig:uprobe}.  
 Subsequently, memory is reserved in the ring buffer using the function \texttt{bpf\_ringbuf\_reserve}, after which the event is submitted via \texttt{bpf\_ringbuf\_submit} into it, in order to get consumed by the user space.  
-After the message is submitted into the ring buffer the user space gets a notification that there is a message to collect, like described in \cite{buffer_submit}.
+After the message is submitted into the ring buffer, the user space gets a notification that there is a message to collect, as described in \cite{buffer_submit}.
 The event consists of a type identifier \texttt{event\_type}, a data structure containing the parameters \texttt{msg\_type} and \texttt{seq} and a timestamp.  
 For the \ac{uretprobe}, only the event type and the timestamp are relevant.  
 The event type allows the user space program to determine how the event should be processed.  
@@ -1715,7 +1715,7 @@ This synchronization is carried out in three states, namely \texttt{\ac{NTP}}, \
 As previously mentioned, these phases are named after time-synchronization protocols.
 However, only their functionality is implemented, not the full protocol specification.  
 
-\ac{NTP} was developed in 1991 by Mills, like he wrote in \cite{103043}.  
+\ac{NTP} was developed in 1991 by Mills, as he wrote in \cite{103043}.  
 At the time of this work, it has been in operation for more than 30 years.  
 As described by Chefrour in \cite[p.~31]{CHEFROUR202226}, \ac{NTP} achieves an accuracy ranging from tens of microseconds to several hundred milliseconds, depending on the network conditions.  
 As a successor, and particularly with a focus on improved performance, \ac{PTP} was developed in 2002, as reported in \cite{1048550}.  
@@ -1822,7 +1822,7 @@ This header follows directly after the MAC header and can therefore be computed 
 Subsequently, it is checked whether the packet is a \ac{TCP} packet or not.
 If not, the function is aborted.  
 Additionally, lines 22–28 of Listing~\ref{lst:bpf_tracepoint} extract the last octet of the source and destination IP addresses, i.e., the \texttt{yz} part from \texttt{192.168.wx.yz}.  
-It is then verified whether the server IP ends with 1 and the client IP ends with 43.  
+It is then verified whether the server IP ends with \texttt{1} and the client IP ends with \texttt{43}.  
 If this condition is not met, the function is aborted, as the packet is either destined for the wrong recipient or sent by the wrong sender.  
 
 The \ac{TCP} header is also required to access the payload.  
@@ -1856,7 +1856,7 @@ Subsequently, the tracepoint events for \texttt{net\_dev\_xmit} and \texttt{net\
 This is realized through the function \texttt{wait\_for\_event()}, which takes the queue as a parameter in which the corresponding event is collected.  
 The function returns the event, from which the timestamp of its occurrence can be extracted via the \texttt{timestamp} attribute.
 
-Afterwards, the response from the client is awaited, and upon its arrival the end time is recorded.  
+Afterwards, the response from the client is awaited, and upon its arrival, the end time is recorded.  
 The message contains the $y$-value and the client's timing data.  
 These, combined with the server's timing data, are used as shown in lines 22--26 to calculate the monitoring times described in Figure~\ref{fig:tx}.  
 Finally, the server checks whether the interval between start and end time exceeds the specified time limit, thereby violating the real-time requirement.  
@@ -1915,7 +1915,7 @@ This state is entered under one of the following conditions:
 \begin{itemize}  
     \item \textbf{Client timeout:} If the client terminates the \ac{TCP} connection or does not respond in the case of \ac{UDP}.  
     \item \textbf{Incomplete dataset:} If the data collected by the server\footnote{The dataset consists of monitoring data and circle data, i.e., the $x$ and $y$ values.} is incomplete.  
-          In other words, if not all points contain measurements or if certain data for specific points are missing.  
+          In other words, if not all points contain measurements, or if certain data for specific points are missing.  
 \end{itemize}  
 
 The \texttt{Error} state terminates both the server and the client and informs the test automation system that the test must be repeated.  
@@ -1937,7 +1937,8 @@ However, these are largely similar in their structure and functionality.
 Figure~\ref{fig:test-suite} illustrates the workflow of the \texttt{Server Test Suite}.  
 Based on this figure, the workflow of the test suite will be explained in the following.  
 The workflow of the \texttt{Client Test Suite} is also explained on this basis.
-In the figure the test suite for the server is shown, it will be explained, when the \texttt{Client Test Suite} differs from it.  
+In the figure, the test suite for the server is shown.
+It will be explained when the \texttt{Client Test Suite} differs from it.  
 
 \begin{figure}[ht]
     \centering
@@ -1953,7 +1954,7 @@ On the client side, the \texttt{Iperf-Bulk Client} is not launched by the test s
 
 In both test suites, the next step is the selection of the \texttt{test run}.  
 For this purpose, the status file is first checked, which contains a digit specifying which \texttt{test run} should be executed next.  
-Afterwards, the test specific configuration file is opened.
+Afterwards, the test-specific configuration file is opened.
 Each configuration corresponds to one line in this file, specifying the Wi-Fi standard, frequency, bandwidth, \ac{QoS} status, protocol and \ac{AP} configuration name.  
 For instance, the line \texttt{4 2.4 20 0 udp wifi4} specifies that the Wi-Fi connection should use standard 4, a frequency of 2.4 GHz and a bandwidth of 20 MHz.  
 Moreover, no \ac{QoS} parameters should be applied, the application should use \ac{UDP} and the corresponding \texttt{hostapd} configuration for the Wi-Fi parameters is included in the config file \texttt{wifi4}.  
@@ -1964,12 +1965,12 @@ Instead of launching \texttt{hostapd}, the client establishes a connection to th
 The \texttt{hostapd} configurations are explained in more detail in Chapter~\ref{subsec:hostapd}.  
 
 In the subsequent step, both test suites set or reset the \ac{QoS} parameters.
-Afterwards the application, either the server or the client, is started in a thread.    
+Afterwards, the application, either the server or the client, is started in a thread.    
 On the server side, only the application priority is checked to ensure that it is set to 139, i.e., real-time priority, while the \texttt{iperf} process runs at a lower priority.  
 This is achieved by executing the shell command \texttt{ps -eLo comm,pri | grep server/iperf} in Python and verifying that the server process runs at priority 139, whereas the \texttt{iperf} process does not.  
-As described in~\cite{ps}, this command lists all processes including threads and outputs only the name and the priority.  
-The client side checkes the priorities analogously.  
-Additionally, it is verified that Wi-Fi version, bandwidth and frequency match the values specified in the configuration.  
+As described in~\cite{ps}, this command lists all processes, including threads and outputs only the name and the priority.  
+The client side checks the priorities analogously.  
+Additionally, it is verified that the Wi-Fi version, bandwidth and frequency match the values specified in the configuration.  
 In other words, the \texttt{Client Test Suite} checks that the server's \ac{AP} configuration is correct and actually usable\footnote{The fact that an \ac{AP} provides certain features, such as Wi-Fi standard 6, does not automatically imply that these features are active in the client connection.  
 For example, if the client connects to the \ac{AP} with an incompatible \ac{WPA} configuration, the Wi-Fi standard may be downgraded.  
 Therefore, it is necessary to perform the verification on the client side to guarantee that all configurations are applied correctly.}.  
@@ -2024,7 +2025,7 @@ The configuration can be divided into several parts:
           Additionally, for standard 6, \texttt{ieee80211w=2} must be set, which indicates that management frame protection is required.  
           Without this, it is not possible to create a Wi-Fi standard 6 \ac{AP}, as explained in~\cite{hostapd-config}.  
           The parameters \texttt{ieee80211w=2} and \texttt{key\_mgmt=SAE} must also be included in the client’s \texttt{wpa\_supplicant} configuration.  
-          This is the only configuration on the client side that must be adjusted when Wi-Fi property, like the standard, change.
+          This is the only configuration on the client side that must be adjusted when Wi-Fi properties, like the standard, change.
 
     \item \textbf{Frequency:} To configure the frequency, the \texttt{hostapd} parameters \texttt{hw\_mode}, \texttt{channel}, and \texttt{op\_class} must be set.  
           Frequencies of 2.4\,GHz, 5\,GHz and 6\,GHz can be selected.  
@@ -2043,7 +2044,7 @@ The configuration can be divided into several parts:
           For other bandwidths, \texttt{centr\_freq\_idx} and \texttt{oper\_chwidth} must be set.  
           For \texttt{oper\_chwidth}, the value $0 \rightarrow 40\,\text{MHz}$, $1 \rightarrow 80\,\text{MHz}$ and $2 \rightarrow 160\,\text{MHz}$ applies.  
           For \texttt{centr\_freq\_idx}, the center frequency $f_{center} = \frac{f_{c-start} + f_{c-end}}{2}$ must be calculated, and the channel containing this frequency must be selected.  
-          For example, in the 5\,GHz band with a bandwidth of 80\,MHz and a starting channel of 36, the end channel is 48 due to the 20\,MHz channel width\footnote{Like described in Chapter \ref{subsec:stand}, the distance between two channels is 5\,MHz. So to achieve a bandwidth of 80\,MHz it is necessary to add four 20\,MHz channels. In this case these are the channel 36, 40, 44 and 48.}.  
+          For example, in the 5\,GHz band with a bandwidth of 80\,MHz and a starting channel of 36, the end channel is 48 due to the 20\,MHz channel width\footnote{Like described in Chapter \ref{subsec:stand}, the distance between two channels is 5\,MHz. So to achieve a bandwidth of 80\,MHz it is necessary to add four 20\,MHz channels. In this case, these are the channels 36, 40, 44 and 48.}.  
           Thus, $f_{center} = \frac{(5000\,\text{MHz} + 5 \times 36) + (5000\,\text{MHz} + 5 \times 48)}{2} = 5210\,\text{MHz}$.  
           This corresponds to channel 42, which is assigned to \texttt{centr\_freq\_idx}.  
           In the 6\,GHz band, \texttt{op\_class} must also be considered.  

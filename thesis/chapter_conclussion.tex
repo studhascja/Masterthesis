@@ -59,7 +59,7 @@ Furthermore, it is notable that the frequency exerts a particularly strong influ
 As a sixth influencing factor, the \textbf{environment} can be taken into account.  
 The test run conducted without interference exhibits, on average, only half the maximum jitter compared to the run with medium interference.  
 In the high-interference scenario, the maximum jitter is, on average, twenty times higher than under low-interference conditions.  
-Although this factor cannot be easily controlled, or in most cases, cannot be influenced at all, it has a stronger impact on real-time capability than any of the other factors discussed and should therefore be also considered as an influencing factor. 
+Although this factor cannot be easily controlled, or in most cases, cannot be influenced at all, it has a stronger impact on real-time capability than any of the other factors discussed and should therefore also be considered as an influencing factor. 
 
 The third sub-question, \textit{"To what degree can real-time capability be achieved in Wi-Fi?"}, is challenging to answer conclusively.  
 As described in Section~\ref{subsec:disc}, a 99.999\% deadline compliance probability can already be achieved for a deadline of 3.7\,ms.  
@@ -74,7 +74,7 @@ Future research building upon this work could extend the experiments conducted h
 To extend the experiments of this work, the presented test runs could be repeated in larger network environments instead of a simple peer-to-peer connection, introducing more interference and higher server load.  
 Additionally, test runs could be carried out in different physical environments to analyze the effect of surrounding objects on real-time capability, while also varying the communication distance between nodes.  
 
-To improve the real-time capbility, one possible approach is, to use Wi-Fi cards that support multiple driver queues.  
+To improve the real-time capability, one possible approach is, to use Wi-Fi cards that support multiple driver queues.  
 This would allow the prioritization mechanism, implemented in this work via the \ac{Qdisc}, to be extended.  
 All Wi-Fi cards used in this study support only a single driver queue, which is why this approach could not be investigated.  
 
@@ -89,10 +89,10 @@ This would, however, involve a modification of the Wi-Fi standard, which was int
 
 In the future, adapting the standard may no longer be necessary.  
 As Bartolin-Arnau et~al.~\cite[p.~15]{telecom6020040} note, the real-time capability of Wi-Fi tends to increase with each new standard generation.  
-This observation has also been confirmed by the results of this study\footnote{Even though, as described in Chapter~\ref{subsec:disc}, the real-time capability was lowest for the Wi-Fi~6 standard (newest used standard), newer standards inherently introduce improvements in bandwidth and frequency range.
+This observation has also been confirmed by the results of this study\footnote{Even though, as described in Chapter~\ref{subsec:disc}, the real-time capability was lowest for the Wi-Fi~6 standard (the newest used standard), newer standards inherently introduce improvements in bandwidth and frequency range.
 When these accompanying enhancements are taken into account, the statement that real-time capability increases with newer Wi-Fi standards remains valid.}.  
 With each new Wi-Fi standard, wider channel bandwidths and sometimes even additional frequency bands are introduced.
-Both of these have a positiv impact on the real-time capability.  
+Both of these have a positive impact on the real-time capability.  
 Therefore, it can be expected that Wi-Fi~7 will continue this trend and further improve real-time capability.  
 
 Liu et~al.~\cite[p.~3--5]{liu2025ieee80211bewifi7} describe that Wi-Fi~7, also known as IEEE~802.11be, can achieve better real-time capabilities than Wi-Fi~6 due to the introduction of the \ac{MLO} technology, as explained in Chapter~\ref{sec:basics}.  

@@ -39,7 +39,7 @@ For the tests regarding the impact of the bulk data volume, the \ac{UDP} protoco
 The selection of the bulk data volume is challenging, as each standard has a different maximum data rate depending on modulation and available bandwidth.  
 Therefore, the bulk data volume would ideally need to be chosen proportionally to the maximum data rate in each case.  
 
-However, this work aims to investigate the limits of real-time capability of Wi-Fi when it simultaneously transmits a certain amount of additional data.  
+However, this work aims to investigate the limits of the real-time capability of Wi-Fi when it simultaneously transmits a certain amount of additional data.  
 For this reason, a fixed amount of bulk data is selected, which remains identical across all standards and bandwidths.  
 Consequently, standards with higher maximum data rates experience a lower relative load from the bulk data and therefore benefit in terms of real-time performance.  
 This decision is motivated by the fact that, in practice, the relative load caused by other data traffic is not always known, and thus a Wi-Fi system with higher capacity inherently provides an advantage.  
@@ -58,14 +58,14 @@ This decision is motivated by the fact that, in practice, the relative load caus
 50 Mbit/s & 1320 & 254612 \\
 \hline\hline
 \end{tabular}
-\caption{Visualization of the impact of different loads of bulk-data on the Wi-Fi connection on the average and maximum execution time of one cycle of the real-time application.}
+\caption{Visualization of the impact of different loads of bulk data on the Wi-Fi connection on the average and maximum execution time of one cycle of the real-time application.}
 \label{tab:throughput}
 \end{table}
 
 Table~\ref{tab:throughput} presents the results of the preliminary experiments regarding the bulk data volume.  
 The table shows the average and maximum latency\footnote{Latency is defined as the time required to complete a cycle of the real-time application.} of one cycle of the real-time application for data rates of 5, 20, 30 and 50~Mbit/s.  
 
-It can be observed that, the maximum latency in particular, increases significantly with higher data rates.  
+It can be observed that the maximum latency in particular increases significantly with higher data rates.  
 It is also evident that the maximum latency at 20~Mbit/s is higher than at 30~Mbit/s.  
 This effect can be attributed to an unfavorable execution-time constellation in the \texttt{test run} at 20~Mbit/s.  
 This explanation is supported by the average latency, which increases continuously with the data rate.  
@@ -110,10 +110,10 @@ However, it is noticeable that larger packet sizes perform better than smaller o
 Based on the results of the preliminary experiments, this study employs a data rate of 30~Mbit/s with a packet size of 4096~Bytes for the bulk data.  
 
 The \texttt{test cases} are defined as combinations of the influencing factors shown in Figure \ref{fig:factors}.
-They can be divided in Wi-Fi standard, frequency, bandwidth, \ac{QoS} and transport protocol.  
+They can be divided into Wi-Fi standard, frequency, bandwidth, \ac{QoS} and transport protocol.  
 These factors are chosen as influencing parameters, as they encompass all adjustable variables within a Wi-Fi system that can affect its real-time performance.
 
-As shown in Figure \ref{fig:factors}, Wi-Fi~4 enables three combinations: the 2.4 GHz band and in the 5 GHz band both 20 MHz and 40 MHz channel widths.  
+As shown in Figure \ref{fig:factors}, Wi-Fi~4 enables three combinations: the 2.4 GHz band and in the 5 GHz band, both 20 MHz and 40 MHz channel widths.  
 For Wi-Fi~5, the 5 GHz band with 20 MHz, 40 MHz and 80 MHz channel widths yields three combinations.  
 Wi-Fi~6 supports all three frequency bands.  
 In the 2.4 GHz and 5 GHz bands, four combinations arise, while in the 6 GHz band, the available channel widths of 20, 40, 80 and 160 MHz yield four more combinations.  
@@ -160,10 +160,10 @@ An improvement of up to 70\% is achieved in some cases.
 The mean values are also lower in most cases, although the difference is comparatively small.  
 A similar behavior is observed in the \ac{UDP} \texttt{test cases} shown in Figure \ref{fig:udp_low}.  
 
-Among the intervals described in Section \ref{sec:implementation}, intevals $t_3$ and $t_6$ account for the largest share of the cycle time, together exceeding 90~\% in nearly all cases.  
+Among the intervals described in Section \ref{sec:implementation}, intervals $t_3$ and $t_6$ account for the largest share of the cycle time, together exceeding 90~\% in nearly all cases.  
 These intervals begin with the transfer of the packet to the driver queue via the Tracepoint \texttt{net\_dev\_xmit} and end with the confirmation of reception at the target device via the Tracepoint \texttt{netif\_receive\_skb}.  
 A finer subdivision is not possible within this part of the network stack since no additional tracepoints exist.  
-The significantly reduced jitter maxima in \texttt{test cases} with enabled \ac{QoS} affects only intervals $t_3$ and $t_6$.  
+The significantly reduced jitter maxima in \texttt{test cases} with enabled \ac{QoS} affect only intervals $t_3$ and $t_6$.  
 This is due to the preferential treatment of packets with the \ac{DSCP} flag set in both the driver and the firmware.  
 As described in \cite{rfc3246}, the standard for the \ac{EF} class specifies shorter queues and reduced backoff times.  
 Consequently, the delays within the driver and firmware are reduced, preventing occasional high latencies.  
@@ -211,7 +211,7 @@ Nevertheless, the average jitter for \ac{TCP} remained unchanged.
 It is also evident that \texttt{test cases} with \ac{QoS} generally show a smaller increase in jitter.  
 For both protocols, all high outliers in both average and maximum jitter occur in \texttt{test cases} without \ac{QoS}.  
 In particular, in the 6 GHz band, a notably small increase in jitter can be observed.  
-This can primarily be attributed to the fact that, at the time of this study, only few devices operated in this frequency band, resulting in minimal interference.  
+This can primarily be attributed to the fact that, at the time of this study, only a few devices operated in this frequency band, resulting in minimal interference.  
 However, Wi-Fi Standard 6 shows higher increases in jitter, both in maximum and average values, compared to Standards 4 and 5.  
 Among these, Standard 4 performs best.  
 This can be seen clearly in Figure \ref{fig:mid_tcp}, particularly for \texttt{test cases} \texttt{6-5-20-0-tcp} and \texttt{6-5-80-0-tcp}.  
@@ -242,7 +242,7 @@ This work considers five levels of \ac{QoS}.
           A root node (1:1) is configured with a data rate and a burst size, similar to the Token Bucket Filter described in Section \ref{subsec:qos}.  
           This root node is divided into two child nodes: 1:10 (RT data) and 1:30 (bulk data).  
           As described in \cite{htb}, each class can be assigned a priority.  
-          In this work, as can be seen in Figure \ref{fig:qdisc} the RT class is assigned priority 0, and the bulk class priority 5.  
+          In this work, as can be seen in Figure \ref{fig:qdisc}, the RT class is assigned priority 0, and the bulk class priority 5.  
           Packets are queued according to their class into the queues shown in Figure \ref{fig:qdisc}.  
           The round-robin scheduler then always prioritizes packets from queue 0 as long as its rate and burst are not exceeded.  
           Therefore, the rate and burst of the RT node must be configured to ensure RT packets are always transmitted.  
@@ -298,7 +298,7 @@ From the \ac{QoS} tests, it can therefore be concluded that for average jitter, 
 However, for maximum jitter, no definitive conclusion can be drawn regarding the optimal \ac{QoS} configuration, except that a combination of \ac{Qdisc} and \ac{DSCP} value produces better results than using only a \ac{DSCP} value.  
 It is also noticeable that tests using Wi-Fi 6 in the 6 GHz band with a bandwidth of 160 MHz perform particularly well.  
 
-After discussing in this chapter how an environment with medium interference affects the real-time capability of Wi-Fi and how \ac{QoS} influences it, the following section examines via the \ac{HDT}, how the real-time performance of Wi-Fi behaves in an environment with high interference.  
+After discussing in this chapter how an environment with medium interference affects the real-time capability of Wi-Fi and how \ac{QoS} influences it, the following section examines, via the \ac{HDT}, how the real-time performance of Wi-Fi behaves in an environment with high interference.  
 
 \section{High disturbance test} \label{subsec:high}
 In the high-interference test, the same \texttt{test cases} are conducted as before, but an additional pair of Raspberry Pis is introduced.  
@@ -353,7 +353,7 @@ The effects are calculated by comparing \texttt{test cases} that differ in only 
 In other words, to determine the influence of the \ac{QoS} factor, the \texttt{test configurations} \texttt{std:a-freq:b-bandwidth:c-qos:0-prot:d} ($config_1$) and \\
 \texttt{std:a-freq:b-bandwidth:c-qos:1-prot:d} ($config_2$) are compared.  
 For each factor, a variable exists to which the influence per \texttt{test case} is accumulated.  
-The influence on the maximum jitter is calculated using  
+The influence on the maximum jitter is calculated using the following formula:
 \[
 \frac{|max(config_1) - max(config_2)|}{\frac{max(config_1) + max(config_2)}{2}} \times 100.
 \]  
@@ -367,7 +367,8 @@ Because only Standard~6 supports the 6~GHz frequency, all \texttt{test cases} in
 In Figure~\ref{fig:r_mid}, the radar chart consists of five parameters corresponding to the five factors.  
 Thus, frequency is shown in blue, standard in yellow, bandwidth in orange, \ac{QoS} in green and protocol in turquoise.  
 Within each category, the respective parameter values are displayed.
-For the standard the parameters are 2.4~GHz, 5~GHz and 6~GHz, this works analogously for the other factors and their parameters.  
+For the standard, the parameters are 2.4~GHz, 5~GHz and 6~GHz.
+This works analogously for the other factors and their parameters.  
 Each parameter has a value that represents its percentage relation to the other parameters.  
 In Figure~\ref{fig:r_mid_max}, for instance, the value for the 6~GHz frequency is $-81.7$.  
 This means that, on average, \texttt{test configurations} using 6~GHz exhibited 81.7\% lower jitter than those using other frequencies.  
@@ -398,7 +399,7 @@ However, this observation is not consistent with the findings of Bartolin-Arnau 
 Their results, however, are not explicitly explained.  
 Similarly, Salam et~al.\ report in~\cite[p.~3]{10815245} that Wi-Fi~6 exhibits better real-time capabilities than Wi-Fi~5, though the test environment and conditions were not specified.  
 Thus, the results of this work contrast with current published findings.
-It is important to note that the best-performing \texttt{test cases} with medium interference employed Standard~6, but the the average performance of the other standards was generally better.  
+It is important to note that the best-performing \texttt{test cases} with medium interference employed Standard~6, but the average performance of the other standards was generally better.  
 Nevertheless, the standard was found to have the smallest overall effect in this study, as the measurement values across different standards were relatively close to each other.  
 
 \item For the factor \textbf{bandwidth}, it can be observed that configurations using 160~MHz consistently perform better in comparison.  
@@ -441,18 +442,19 @@ When comparing the normal \texttt{test run} under medium interference to the 24-
 A probability of 99.999\% for meeting the deadline is only achieved at 3.7\,ms, which is more than 1.5 times higher than in the standard test.  
 However, the most significant difference is found in the \ac{MET}, which is discussed later in this chapter.  
 
-In the \texttt{test run} under heavy load (green), the 99.999\% probability is reached only at over 20\,ms more than ten times higher than under medium interference.\footnote{In the high-load test run, the 6\,GHz band and thus the 160\,MHz bandwidth cannot be used. Therefore, the configurations in this comparison differ. The difference between the two test configurations under medium interference, however, is noticeable only in the \ac{MET}, as shown in Table~\ref{tab:wcet} and Figure~\ref{fig:mid_tcp}. Consequently, the configurations can still be compared and used to draw conclusions.}  
+In the \texttt{test run} under heavy load (green), the 99.999\% probability is reached only at over 20\,ms, more than ten times higher than under medium interference.\footnote{In the high-load test run, the 6\,GHz band and thus the 160\,MHz bandwidth cannot be used. Therefore, the configurations in this comparison differ. The difference between the two test configurations under medium interference, however, is noticeable only in the \ac{MET}, as shown in Table~\ref{tab:wcet} and Figure~\ref{fig:mid_tcp}. Consequently, the configurations can still be compared and used to draw conclusions.}  
 Avdotin et~al.\ demonstrate in~\cite[p.~2--3]{Avdotin_2019} that by modifying resource allocation in the firmware and using Wi-Fi~6, latencies below 1\,ms can be achieved.  
 Such performance could not be reached in this work without resource allocation.  
 In laboratory conditions, sub-1\,ms latencies are theoretically possible, although it must be noted that in long-term tests, the \ac{MET} can increase drastically, making latencies below 1\,ms unattainable.  
 When interference is taken into account, the latency corresponding to a 99.999\% real-time reliability ranges between 2.5\,ms and 23\,ms.  
 
-A 99.999\% probability of meeting the deadline is already very high, however, it is still insufficient for hard real-time systems.  
+A 99.999\% probability of meeting the deadline is already very high.
+However, it is still insufficient for hard real-time systems.  
 This value implies that one in every 100.000 cycles would fail to meet the deadline.  
 An example illustrating the inadequacy of such reliability is the automotive ABS system, which relies on wheel slip control.  
 As explained in~\cite[p.~5]{7075975}, the wheel slip control operates on a 7\,ms cycle.  
 This means that with a 99.999\% success probability, the ABS would fail after approximately $7\,\text{ms} \times 100.000 = 11.\overline{6}\,\text{minutes}$.  
-Therefore, for hard real-time applications, the \ac{MET}\footnote{Normally the \ac{WCET}, but in this thesis, like stated before the \ac{MET} is the relevant factor.} is the decisive parameter to ensure that no real-time violations occur.  
+Therefore, for hard real-time applications, the \ac{MET}\footnote{Normally the \ac{WCET} is used, but in this thesis, like stated before, the \ac{MET} is the relevant factor.} is the decisive parameter to ensure that no real-time violations occur.  
 
 \begin{table}
 \begin{tabular}{||p{3.5cm}|p{2.5cm}|p{2.5cm}|p{2.5cm}|p{2.5cm}||}
@@ -482,7 +484,7 @@ In the table, the longest duration of each phase for both the client and the ser
 Thus, the value of \texttt{\ac{MET} Application} is composed of the intervals $t1_{max} + t4_{max} + t5_{max} + t8_{max}$, as described in Section~\ref{subsec:monitoring}.  
 Here, $t1_{max}$ and $t8_{max}$ represent the maximum time spent in the application, transport, and network layers on the server side, while $t4_{max}$ and $t5_{max}$ represent the corresponding durations on the client side.  
 The phase \texttt{\ac{MET} \ac{Qdisc}} is formed by the intervals $t2_{max} + t6_{max}$, representing the sum of the maximum queuing durations (server and client) within the \ac{Qdisc}.  
-The \texttt{\ac{MET} Driver and MAC} phase consists of the intervals $t3_{max} + t7_{max}$, representing the sum of the maximum transmission times between the handover of a packet to the driver and the reception of the corresponding acknowledgment in the NAPI, again for both, the server- and the client-side .  
+The \texttt{\ac{MET} Driver and MAC} phase consists of the intervals $t3_{max} + t7_{max}$, representing the sum of the maximum transmission times between the handover of a packet to the driver and the reception of the corresponding acknowledgment in the NAPI, again for both, the server- and the client-side.  
 Table~\ref{tab:wcet} also shows the total \ac{MET}, obtained by summing all previous intervals, ensuring that the actual \ac{MET} of the system is represented.  
 The observed \ac{MET} during testing is significantly lower, as the maximum values of all intervals never occurred simultaneously.  
 
@@ -491,7 +493,7 @@ In addition, the configurations \texttt{4-5-40-1-tcp} with two different firmwar
 These two \texttt{test cases} were included because the intervals involving firmware execution represent the largest share of total time, allowing for an evaluation of firmware influence.  
 The \texttt{ath9k} firmware was used in conjunction with the \texttt{AR5BXB92} Wi-Fi card, as described in Section~\ref{sec:used_hardware}.  
 In Table~\ref{tab:wcet}, the best-performing \texttt{test configuration} of the \texttt{ath9k} driver is used.
-Furthermore the tests were conducted under medium interference conditions.  
+Furthermore, the tests were conducted under medium interference conditions.  
 
 It is evident from Table~\ref{tab:wcet} that the \texttt{\ac{MET} Driver and MAC} phase accounts for by far the largest proportion of the total \ac{MET}.  
 The relationship between the \ac{LDT}, \ac{ADT} and \ac{HDT}, is consistent with the trends already visible in Figure~\ref{fig:percent}.  
