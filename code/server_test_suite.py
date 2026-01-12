@@ -32,13 +32,13 @@ def run_config_script(param, process_container):
     process_container.append(process)
 
 def run_rust_udp(process_container, val0, val1, val2, val3, val4, val5):
-    rust_result = ['./server_udp/target/debug/server_udp', val0, str(val1), str(val2), str(val3), str(val4), val5]
+    rust_result = ['./server_udp/target/release/server_udp', val0, str(val1), str(val2), str(val3), str(val4), val5]
     process = subprocess.Popen(rust_result)
     process_container.append(process)
     process.wait()
 
 def run_rust_tcp(process_container, val0, val1, val2, val3, val4, val5):
-    rust_result = ['./server/target/debug/server', str(val0), str(val1), str(val2), str(val3), str(val4), val5]
+    rust_result = ['./server/target/release/server', str(val0), str(val1), str(val2), str(val3), str(val4), val5]
     process = subprocess.Popen(rust_result)
     process_container.append(process)
     process.wait()
@@ -133,7 +133,7 @@ class WifiTest(unittest.TestCase):
 
 def main():
     global all_results
-    rust_build = ['cargo', 'build']
+    rust_build = ['cargo', 'build', '--release']
     rust_udp_build_result = subprocess.run(rust_build, cwd='/code/server_udp')
     rust_tcp_build_result = subprocess.run(rust_build, cwd='/code/server')
     iperf_process_container = []
@@ -202,18 +202,19 @@ with open(output_file, "w", encoding="utf-8") as f:
             f.write(f"{traceback}\n")
 
 
-led_path = "/sys/class/leds/ACT/brightness"
 
-def led_on():
-    with open(led_path, "w") as f:
-        f.write("1")
+#led_path = "/sys/class/leds/ACT/brightness"
 
-def led_off():
-    with open(led_path, "w") as f:
-        f.write("0")
+#def led_on():
+#    with open(led_path, "w") as f:
+#        f.write("1")
 
-while True:
-    led_on()
-    time.sleep(0.5)
-    led_off()
-    time.sleep(0.5)
+#def led_off():
+#    with open(led_path, "w") as f:
+#        f.write("0")
+
+#while True:
+#    led_on()
+#    time.sleep(0.5)
+#    led_off()
+#    time.sleep(0.5)

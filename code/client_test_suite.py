@@ -160,13 +160,13 @@ class WifiTest(unittest.TestCase):
         self.assertTrue(iperf_prio)
 
 def run_rust_udp(process_container, duration, throughput, size):
-        rust_result = ["./client_udp/target/debug/client_udp", throughput, duration, size]
+        rust_result = ["./client_udp/target/release/client_udp", throughput, duration, size]
         process = subprocess.Popen(rust_result)
         process_container.append(process)
         process.wait()
 
 def run_rust_tcp(process_container, duration, throughput, size):
-        rust_result = ["./client/target/debug/client", throughput, duration, size]
+        rust_result = ["./client/target/release/client", throughput, duration, size]
         process = subprocess.Popen(rust_result)
         process_container.append(process)
         process.wait()
@@ -175,7 +175,7 @@ def main():
     if PASSWORD is None:
         raise EnvironmentError("❌ Umgebungsvariable WIFI_PASSWORD ist nicht gesetzt!")
     
-    rust_build = ['cargo', 'build']
+    rust_build = ['cargo', 'build', '--release']
     rust_udp_build_result = subprocess.run(rust_build, cwd='/code/client_udp')
     rust_tcp_build_result = subprocess.run(rust_build, cwd='/code/client')
 
@@ -221,7 +221,7 @@ def main():
                 connect_to_wifi(0)
         if parts[4] == "1":
             print("Starte QoS...")
-           # subprocess.run(['bash', 'setup_qos.sh'])
+            subprocess.run(['bash', 'setup_qos.sh'])
         else:
             print("Lösche QoS Config...")
             subprocess.run(['bash', 'clean_qos.sh'])
@@ -298,18 +298,19 @@ def main():
 if __name__ == "__main__":
     main()
 
-led_path = "/sys/class/leds/ACT/brightness"
 
-def led_on():
-    with open(led_path, "w") as f:
-        f.write("1")
+#led_path = "/sys/class/leds/ACT/brightness"
 
-def led_off():
-    with open(led_path, "w") as f:
-        f.write("0")
+#def led_on():
+#    with open(led_path, "w") as f:
+#        f.write("1")
 
-while True:
-    led_on()
-    time.sleep(0.5)
-    led_off()
-    time.sleep(0.5)
+#def led_off():
+#    with open(led_path, "w") as f:
+#        f.write("0")
+
+#while True:
+#    led_on()
+#    time.sleep(0.5)
+#    led_off()
+#    time.sleep(0.5)

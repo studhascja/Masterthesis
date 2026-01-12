@@ -56,7 +56,7 @@ struct {
 } events SEC(".maps");
 
 
-SEC("uretprobe//code/client_udp/target/debug/client_udp:measure_instant")
+SEC("uretprobe//code/client_udp/target/release/client_udp:measure_instant")
 int trace_measure_instant(struct pt_regs *ctx) {
     __u64 timestamp = bpf_ktime_get_ns();
     bpf_printk("Timestamp: %d", timestamp);
@@ -131,7 +131,7 @@ if(d == 1){
 return 0;
 }
 
-SEC("tracepoint/net/net_dev_xmit")
+SEC("tracepoint/net/net_dev_start_xmit")
 int handle_net_dev_xmit(struct trace_event_raw_net_dev_xmit *ctx) {
     char devname[16] = {};
 
@@ -145,7 +145,7 @@ int handle_net_dev_xmit(struct trace_event_raw_net_dev_xmit *ctx) {
     bpf_core_read_str(devname, sizeof(devname), name_ptr);
 
     int pid = bpf_get_current_pid_tgid() >> 32;
-
+    bpf_printk("start_xmit");
     char comm[16] = {};
     bpf_get_current_comm(&comm, sizeof(comm));
 
@@ -158,9 +158,12 @@ int handle_net_dev_xmit(struct trace_event_raw_net_dev_xmit *ctx) {
 
 	char* ip_header_address = head + mac_header + MAC_HEADER_SIZE;
 	struct iphdr iph;
+
+u8 protocol;
+bpf_probe_read(&protocol, sizeof(protocol), head + mac_header + 9); // Offset 9 im IPv4-Header
+bpf_printk("pid=%d comm=%s protocol=%d\n", pid, comm, protocol);
+
 bpf_probe_read(&iph, sizeof(iph), ip_header_address);
-if (iph.protocol != IPPROTO_UDP)
-    return 0;
 
 
 	u32 src_ip = __builtin_bswap32(iph.saddr);
@@ -179,24 +182,22 @@ if (iph.protocol != IPPROTO_UDP)
 		struct udphdr udph = {};
 		bpf_probe_read(&udph, sizeof(udph), udp_header);
 
-
-		if(d == 43 && dd == 1){
+                bpf_printk("send_xmit1");
 			char *payload = udp_header + sizeof(struct udphdr);
         		struct Message msg = {};
         		bpf_probe_read(&msg, sizeof(msg), payload);
-
-			if (msg.msg_type < 0 || msg.msg_type > 5) return 0;
+                           
         			struct Event *event;
 				event = bpf_ringbuf_reserve(&events, sizeof(*event), 0);
         			if (!event) return 0;
+bpf_printk("msg_type=%d seq=%d", msg.msg_type, msg.seq);
 				event->event_type = 2;
         			event->data.msg_type = msg.msg_type;
         			event->data.seq = msg.seq;
                                 event->pid = bpf_get_current_pid_tgid() >> 32;
        	 			event->timestamp = bpf_ktime_get_ns();
-
+                                bpf_printk("send_xmit3");
         			bpf_ringbuf_submit(event, 0);
-		}
 
 
 

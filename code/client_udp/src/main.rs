@@ -9,7 +9,6 @@ use libc::{
 use std::env;
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
-use std::alloc::System;
 use std::{
     collections::VecDeque,
     convert::TryFrom,
@@ -210,6 +209,7 @@ fn read_user_zero() -> Instant {
 fn wait_for_event(seq: u64, msg_type: MessageType, event_type: u8) -> Option<Event> {
     let start = Instant::now();
     let queue;
+
     if event_type == 1 {
         queue = CURRENT_EVENT_REC
             .get()
@@ -235,16 +235,7 @@ fn wait_for_event(seq: u64, msg_type: MessageType, event_type: u8) -> Option<Eve
         //println!("Message Queue length: {}", queue_lock.len());
         if let Some(pos) = queue_lock.iter().position(|event| {
             let Ok(t) = MessageType::try_from(event.data.msg_type);
-            /*if event_type ==3 {
-                let d = event.data.seq;
-                let et =  event.event_type;
-                println!("t = {:?}", t);
-                println!("event.data.seq = {:?}", d);
-                println!("msg_type = {:?}", msg_type);
-                println!("event.event_type = {:?}",et);
-                println!("event_type = {:?}", event_type);
-            }*/
-            t == msg_type && event.data.seq == seq && event.event_type == event_type
+            	t == msg_type && event.data.seq == seq && event.event_type == event_type
         }) {
             let result = Some(queue_lock.remove(pos).unwrap());
             queue_lock.clear();
@@ -254,34 +245,6 @@ fn wait_for_event(seq: u64, msg_type: MessageType, event_type: u8) -> Option<Eve
         drop(queue_lock);
         thread::sleep(Duration::from_nanos(5));
     }
-}
-
-fn wait_for_queue_event(timestamp: u64) -> Option<Event> {
-    let queue = CURRENT_QUEUE_EVENT
-        .get()
-        .expect("CURRENT_QUEUE_EVENT not initialized")
-        .clone();
-
-    let count = *MESSAGE_COUNT.lock().unwrap() as usize;
-
-    let mut queue_lock = queue.lock().unwrap();
-    println!("Queue Queue length: {}", queue_lock.len());
- for i in 1..queue_lock.len() {
-        let idx = queue_lock.len() - i;
-        let event = &queue_lock[idx];
-        if (event.timestamp - get_kernel_zero()) < timestamp
-        {  
-            let result = Some(event.clone());
-            if queue_lock.len() > 5 {
-                queue_lock.clear();
-            }
-            return result;
-        }
-
-        thread::sleep(Duration::from_nanos(5));
-    }
-println!("No matching queue event found. {} {}", queue_lock.len(), count);
-    queue_lock.back().cloned()
 }
 
 fn main() -> Result<()> {
@@ -320,7 +283,7 @@ fn main() -> Result<()> {
         let my_pid = std::process::id() as u32;
         match event.event_type{
             0 if event.pid == my_pid => {
-                let diff = Instant::now().duration_since(read_user_zero()).as_nanos() as i128;
+                let _diff = Instant::now().duration_since(read_user_zero()).as_nanos() as i128;
                 let timestamp = event.timestamp;
                 set_kernel_zero(timestamp);
             }
@@ -426,9 +389,9 @@ fn main() -> Result<()> {
                     client_sent_time =
                         Instant::now().duration_since(read_user_zero()).as_nanos() as u128;
 
-                   // if let Some(event) = wait_for_event(seq, MessageType::NtpResult, 2) {
-                   //     client_sent_time = (event.timestamp - get_kernel_zero()) as u128;
-                   // }
+                    //if let Some(event) = wait_for_event(seq, MessageType::NtpResult, 2) {
+                    //    client_sent_time = (event.timestamp - get_kernel_zero()) as u128;
+                    //}
                 }
                 Ok(MessageType::PTP) => {
                     update_user_zero();
@@ -511,17 +474,16 @@ fn main() -> Result<()> {
                     socket.send(&encoded)?;
                     increment_message_count();
 
-                 //   client_sent_time_calc =
-                 //       Instant::now().duration_since(read_user_zero()).as_nanos() as u128;
+                    //client_sent_time_calc =
+                    //    Instant::now().duration_since(read_user_zero()).as_nanos() as u128;
 
-                 //   if let Some(event) = wait_for_event(seq, MessageType::Calc, 2) {
-                 //       client_sent_time_calc = (event.timestamp - get_kernel_zero()) as u128;
-                 //   }    else{
-                 //       println!("No matching send event found for seq {}", seq);
-                 //   }
+                    //if let Some(event) = wait_for_event(seq, MessageType::Calc, 2) {
+                    //    client_sent_time_calc = (event.timestamp - get_kernel_zero()) as u128;
+                    //}    else{
+                    //    println!("No matching send event found for seq {}", seq);
+                    //}
 
                     let duration_queue = start.elapsed();
-
                     let queue_event = wait_for_event(seq, MessageType::Calc, 3);
                     if let Some(evt) = queue_event {
                         client_queue_time_calc = (evt.timestamp - get_kernel_zero()) as u128;

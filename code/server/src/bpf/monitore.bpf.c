@@ -58,7 +58,7 @@ struct {
 } events SEC(".maps");
 
 
-SEC("uretprobe//code/server/target/debug/server:measure_instant")
+SEC("uretprobe//code/server/target/release/server:measure_instant")
 int trace_measure_instant(struct pt_regs *ctx) {
     __u64 timestamp = bpf_ktime_get_ns();
     struct Event *e = bpf_ringbuf_reserve(&events, sizeof(*e), 0);

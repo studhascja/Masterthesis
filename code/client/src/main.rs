@@ -256,7 +256,7 @@ fn main() -> Result<()> {
          let my_pid = std::process::id() as u32;
         match event.event_type{
             0 if event.pid == my_pid => {
-                let diff = Instant::now().duration_since(read_user_zero()).as_nanos() as i128;
+                let _diff = Instant::now().duration_since(read_user_zero()).as_nanos() as i128;
                 let timestamp = event.timestamp;
                 set_kernel_zero(timestamp);
             }
@@ -299,7 +299,7 @@ fn main() -> Result<()> {
     // Connect to server
     let server_addr = "192.168.1.1:8080";
     let mut _difference = 0;
-
+    println!("TCP");
     match TcpStream::connect(server_addr) {
         Ok(mut stream) => {
             println!("✅ Connected to server at {}", server_addr);
@@ -352,7 +352,7 @@ fn main() -> Result<()> {
                             if let Some(event) = wait_for_event(seq, MessageType::NtpResult, 1) {
                                 client_recv = event.timestamp - get_kernel_zero();
                             }
-                            let kernel = get_kernel_zero();
+                            let _kernel = get_kernel_zero();
 
                             //let duration = Instant::now().duration_since(read_user_zero());
                             let encoded = encode_message(
@@ -372,14 +372,14 @@ fn main() -> Result<()> {
                                 Instant::now().duration_since(read_user_zero()).as_nanos() as u128;
 
                             if let Some(event) = wait_for_event(seq, MessageType::NtpResult, 2) {
-                                let client_sent_time = match event.timestamp.checked_sub(get_kernel_zero()) {
+let _client_sent_time = match event.timestamp.checked_sub(get_kernel_zero()) {
     Some(diff) => diff as u128,
     None => {
+        notify_python();
         eprintln!("Fehler: event.timestamp < get_kernel_zero(), Subtraktion nicht möglich!");
         std::process::exit(1);
     }
-};
-                            }
+};                            }
                             //    println!("durchgekommen");
                         }
                         Ok(MessageType::PTP) => {
@@ -467,7 +467,7 @@ fn main() -> Result<()> {
                                 println!("No matching send event found for seq {}", seq);
                             }
                             
-                            let duration_queue = start.elapsed();
+                            let _duration_queue = start.elapsed();
                             let queue_event = wait_for_event(tcp_seq, MessageType::Calc, 3);
                             if let Some(evt) = queue_event {
                                  client_queue_time_calc = (evt.timestamp - get_kernel_zero()) as u128;

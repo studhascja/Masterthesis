@@ -29,7 +29,6 @@ static KERNEL_ZERO: Lazy<Mutex<u64>> = Lazy::new(|| Mutex::new(0));
 static MESSAGE_COUNT: Lazy<Mutex<u64>> = Lazy::new(|| Mutex::new(0));
 
 const TIMEOUT_NS: u64 = 3000000;
-const NUM_POINTS: usize = 40000;
 const RADIUS: f64 = 10.0;
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -968,7 +967,7 @@ fn main() -> Result<(), libbpf_rs::Error> {
     let qos = Arc::new(args[5].clone());
     let time = Arc::new(args[6].clone());
     let listener = TcpListener::bind("192.168.1.1:8080")?;
-    println!("Server läuft auf 192.168.1.1:8080");
+    println!("TCPServer läuft auf 192.168.1.1:8080");
     let running = Arc::new(AtomicBool::new(true));
 
     for stream in listener.incoming() {
@@ -1002,7 +1001,7 @@ fn main() -> Result<(), libbpf_rs::Error> {
                     };
                     _ = run_state_machine(context);
                 });
-                handle.join();
+                let _ = handle.join();
             }
             Err(e) => eprintln!("Verbindungsfehler: {}", e),
         }
