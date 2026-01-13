@@ -25,61 +25,151 @@ use std::{
     thread,
     time::{Duration, Instant},
 };
+// Generated eBPF skeleton (libbpf-rs)
+// This file provides access to the mapped tracepoints
 include!("bpf/monitore.skel.rs");
 
-// Global state
-static CURRENT_EVENT_REC: OnceLock<Arc<Mutex<VecDeque<Event>>>> = OnceLock::new();
-static CURRENT_EVENT_SEND: OnceLock<Arc<Mutex<VecDeque<Event>>>> = OnceLock::new();
-static CURRENT_QUEUE_EVENT: OnceLock<Arc<Mutex<VecDeque<Event>>>> = OnceLock::new();
-static MESSAGE_COUNT: Lazy<Mutex<u64>> = Lazy::new(|| Mutex::new(1));
-static USER_ZERO: Lazy<Mutex<Instant>> = Lazy::new(|| Mutex::new(Instant::now()));
-static KERNEL_ZERO: Lazy<Mutex<u64>> = Lazy::new(|| Mutex::new(0));
-//static TEST: OnceLock<Instant> = OnceLock::new();
 
+// ============================================================================
+// Global State
+// ============================================================================
+
+/// Queue for netif_receive_skb tracepoint events
+static CURRENT_EVENT_REC: OnceLock<Arc<Mutex<VecDeque<Event>>>> = OnceLock::new();
+
+/// Queue for net_dev_xmit tracepoint events
+static CURRENT_EVENT_SEND: OnceLock<Arc<Mutex<VecDeque<Event>>>> = OnceLock::new();
+
+/// Queue for net_dev_queue tracepoint events
+static CURRENT_QUEUE_EVENT: OnceLock<Arc<Mutex<VecDeque<Event>>>> = OnceLock::new();
+
+/// Global message sequence counter
+static MESSAGE_COUNT: Lazy<Mutex<u64>> = Lazy::new(|| Mutex::new(1));
+
+/// Reference timestamp in user space
+static USER_ZERO: Lazy<Mutex<Instant>> = Lazy::new(|| Mutex::new(Instant::now()));
+
+/// Reference timestamp in kernel space
+static KERNEL_ZERO: Lazy<Mutex<u64>> = Lazy::new(|| Mutex::new(0));
+
+
+// ============================================================================
+// Protocol Definitions
+// ============================================================================
+
+/// Application-level message types exchanged via TCP.
+///
+/// Values are serialized as `u8` and must remain stable.
 #[repr(u8)]
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 enum MessageType {
+    /// Initial handshake message
     Start = 0,
+
+    /// Network Time Protocol request
     NTP = 1,
+
+    /// For Checkphase, to test the result of NTP and PTP
     NtpResult = 2,
+
+    /// Precision Time Protocol request
     PTP = 3,
+
+    /// PTP result message
     PtpResult = 4,
+
+    /// RT Phase (Calcuation)
     Calc = 5,
 }
 
+/// Structure of sent messages.
+///
+/// Not all fields are necessary for all phases.
 #[repr(C)]
 #[derive(Copy, Clone, Debug, Zeroable, Pod)]
 struct Message {
+    /// Generic timestamp field
     timestamp: u128,
+
+    /// First 128-bit integer payload (Timestamps of Client/Server)
     first_u128: u128,
+
+    /// Second 128-bit integer payload (Timestamps of Client/Server)
     second_u128: u128,
+
+    /// Signed integer value (used for latency accumulation)
     i_val: i128,
+
+    /// First floating-point payload (Y-Value / Theta for Calc phase)
     first_f64: f64,
+
+    /// Second floating-point payload (Radius for Calc phase)
     second_f64: f64,
+
+    /// Message sequence number
     seq: u64,
+
+    /// Encoded MessageType
     msg_type: u8,
+
+    /// Padding for alignment
     _padding: [u8; 7],
 }
 
+
+// ============================================================================
+// eBPF Data Structures
+// ============================================================================
+
+/// Data portion of an eBPF event.
+///
+/// This structure is embedded inside `Event`.
 #[repr(C, packed)]
 #[derive(Copy, Clone, Debug, Zeroable, Pod)]
 struct BpfData {
+    /// Encoded MessageType
     msg_type: u8,
+
+    /// Padding for alignment
     _padding: [u8; 7],
+
+    /// Message sequence number
     seq: u64,
 }
 
+/// Event emitted from the eBPF program through the ring buffer.
+///
+/// Each event corresponds to a network-related kernel activity.
 #[repr(C, packed)]
 #[derive(Copy, Clone, Debug, Zeroable, Pod)]
 struct Event {
+    /// Kernel-defined event type
     event_type: u8,
+
+    /// Padding for alignment
     _padding: [u8; 7],
+
+    /// Kernel timestamp in nanoseconds
     timestamp: u64,
+
+    /// Process ID associated with this event
     pid: u32,
+
+    /// Padding for alignment
     _padding_pid: [u8; 4],
+
+    /// Embedded event-specific data
     data: BpfData,
 }
-// Convert u8 to MessageType
+
+
+// ============================================================================
+// Utility Implementations
+// ============================================================================
+
+/// Convert a raw `u8` value into `MessageType`.
+///
+/// Panics if an invalid value is received.
 impl TryFrom<u8> for MessageType {
     type Error = std::convert::Infallible;
 
@@ -96,7 +186,14 @@ impl TryFrom<u8> for MessageType {
     }
 }
 
-// Encodes a message struct into a byte vector
+
+// ============================================================================
+// Message Encoding
+// ============================================================================
+
+/// Serialize a `Message` into a byte buffer suitable for TCP transmission.
+///
+/// Uses zero-copy encoding via `bytemuck`.
 fn encode_message(
     msg_type: MessageType,
     seq: u64,
@@ -122,7 +219,14 @@ fn encode_message(
     Ok(bytes_of(&msg).to_vec())
 }
 
-// Set real-time thread priority using SCHED_RR
+
+// ============================================================================
+// Real-Time Scheduling
+// ============================================================================
+
+/// Elevates the current thread to real-time priority using `SCHED_RR`.
+///
+/// This will be tested in the Test Suite
 fn set_rt_priority(priority: i32) {
     unsafe {
         let mut param = sched_param {
@@ -136,7 +240,14 @@ fn set_rt_priority(priority: i32) {
     }
 }
 
-// Notify external process (e.g., Python script)
+
+// ============================================================================
+// External Notification
+// ============================================================================
+
+/// Notify Client Test Suite via a named pipe.
+///
+/// Used to signal the start of the iperf3 workload and the begin of the calc Phase.
 fn notify_python() {
     if let Ok(mut pipe) = OpenOptions::new().write(true).open("/tmp/notify_pipe") {
         let _ = writeln!(pipe, "START");
@@ -145,97 +256,79 @@ fn notify_python() {
     }
 }
 
+
+// ============================================================================
+// Time Synchronization Helpers
+// ============================================================================
+
+/// Updates the user-space reference timestamp.
+///
+/// Exposed as `extern "C"` to allow to attach a uprobe.
 #[no_mangle]
 pub extern "C" fn measure_instant() {
     let mut time = USER_ZERO.lock().unwrap();
     *time = Instant::now();
 }
 
-// Atomic message counter
+/// Increment and return the global message counter.
 fn increment_message_count() -> u64 {
     let mut count = MESSAGE_COUNT.lock().unwrap();
     *count += 1;
     *count
 }
 
-// Global time helpers
+/// Set the kernel-space reference timestamp in userspace.
 fn set_kernel_zero(value: u64) {
     let mut kernel = KERNEL_ZERO.lock().unwrap();
     *kernel = value;
 }
 
+/// Get the kernel-space reference timestamp.
 fn get_kernel_zero() -> u64 {
     *KERNEL_ZERO.lock().unwrap()
 }
 
+/// Refresh the user-space reference timestamp an trigger uprobe.
 fn update_user_zero() {
     measure_instant();
 }
 
-fn set_user_zero(value: Instant) {
-    let mut user = USER_ZERO.lock().unwrap();
-    *user = value;
-}
-
-fn test_user_kernel_sync() {
-    let user_old = read_user_zero();
-    let kernel_old = get_kernel_zero();
-    let start = Instant::now();
-    update_user_zero();
-    let stop = Instant::now().duration_since(start).as_nanos() as i128;
-    thread::sleep(Duration::from_millis(100));
-
-    let user_new = read_user_zero();
-    let kernel_new = get_kernel_zero();
-    let user_diff = user_new.duration_since(user_old).as_nanos() as i128;
-    let kernel_diff = (kernel_new as i128) - (kernel_old as i128);
-
-    println!(
-        "User diff: {} ns, Kernel diff: {} ns, Difference: {} ns, Stop {}",
-        user_diff,
-        kernel_diff,
-        (user_diff - kernel_diff),
-        stop
-    );
-
-    set_kernel_zero(kernel_old);
-    set_user_zero(user_old);
-}
-
+/// Read the current user-space reference timestamp.
 fn read_user_zero() -> Instant {
     *USER_ZERO.lock().unwrap()
 }
 
+
+// ============================================================================
+// Event Synchronization
+// ============================================================================
+
+/// Wait for a specific kernel event matching sequence number, message type,
+/// and event type.
+///
+/// Polls the corresponding queue with a short timeout.
 fn wait_for_event(seq: u64, msg_type: MessageType, event_type: u8) -> Option<Event> {
     let start = Instant::now();
-    let queue;
 
-    if event_type == 1 {
-        queue = CURRENT_EVENT_REC
-            .get()
-            .expect("CURRENT_EVENT not initialized")
-            .clone();
-    } else if event_type ==2 {
-        queue = CURRENT_EVENT_SEND
-            .get()
-            .expect("CURRENT_EVENT not initialized")
-            .clone();
+    // Select the appropriate event queue
+    let queue = if event_type == 1 {
+        CURRENT_EVENT_REC.get().expect("CURRENT_EVENT not initialized").clone()
+    } else if event_type == 2 {
+        CURRENT_EVENT_SEND.get().expect("CURRENT_EVENT not initialized").clone()
     } else {
-           queue = CURRENT_QUEUE_EVENT
-            .get()
-            .expect("CURRENT_EVENT not initialized")
-            .clone();
-    }
+        CURRENT_QUEUE_EVENT.get().expect("CURRENT_EVENT not initialized").clone()
+    };
+
     loop {
-        if start.elapsed() > Duration::from_millis(10) {
-            println!("Nix");
+        if start.elapsed() > Duration::from_millis(1) {
             return None;
         }
+
         let mut queue_lock = queue.lock().unwrap();
-        //println!("Message Queue length: {}", queue_lock.len());
+
         if let Some(pos) = queue_lock.iter().position(|event| {
             let Ok(t) = MessageType::try_from(event.data.msg_type);
-            	t == msg_type && event.data.seq == seq && event.event_type == event_type
+            t == msg_type && event.data.seq == seq && event.event_type == event_type
         }) {
             let result = Some(queue_lock.remove(pos).unwrap());
             queue_lock.clear();
@@ -247,60 +340,109 @@ fn wait_for_event(seq: u64, msg_type: MessageType, event_type: u8) -> Option<Eve
     }
 }
 
+// ============================================================================
+// Main Application Entry Point
+// ============================================================================
+
+/// Main entry point of the application.
+///
+/// Responsibilities:
+/// - Set real-time scheduling
+/// - Initialize global queues
+/// - Load and attach eBPF programs
+/// - Handle TCP communication
+/// - Correlate kernel and user-space timestamps
+/// - React on Server
 fn main() -> Result<()> {
+    // Elevate current thread to real-time round-robin scheduling
     set_rt_priority(99);
-    let mut _difference = 0;
+
+    // Initialize global event queues
     let event_queue_rec = Arc::new(Mutex::new(VecDeque::new()));
     let event_queue_send = Arc::new(Mutex::new(VecDeque::new()));
     let queue_event_queue = Arc::new(Mutex::new(VecDeque::new()));
+
     CURRENT_EVENT_REC.set(event_queue_rec.clone()).unwrap();
     CURRENT_EVENT_SEND.set(event_queue_send.clone()).unwrap();
     CURRENT_QUEUE_EVENT.set(queue_event_queue.clone()).unwrap();
 
-    // Initialize and load BPF skeleton
+    // ------------------------------------------------------------------------
+    // eBPF Initialization
+    // ------------------------------------------------------------------------
+
+    // Open, load and attach the eBPF skeleton
     let open_skel = MonitoreSkelBuilder::default().open()?;
     println!("✅ BPF skeleton opened.");
+
     let mut skel = open_skel.load()?;
     println!("✅ BPF skeleton loaded.");
+
     skel.attach()?;
     println!("✅ eBPF program attached and running.");
 
+    // Shared references to event queues
     let event_ref_rec = CURRENT_EVENT_REC.get().unwrap().clone();
     let event_ref_send = CURRENT_EVENT_SEND.get().unwrap().clone();
     let queue_event_ref = CURRENT_QUEUE_EVENT.get().unwrap().clone();
+
+    // Shared flag to stop background threads
     let running = Arc::new(AtomicBool::new(true));
     let maps = skel.maps();
 
-    // Setup ring buffer with callback
+    // ------------------------------------------------------------------------
+    // Ring Buffer Setup
+    // ------------------------------------------------------------------------
+
+    // Build ring buffer and register callback invoked for each kernel event
     let mut ringbuf_builder = RingBufferBuilder::new();
     ringbuf_builder.add(maps.events(), move |data: &[u8]| {
+        // Validate event size
         if data.len() != std::mem::size_of::<Event>() {
             eprintln!("⚠️ Invalid event size: {}", data.len());
             return 0;
         }
 
+        // Deserialize event from raw bytes
         let event = *from_bytes::<Event>(data);
         let my_pid = std::process::id() as u32;
-        match event.event_type{
+
+        // Recognize event on event type and PID
+        match event.event_type {
+            // Kernel reference timestamp event
+            // Reaction to triggered Uprobe
             0 if event.pid == my_pid => {
-                let _diff = Instant::now().duration_since(read_user_zero()).as_nanos() as i128;
-                let timestamp = event.timestamp;
-                set_kernel_zero(timestamp);
+                let _diff =
+                    Instant::now().duration_since(read_user_zero()).as_nanos() as i128;
+                set_kernel_zero(event.timestamp);
             }
+
+            // Tracepoint receive event
             1 if event.pid == my_pid => {
                 let mut queue = event_ref_rec.lock().unwrap();
                 queue.push_back(event);
             }
+
+            // Tracepoint send event
             2 if event.pid == my_pid => {
                 let mut queue = event_ref_send.lock().unwrap();
                 queue.push_back(event);
             }
+
+            // Tracepoint queue event
             3 if event.pid == my_pid => {
                 let mut queue = queue_event_ref.lock().unwrap();
                 queue.push_back(event);
             }
+
+            // Ignore unrelated events
             _ => {
-                eprintln!("⚠️ Unknown event type: {}", event.event_type);
+                let pid = event.pid;
+                eprintln!(
+                    "⚠️ Unknown event type: {} (pid {}, expected {})",
+                    event.event_type,
+                    pid,
+                    my_pid
+                );
             }
         }
 
@@ -309,47 +451,63 @@ fn main() -> Result<()> {
 
     let ringbuf = ringbuf_builder.build()?;
 
-    // Start polling thread for ring buffer
+    // ------------------------------------------------------------------------
+    // Ring Buffer Polling Thread
+    // ------------------------------------------------------------------------
+
+    // Background thread polling the eBPF ring buffer
     let ring_running = running.clone();
-    let _ = thread::spawn(move || {
+    let _poll_thread = thread::spawn(move || {
         while ring_running.load(Ordering::Relaxed) {
-            ringbuf.poll(Duration::from_millis(5)).unwrap();
+            ringbuf.poll(Duration::from_millis(100)).unwrap();
         }
     });
-    update_user_zero();
-    for _ in 0..20 {
-        thread::sleep(Duration::from_millis(100));
-        test_user_kernel_sync();
-    }
-    // Setup UDP socket
+
+    // ------------------------------------------------------------------------
+    // Argument Parsing
+    // ------------------------------------------------------------------------
+
+    // Runtime parameters forwarded to iperf3 from test suite
+    let args: Vec<String> = env::args().collect();
+    let iperf_o = Arc::new(args[1].clone());
+    let time_c_o = Arc::new(args[2].clone());
+    let size_p_o = Arc::new(args[3].clone());
+
+    // ------------------------------------------------------------------------
+    // UDP Client Setup
+    // ------------------------------------------------------------------------
     let socket = UdpSocket::bind("0.0.0.0:0")?;
     socket.connect("192.168.1.1:8080")?;
-    // Send Start message
+
+    // Send initial START message
     let start_msg = encode_message(MessageType::Start, 0, 0, 0, 0, 0.0, 0.0, 0)?;
     socket.send(&start_msg)?;
     increment_message_count();
 
     let mut buf = [0u8; std::mem::size_of::<Message>()];
+
+    // Client-side timestamps used for synchronization
     let mut client_sent_time = 0u128;
     let mut client_sent_time_calc = 0u128;
     let mut client_queue_time_calc = 0u128;
+    let mut _difference = 0;
 
-    let args: Vec<String> = env::args().collect();
-    let iperf_o= Arc::new(args[1].clone());
-    let time_c_o= Arc::new(args[2].clone());
-    let size_p_o= Arc::new(args[3].clone());
+    // ----------------------------------------------------------------
+    // UDP Message Processing Loop
+    // ----------------------------------------------------------------
 
     loop {
-	
-	let iperf= Arc::clone(&iperf_o);
-	let time_c= Arc::clone(&time_c_o);
-    let size_p= Arc::clone(&size_p_o);
+	    let iperf= Arc::clone(&iperf_o);
+	    let time_c= Arc::clone(&time_c_o);
+        let size_p= Arc::clone(&size_p_o);
 
         let size = socket.recv(&mut buf)?;
+
         if size == 0 {
             break;
         }
 
+        // Deserialize incoming message
         let mut raw = MaybeUninit::<Message>::uninit();
         let ptr = raw.as_mut_ptr() as *mut u8;
         unsafe {
@@ -357,15 +515,27 @@ fn main() -> Result<()> {
             let msg = raw.assume_init();
 
             match MessageType::try_from(msg.msg_type) {
+
+                // ----------------------------------------------------
+                // Unexpected START message
+                // ----------------------------------------------------
                 Ok(MessageType::Start) => {
                     println!("⚠️ Received unexpected Start message from server.");
                 }
+
+                // ----------------------------------------------------
+                // NTP request handling (Rough Time Sync)
+                // ----------------------------------------------------
                 Ok(MessageType::NTP) => {
                     update_user_zero();
                     let encoded = encode_message(MessageType::NTP, msg.seq, 0, 0, 0, 0.0, 0.0, 0)?;
                     socket.send(&encoded)?;
                     increment_message_count();
                 }
+
+                // ----------------------------------------------------
+                // NTP result processing (For check Phase)
+                // ----------------------------------------------------
                 Ok(MessageType::NtpResult) => {
                     let seq = msg.seq;
                     let mut client_recv =
@@ -393,74 +563,85 @@ fn main() -> Result<()> {
                     //    client_sent_time = (event.timestamp - get_kernel_zero()) as u128;
                     //}
                 }
+
+                // ----------------------------------------------------
+                // PTP request handling (Precise Time Sync)
+                // ----------------------------------------------------
                 Ok(MessageType::PTP) => {
                     update_user_zero();
                     let encoded = encode_message(MessageType::PTP, msg.seq, 0, 0, 0, 0.0, 0.0, 0)?;
                     socket.send(&encoded)?;
                     increment_message_count();
                 }
+
+                // ----------------------------------------------------
+                // PTP result accumulation
+                // ----------------------------------------------------
                 Ok(MessageType::PtpResult) => {
                     _difference += msg.i_val;
                 }
+
+                // ----------------------------------------------------
+                // Calculation & workload message
+                // ----------------------------------------------------
                 Ok(MessageType::Calc) => {
                     let (theta, radius) = (msg.first_f64, msg.second_f64);
                     let y = radius * theta.sin();
                     let seq = msg.seq;
 
-                    // Launch iperf3 in background
+                    // Launch iperf3 background workload (only once)
                     if seq == 0 {
-                thread::spawn(move || {
-        let mut command = Command::new("iperf3");
-        let child = command
-            .args([
-                "-c", "192.168.1.1",
-                "-u",
-                "-b", &iperf,
-                "-t", &time_c,
-                "-l", &size_p,
-                "-p", "5202",
-                "-J",
-            ])
-            .stderr(Stdio::piped())
-            .stdout(Stdio::piped())
-            .pre_exec(|| {
-                let param = sched_param { sched_priority: 0 };
-                let ret = sched_setscheduler(0, SCHED_OTHER, &param);
-                if ret != 0 {
-                    return Err(std::io::Error::last_os_error());
-                }
-                Ok(())
-                })
-            .spawn() 
-            .expect("Fehler beim Starten von iperf3");
+                        thread::spawn(move || {
+                            let mut command = Command::new("iperf3");
+                            let child = command
+                                .args([
+                                    "-c", "192.168.1.1",
+                                    "-u",
+                                    "-b", &iperf,
+                                    "-t", &time_c,
+                                    "-l", &size_p,
+                                    "-p", "5202",
+                                    "-J",
+                                ])
+                                .stderr(Stdio::piped())
+                                .stdout(Stdio::piped())
+                                .pre_exec(|| {
+                                    let param = sched_param { sched_priority: 0 };
+                                    let ret = sched_setscheduler(0, SCHED_OTHER, &param);
+                                    if ret != 0 {
+                                        return Err(std::io::Error::last_os_error());
+                                    }
+                                    Ok(())
+                                    })
+                                .spawn() 
+                                .expect("Fehler beim Starten von iperf3");
+                                notify_python();
             
-            notify_python();
-            
+                            // stdout einlesen
+                            let output = child
+                                .wait_with_output()
+                                .expect("Fehler beim Warten auf iperf3");
 
-        // stdout einlesen
-        let output = child
-            .wait_with_output()
-            .expect("Fehler beim Warten auf iperf3");
+                            // In Datei schreiben
+                            let mut file = File::create("iperf3_output.json").expect("Kann Datei nicht erstellen");
+                            file.write_all(&output.stdout).expect("Fehler beim Schreiben");
 
-        // In Datei schreiben
-        let mut file = File::create("iperf3_output.json").expect("Kann Datei nicht erstellen");
-        file.write_all(&output.stdout).expect("Fehler beim Schreiben");
-
-        // (optional) Fehlerausgabe in Datei schreiben
-        if !output.stderr.is_empty() {
-            let mut err_file = File::create("iperf3_error.log").unwrap();
-            err_file.write_all(&output.stderr).unwrap();
-        }
-    });
+                            // (optional) Fehlerausgabe in Datei schreiben
+                            if !output.stderr.is_empty() {
+                                let mut err_file = File::create("iperf3_error.log").unwrap();
+                                err_file.write_all(&output.stderr).unwrap();
+                            }
+                        });
                     }
 
                     let start = Instant::now();
                     let mut client_recv = start.duration_since(read_user_zero()).as_nanos() as u64;
 
+                    // Match receive event
                     if let Some(event) = wait_for_event(seq, MessageType::Calc, 1) {
                         client_recv = event.timestamp - get_kernel_zero();
                     }
-		    //println!("Client Sent Time Calc: {}", client_sent_time_calc);
+
                     let encoded = encode_message(
                         MessageType::Calc,
                         seq,
@@ -473,10 +654,8 @@ fn main() -> Result<()> {
                     )?;
                     socket.send(&encoded)?;
                     increment_message_count();
-
                     //client_sent_time_calc =
                     //    Instant::now().duration_since(read_user_zero()).as_nanos() as u128;
-
                     //if let Some(event) = wait_for_event(seq, MessageType::Calc, 2) {
                     //    client_sent_time_calc = (event.timestamp - get_kernel_zero()) as u128;
                     //}    else{
@@ -484,6 +663,8 @@ fn main() -> Result<()> {
                     //}
 
                     let duration_queue = start.elapsed();
+
+                    // Match queueing event
                     let queue_event = wait_for_event(seq, MessageType::Calc, 3);
                     if let Some(evt) = queue_event {
                         client_queue_time_calc = (evt.timestamp - get_kernel_zero()) as u128;
@@ -499,10 +680,16 @@ fn main() -> Result<()> {
                             duration_queue
                         );
                     }
+
+                    // Termination condition
                     if seq == u64::MAX {
                         break;
                     }
                 }
+
+                // ----------------------------------------------------
+                // Unknown message type
+                // ----------------------------------------------------
                 Err(_) => {
                     eprintln!("⚠️ Unknown message type: {}", msg.msg_type);
                 }
