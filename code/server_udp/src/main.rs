@@ -275,6 +275,7 @@ struct Event {
     data: BpfData,
 }
 
+/// ============================================================================
 /// Timestamp Bundles
 /// ============================================================================
 
@@ -822,6 +823,7 @@ fn latency_test_phase(context: &SetupContext) -> Result<SetupContext> {
 
                     match (msg.first_u128, msg.second_u128, msg.timestamp) {
                         (server_sent, client_arrival, client_sent) => {
+                            // Gather All EBPF Timestamps 
                             if i < test_mesg_count {
                                 timestamps[index].server_arrival = server_arrival;
                                 timestamps[index].server_arrival_kernel =
@@ -830,6 +832,7 @@ fn latency_test_phase(context: &SetupContext) -> Result<SetupContext> {
                                 timestamps[index].server_kernel_sent = server_kernel_sent as u128;
                                 timestamps[index].client_arrival = client_arrival;
                             }
+                            // Last message carries client_sent for previous message
                             if i > 0 {
                                 timestamps[index - 1].client_sent = Some(client_sent);
                             }
@@ -875,7 +878,7 @@ fn latency_test_phase(context: &SetupContext) -> Result<SetupContext> {
     let med = median(&diff_all);
     if med.abs() > max_tolerance as i128 {
         if med < 0 {
-            println!("Median is too low: {}", med);
+            //println!("Median is too low: {}", med);
             return Ok(update_context(
                 context,
                 SetupContextOverrides {
@@ -921,6 +924,8 @@ fn calculation_phase(context: &SetupContext) -> Result<SetupContext> {
         .as_str()
         .parse()
         .expect("Invalid number in time");
+
+    // Calculate number of points to generate
     let num_points = (context_time * 1_000_000_000) / TIMEOUT_NS;
 
     let mut points = Vec::with_capacity(num_points as usize);
@@ -1112,7 +1117,7 @@ fn save_results(context: &SetupContext) -> Result<SetupContext> {
         return Ok(update_context(
             context,
             SetupContextOverrides {
-                counter: Some(context.counter + 1), //clone()
+                counter: Some(context.counter + 1),
                 ..Default::default()
             },
         ));
