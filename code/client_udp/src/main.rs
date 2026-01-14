@@ -1,14 +1,14 @@
 use anyhow::Result;
-use std::fs::File;
 use bytemuck::{bytes_of, from_bytes, Pod, Zeroable};
 use libbpf_rs::skel::{OpenSkel, Skel, SkelBuilder};
 use libbpf_rs::RingBufferBuilder;
 use libc::{
     pthread_self, pthread_setschedparam, sched_param, sched_setscheduler, SCHED_OTHER, SCHED_RR,
 };
-use std::env;
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
+use std::env;
+use std::fs::File;
 use std::{
     collections::VecDeque,
     convert::TryFrom,
@@ -28,7 +28,6 @@ use std::{
 // Generated eBPF skeleton (libbpf-rs)
 // This file provides access to the mapped tracepoints
 include!("bpf/monitore.skel.rs");
-
 
 // ============================================================================
 // Global State
@@ -51,7 +50,6 @@ static USER_ZERO: Lazy<Mutex<Instant>> = Lazy::new(|| Mutex::new(Instant::now())
 
 /// Reference timestamp in kernel space
 static KERNEL_ZERO: Lazy<Mutex<u64>> = Lazy::new(|| Mutex::new(0));
-
 
 // ============================================================================
 // Protocol Definitions
@@ -116,7 +114,6 @@ struct Message {
     _padding: [u8; 7],
 }
 
-
 // ============================================================================
 // eBPF Data Structures
 // ============================================================================
@@ -162,7 +159,6 @@ struct Event {
     data: BpfData,
 }
 
-
 // ============================================================================
 // Utility Implementations
 // ============================================================================
@@ -185,7 +181,6 @@ impl TryFrom<u8> for MessageType {
         })
     }
 }
-
 
 // ============================================================================
 // Message Encoding
@@ -219,7 +214,6 @@ fn encode_message(
     Ok(bytes_of(&msg).to_vec())
 }
 
-
 // ============================================================================
 // Real-Time Scheduling
 // ============================================================================
@@ -240,7 +234,6 @@ fn set_rt_priority(priority: i32) {
     }
 }
 
-
 // ============================================================================
 // External Notification
 // ============================================================================
@@ -255,7 +248,6 @@ fn notify_python() {
         eprintln!("⚠️ Could not open /tmp/notify_pipe.");
     }
 }
-
 
 // ============================================================================
 // Time Synchronization Helpers
@@ -298,7 +290,6 @@ fn read_user_zero() -> Instant {
     *USER_ZERO.lock().unwrap()
 }
 
-
 // ============================================================================
 // Event Synchronization
 // ============================================================================
@@ -312,11 +303,20 @@ fn wait_for_event(seq: u64, msg_type: MessageType, event_type: u8) -> Option<Eve
 
     // Select the appropriate event queue
     let queue = if event_type == 1 {
-        CURRENT_EVENT_REC.get().expect("CURRENT_EVENT not initialized").clone()
+        CURRENT_EVENT_REC
+            .get()
+            .expect("CURRENT_EVENT not initialized")
+            .clone()
     } else if event_type == 2 {
-        CURRENT_EVENT_SEND.get().expect("CURRENT_EVENT not initialized").clone()
+        CURRENT_EVENT_SEND
+            .get()
+            .expect("CURRENT_EVENT not initialized")
+            .clone()
     } else {
-        CURRENT_QUEUE_EVENT.get().expect("CURRENT_EVENT not initialized").clone()
+        CURRENT_QUEUE_EVENT
+            .get()
+            .expect("CURRENT_EVENT not initialized")
+            .clone()
     };
 
     loop {
@@ -411,8 +411,7 @@ fn main() -> Result<()> {
             // Kernel reference timestamp event
             // Reaction to triggered Uprobe
             0 if event.pid == my_pid => {
-                let _diff =
-                    Instant::now().duration_since(read_user_zero()).as_nanos() as i128;
+                let _diff = Instant::now().duration_since(read_user_zero()).as_nanos() as i128;
                 set_kernel_zero(event.timestamp);
             }
 
@@ -439,9 +438,7 @@ fn main() -> Result<()> {
                 let pid = event.pid;
                 eprintln!(
                     "⚠️ Unknown event type: {} (pid {}, expected {})",
-                    event.event_type,
-                    pid,
-                    my_pid
+                    event.event_type, pid, my_pid
                 );
             }
         }
@@ -497,9 +494,9 @@ fn main() -> Result<()> {
     // ----------------------------------------------------------------
 
     loop {
-	    let iperf= Arc::clone(&iperf_o);
-	    let time_c= Arc::clone(&time_c_o);
-        let size_p= Arc::clone(&size_p_o);
+        let iperf = Arc::clone(&iperf_o);
+        let time_c = Arc::clone(&time_c_o);
+        let size_p = Arc::clone(&size_p_o);
 
         let size = socket.recv(&mut buf)?;
 
@@ -515,7 +512,6 @@ fn main() -> Result<()> {
             let msg = raw.assume_init();
 
             match MessageType::try_from(msg.msg_type) {
-
                 // ----------------------------------------------------
                 // Unexpected START message
                 // ----------------------------------------------------
@@ -595,12 +591,17 @@ fn main() -> Result<()> {
                             let mut command = Command::new("iperf3");
                             let child = command
                                 .args([
-                                    "-c", "192.168.1.1",
+                                    "-c",
+                                    "192.168.1.1",
                                     "-u",
-                                    "-b", &iperf,
-                                    "-t", &time_c,
-                                    "-l", &size_p,
-                                    "-p", "5202",
+                                    "-b",
+                                    &iperf,
+                                    "-t",
+                                    &time_c,
+                                    "-l",
+                                    &size_p,
+                                    "-p",
+                                    "5202",
                                     "-J",
                                 ])
                                 .stderr(Stdio::piped())
@@ -612,19 +613,21 @@ fn main() -> Result<()> {
                                         return Err(std::io::Error::last_os_error());
                                     }
                                     Ok(())
-                                    })
-                                .spawn() 
+                                })
+                                .spawn()
                                 .expect("Fehler beim Starten von iperf3");
-                                notify_python();
-            
+                            notify_python();
+
                             // stdout einlesen
                             let output = child
                                 .wait_with_output()
                                 .expect("Fehler beim Warten auf iperf3");
 
                             // In Datei schreiben
-                            let mut file = File::create("iperf3_output.json").expect("Kann Datei nicht erstellen");
-                            file.write_all(&output.stdout).expect("Fehler beim Schreiben");
+                            let mut file = File::create("iperf3_output.json")
+                                .expect("Kann Datei nicht erstellen");
+                            file.write_all(&output.stdout)
+                                .expect("Fehler beim Schreiben");
 
                             // (optional) Fehlerausgabe in Datei schreiben
                             if !output.stderr.is_empty() {
@@ -669,7 +672,7 @@ fn main() -> Result<()> {
                     if let Some(evt) = queue_event {
                         client_queue_time_calc = (evt.timestamp - get_kernel_zero()) as u128;
                     }
-                    
+
                     client_sent_time_calc =
                         Instant::now().duration_since(read_user_zero()).as_nanos() as u128;
                     let duration = start.elapsed();

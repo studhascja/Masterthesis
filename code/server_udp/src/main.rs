@@ -1,5 +1,5 @@
 use anyhow::Result;
-use bytemuck::{Pod, Zeroable, from_bytes};
+use bytemuck::{from_bytes, Pod, Zeroable};
 use libbpf_rs::skel::{OpenSkel, Skel, SkelBuilder};
 use libbpf_rs::RingBufferBuilder;
 use libc::{pthread_self, pthread_setschedparam, sched_param, SCHED_RR};
@@ -18,40 +18,98 @@ use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::{Duration, Instant, SystemTime};
 
+// ============================================================================
+// eBPF Skeleton
+// ============================================================================
+//
+// Generated eBPF skeleton (libbpf-rs)
+// This file provides access to the mapped tracepoints
+//
 include!("bpf/monitore.skel.rs");
 
+// ============================================================================
+// Global State
+// ============================================================================
+
+/// Queue for `netif_receive_skb`-related events (receive).
 static CURRENT_EVENT_REC: OnceLock<Arc<Mutex<VecDeque<Event>>>> = OnceLock::new();
+
+/// Queue for `net_dev_xmit`-related events (send).
 static CURRENT_EVENT_SEND: OnceLock<Arc<Mutex<VecDeque<Event>>>> = OnceLock::new();
+
+/// Queue for `net_dev_queue`-related events (queueing).
 static CURRENT_QUEUE_EVENT: OnceLock<Arc<Mutex<VecDeque<Event>>>> = OnceLock::new();
 
+/// User-space reference timestamp.
 static USER_ZERO: Lazy<Mutex<Instant>> = Lazy::new(|| Mutex::new(Instant::now()));
+
+/// Kernel reference timestamp (nanoseconds) captured from eBPF side.
 static KERNEL_ZERO: Lazy<Mutex<u64>> = Lazy::new(|| Mutex::new(0));
+
+/// Global message sequence counter
 static MESSAGE_COUNT: Lazy<Mutex<u64>> = Lazy::new(|| Mutex::new(0));
+
+/// Counts timeouts across phases to trigger early termination.
 static TIMEOUT_COUNT: Lazy<Mutex<u64>> = Lazy::new(|| Mutex::new(0));
 
-const TIMEOUT_NS: u64 = 3000000;
+// ============================================================================
+// Constants
+// ============================================================================
 
+/// Phase-level timeout in *nanoseconds* for pacing.
+const TIMEOUT_NS: u64 = 3_000_000;
+
+/// Radius used for the calculation phase (generating circle points).
 const RADIUS: f64 = 10.0;
+
+/// I/O timeout for UDP receive loops.
 const TIMEOUT_DURATION: Duration = Duration::from_millis(300);
 
+// ============================================================================
+// Context and State Machine Types
+// ============================================================================
+
+/// Complete runtime context of the UDP server.
 struct SetupContext {
+    /// UDP socket for server endpoint.
     socket: UdpSocket,
+    /// Client address (discovered on Start message).
     src_client: SocketAddr,
+
+    /// Configuration inputs (forwarded in results path).
     standard: Arc<String>,
     frequency: Arc<String>,
     bandwith: Arc<String>,
     qos: Arc<String>,
     time: Arc<String>,
     config: Arc<String>,
+
+    /// Coordination flag to stop background threads (ring buffer polling).
     running: Arc<AtomicBool>,
+
+    /// Send/receive pacing interval (derived from TIMEOUT_NS).
     interval: Duration,
+
+    /// Counter used when writing result files.
     counter: u64,
+
+    /// Results of the calculation phase: (points, latency).
     calculation_result: (Vec<(f64, f64)>, Vec<CalcTimestampSet>),
+
+    /// Measured RTT of NTP-like phase.
     needed_time: u128,
+
+    /// PTP-like phase success flag.
     ptp_result: bool,
+
+    /// Regulation factor for PTP Phase.
     latency_reg: f64,
+
+    /// Latency test success flag.
     latency_result: bool,
 }
+
+/// Optional overrides used to derive updated contexts between phases.
 #[derive(Default)]
 struct SetupContextOverrides {
     pub src_client: Option<std::net::SocketAddr>,
@@ -64,6 +122,7 @@ struct SetupContextOverrides {
     pub latency_result: Option<bool>,
 }
 
+/// Heterogeneous data payload.
 #[derive(Serialize, Deserialize, Debug)]
 enum Data {
     IntegerI128(i128),
@@ -72,6 +131,7 @@ enum Data {
     Float(f64),
 }
 
+/// High-level control states of the server.
 enum State {
     Error,
     WaitForStart,
@@ -83,31 +143,76 @@ enum State {
     Done,
 }
 
+// ============================================================================
+// Protocol Definitions
+// ============================================================================
+
+/// Application-level message types exchanged via UDP.
+///
+/// Values are serialized as `u8` and must remain stable.
 #[repr(u8)]
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 enum MessageType {
+    /// Initial handshake message
     Start = 0,
+
+    /// Network Time Protocol request
     NTP = 1,
+
+    /// For Checkphase, to test the result of NTP and PTP
     NtpResult = 2,
+
+    /// Precision Time Protocol request
     PTP = 3,
+
+    /// PTP result message
     PtpResult = 4,
+
+    /// RT Phase (Calcuation)
     Calc = 5,
 }
 
-#[repr(C, packed)]
+/// Structure of sent messages.
+///
+/// Not all fields are necessary for all phases.
+#[repr(C)]
 #[derive(Copy, Clone, Debug, Zeroable, Pod)]
 struct Message {
+    /// Generic timestamp field
     timestamp: u128,
+
+    /// First 128-bit integer payload (Timestamps of Client/Server)
     first_u128: u128,
+
+    /// Second 128-bit integer payload (Timestamps of Client/Server)
     second_u128: u128,
+
+    /// Signed integer value (used for latency accumulation)
     i_val: i128,
+
+    /// First floating-point payload (Y-Value / Theta for Calc phase)
     first_f64: f64,
+
+    /// Second floating-point payload (Radius for Calc phase)
     second_f64: f64,
+
+    /// Message sequence number
     seq: u64,
+
+    /// Encoded MessageType
     msg_type: u8,
+
+    /// Padding for alignment
     _padding: [u8; 7],
 }
 
+// ============================================================================
+// Message Encoding
+// ============================================================================
+
+/// Serialize a `Message` into a byte buffer suitable for UDP transmission.
+///
+/// Uses zero-copy encoding via `bytemuck`.
 fn encode_message(
     msg_type: MessageType,
     seq: u64,
@@ -120,20 +225,23 @@ fn encode_message(
 ) -> Result<Vec<u8>, anyhow::Error> {
     let msg = Message {
         msg_type: msg_type as u8,
-        seq: seq,
-        timestamp: timestamp,
-        first_u128: first_u128,
-        second_u128: second_u128,
-        first_f64: first_f64,
-        second_f64: second_f64,
-        i_val: i_val,
+        seq,
+        timestamp,
+        first_u128,
+        second_u128,
+        first_f64,
+        second_f64,
+        i_val,
         _padding: [0u8; 7],
     };
-
-    let encoded: &[u8] = bytemuck::bytes_of(&msg);
-    Ok(encoded.to_vec())
+    Ok(bytemuck::bytes_of(&msg).to_vec())
 }
 
+// ============================================================================
+// eBPF Event Payloads
+// ============================================================================
+
+/// Data section embedded within an eBPF ring buffer event.
 #[repr(C)]
 #[derive(Copy, Clone, Debug, Zeroable, Pod)]
 struct BpfData {
@@ -142,17 +250,35 @@ struct BpfData {
     seq: u64,
 }
 
-#[repr(C)]
+/// Event emitted from the eBPF program through the ring buffer.
+///
+/// Each event corresponds to a network-related kernel activity.
+#[repr(C, packed)]
 #[derive(Copy, Clone, Debug, Zeroable, Pod)]
 struct Event {
+    /// Kernel-defined event type
     event_type: u8,
+
+    /// Padding for alignment
     _padding: [u8; 7],
+
+    /// Kernel timestamp in nanoseconds
     timestamp: u64,
+
+    /// Process ID associated with this event
     pid: u32,
+
+    /// Padding for alignment
     _padding_pid: [u8; 4],
+
+    /// Embedded event-specific data
     data: BpfData,
 }
 
+/// Timestamp Bundles
+/// ============================================================================
+
+/// Timestamp set for PTP-like measurements (server <-> client).
 #[derive(Default, Clone)]
 struct PTPTimestampSet {
     server_arrival: u128,
@@ -163,6 +289,9 @@ struct PTPTimestampSet {
     client_sent: Option<u128>,
 }
 
+/// Timestamp set collected during the Calculation phase.
+///
+/// This aligns kernel/user times across both directions, including device queueing.
 #[derive(Default, Clone)]
 struct CalcTimestampSet {
     server_arrival: u128,
@@ -175,9 +304,14 @@ struct CalcTimestampSet {
     client_sent_kernel: Option<u128>,
 }
 
+// ============================================================================
+// Utility Implementations
+// ============================================================================
+/// Convert a raw `u8` value into `MessageType`.
+///
+/// Panics if an invalid value is received.
 impl TryFrom<u8> for MessageType {
     type Error = std::convert::Infallible;
-
     fn try_from(value: u8) -> Result<Self, Self::Error> {
         match value {
             0 => Ok(MessageType::Start),
@@ -186,17 +320,21 @@ impl TryFrom<u8> for MessageType {
             3 => Ok(MessageType::PTP),
             4 => Ok(MessageType::PtpResult),
             5 => Ok(MessageType::Calc),
-            _ => panic!("False Value for MessageType: {}", value),
+            _ => panic!("Invalid MessageType value: {}", value),
         }
     }
 }
 
+/// Exposed as `extern "C"` to allow attaching an uprobe from eBPF.
+///
+/// Updates the `USER_ZERO` timestamp to now.
 #[no_mangle]
 pub extern "C" fn measure_instant() {
     let mut time = USER_ZERO.lock().unwrap();
     *time = Instant::now();
 }
 
+/// Set current thread to real-time `SCHED_RR` priority.
 fn set_rt_priority(prio: i32) {
     unsafe {
         let mut param = sched_param {
@@ -211,6 +349,7 @@ fn set_rt_priority(prio: i32) {
     }
 }
 
+/// Busy-wait until `next_tick` with a short pre-sleep to avoid long spinning.
 fn wait_until(next_tick: Instant) {
     let now = Instant::now();
     if next_tick > now {
@@ -224,6 +363,7 @@ fn wait_until(next_tick: Instant) {
     }
 }
 
+/// Create a derived context from a base one by applying overrides.
 fn update_context(base: &SetupContext, overrides: SetupContextOverrides) -> SetupContext {
     SetupContext {
         socket: base.socket.try_clone().expect("Failed to clone socket"),
@@ -247,48 +387,49 @@ fn update_context(base: &SetupContext, overrides: SetupContextOverrides) -> Setu
     }
 }
 
+/// Increment and return the global message counter.
 pub fn increment_message_count() -> u64 {
     let mut count = MESSAGE_COUNT.lock().unwrap();
     *count += 1;
     *count
 }
 
+/// Increment the timeout counter; returns true if threshold exceeded.
 pub fn increment_timeout_count() -> bool {
     let mut count = TIMEOUT_COUNT.lock().unwrap();
     *count += 1;
-    if *count > 10 {
-        return true;
-    } else {
-        return false;
-    }
+    *count > 10
 }
 
+/// Wait for a specific eBPF event matching `(seq, msg_type, event_type)`.
+///
+/// Polls the corresponding queue with a short timeout.
 fn wait_for_event(seq: u64, msg_type: MessageType, event_type: u8) -> Option<Event> {
     let start = Instant::now();
-    let queue;
-    if event_type == 1 {
-        queue = CURRENT_EVENT_REC
+
+    let queue = if event_type == 1 {
+        CURRENT_EVENT_REC
             .get()
             .expect("CURRENT_EVENT not initialized")
-            .clone();
-    } else if event_type ==2 {
-        queue = CURRENT_EVENT_SEND
+            .clone()
+    } else if event_type == 2 {
+        CURRENT_EVENT_SEND
             .get()
             .expect("CURRENT_EVENT not initialized")
-            .clone();
+            .clone()
     } else {
-           queue = CURRENT_QUEUE_EVENT
+        CURRENT_QUEUE_EVENT
             .get()
             .expect("CURRENT_EVENT not initialized")
-            .clone();
-    }
+            .clone()
+    };
+
     loop {
         if start.elapsed() > Duration::from_millis(10) {
-            println!("Nix");
             return None;
         }
+
         let mut queue_lock = queue.lock().unwrap();
-        //println!("Message Queue length: {}", queue_lock.len());
         if let Some(pos) = queue_lock.iter().position(|event| {
             let Ok(t) = MessageType::try_from(event.data.msg_type);
             t == msg_type && event.data.seq == seq && event.event_type == event_type
@@ -297,44 +438,55 @@ fn wait_for_event(seq: u64, msg_type: MessageType, event_type: u8) -> Option<Eve
             queue_lock.clear();
             return result;
         }
-
         drop(queue_lock);
         thread::sleep(Duration::from_nanos(5));
     }
 }
+
+/// Return the median of a vector of i128.
 fn median(values: &Vec<i128>) -> i128 {
-    let mut sorted_values = values.clone();
-    sorted_values.sort();
-    let len = sorted_values.len();
+    let mut sorted = values.clone();
+    sorted.sort();
+    let len = sorted.len();
     if len % 2 == 1 {
-        sorted_values[len / 2]
+        sorted[len / 2]
     } else {
-        (sorted_values[len / 2 - 1] + sorted_values[len / 2]) / 2
+        (sorted[len / 2 - 1] + sorted[len / 2]) / 2
     }
 }
 
+/// Set kernel reference timestamp in userspace.
 fn set_kernel_zero(value: u64) {
     let mut kernel = KERNEL_ZERO.lock().unwrap();
     *kernel = value;
 }
 
+/// Get kernel reference timestamp.
 fn get_kernel_zero() -> u64 {
     let kernel = KERNEL_ZERO.lock().unwrap();
     *kernel
 }
 
+/// Trigger uprobe to refresh the user-space reference timestamp.
 fn update_user_zero() {
     measure_instant();
 }
 
+/// Read current user-space reference timestamp.
 fn read_user_zero() -> Instant {
     let time = USER_ZERO.lock().unwrap();
     *time
 }
 
+// ============================================================================
+// Setup & Initialization
+// ============================================================================
+
+/// Initialize server socket, parse CLI args, configure global pacing and defaults.
 fn setup() -> anyhow::Result<SetupContext> {
     set_rt_priority(99);
 
+    // CLI: config, standard, frequency, bandwith, qos, time
     let args: Vec<String> = env::args().collect();
     let config = Arc::new(args[1].clone());
     let standard = Arc::new(args[2].clone());
@@ -343,10 +495,13 @@ fn setup() -> anyhow::Result<SetupContext> {
     let qos = Arc::new(args[5].clone());
     let time = Arc::new(args[6].clone());
 
+    // Bind server socket (non-blocking).
     let socket = UdpSocket::bind("192.168.1.1:8080")?;
     socket.set_nonblocking(true)?;
-    println!("Server läuft auf 192.168.1.1:8080");
+    println!("Server listening on 192.168.1.1:8080");
     println!("Size of Message: {}", std::mem::size_of::<Message>());
+
+    // Initial placeholder until first Start message arrives.
     let src_client: SocketAddr = "192.168.1.10:12345".parse().unwrap();
 
     let running = Arc::new(AtomicBool::new(true));
@@ -371,15 +526,20 @@ fn setup() -> anyhow::Result<SetupContext> {
     })
 }
 
+// ============================================================================
+// Phases
+// ============================================================================
+
+/// Waits for the initial `Start` message from the client and captures `src_client`.
 fn wait_for_start_message(context: &SetupContext) -> SetupContext {
     let mut buf = [0u8; std::mem::size_of::<Message>()];
     let socket = &context.socket;
+
     loop {
         match socket.recv_from(&mut buf) {
             Ok((amt, src)) => {
                 let msg: Message = *bytemuck::from_bytes(&buf[..amt]);
-                println!("Nachricht von {} empfangen: {:?}", src, msg);
-
+                println!("Received message from {src}: {:?}", msg);
                 if msg.msg_type == MessageType::Start as u8 {
                     update_user_zero();
                     return update_context(
@@ -401,31 +561,36 @@ fn wait_for_start_message(context: &SetupContext) -> SetupContext {
     }
 }
 
+/// NTP-like phase: meassures the per-message round-trip to obtain "needed_time".
+///
+/// Sends `NTP` and waits for client reflection to measure elapsed times.
 fn ntp_phase(context: &SetupContext) -> Result<SetupContext> {
     let stabilization_iterations = 200;
-
     let mut buf = [0u8; std::mem::size_of::<Message>()];
     let socket = &context.socket;
-    let interval = context.interval.clone();
-    println!("--------------------Start NTP Mechanism---------------------");
+    let interval = context.interval;
+
+    println!("-------------------- Start NTP Mechanism --------------------");
+
     let mut next_tick = Instant::now() + interval;
-    let mut i = 0;
-    let mut ntp_regulation = 500000;
+    let mut i = 0u64;
+    let mut ntp_regulation = 500_000u128; // ns
     let mut needed_time = u128::MAX;
 
     while needed_time > ntp_regulation {
         let start_time = Instant::now();
-        let elapsed_start_time = start_time.duration_since(read_user_zero());
-        let encoded_msg = encode_message(MessageType::NTP, i, 0, 0, 0, 0.0, 0.0, 0)?;
-        socket.send_to(&encoded_msg, &context.src_client)?;
+        let elapsed_start = start_time.duration_since(read_user_zero());
+        let encoded = encode_message(MessageType::NTP, i, 0, 0, 0, 0.0, 0.0, 0)?;
+        socket.send_to(&encoded, &context.src_client)?;
         increment_message_count();
 
+        // Await response
         loop {
             if start_time.elapsed() > TIMEOUT_DURATION {
-                println!("Timeout in NTP Phase");
+                //println!("Timeout in NTP Phase");
                 next_tick = Instant::now() + interval;
                 if increment_timeout_count() {
-                    println!("Too many timeouts, stopping NTP Phase.");
+                    //println!("Too many timeouts, stopping NTP Phase.");
                     return Ok(update_context(
                         context,
                         SetupContextOverrides {
@@ -437,23 +602,20 @@ fn ntp_phase(context: &SetupContext) -> Result<SetupContext> {
                 }
                 break;
             }
+
             match socket.recv_from(&mut buf) {
                 Ok((amt, _src)) => {
                     let msg: Message = *bytemuck::from_bytes::<Message>(&buf[..amt]);
                     let number = msg.seq;
+
+                    // Prefer kernel timestamp (receive tracepoint)
                     let mut end_time =
                         Instant::now().duration_since(read_user_zero()).as_nanos() as u64;
                     if let Some(event) = wait_for_event(number, MessageType::NTP, 1) {
                         end_time = event.timestamp - get_kernel_zero();
                     }
 
-                    needed_time = end_time as u128 - elapsed_start_time.as_nanos();
-                    /*println!(
-                            "Needed Time {} Elapsed {} Start_Elapsed {}",
-                            needed_time,
-                            elapsed_time.as_nanos(),
-                            elapsed_start_time.as_nanos()
-                    );*/
+                    needed_time = end_time as u128 - elapsed_start.as_nanos();
                     break;
                 }
                 Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => {
@@ -464,41 +626,51 @@ fn ntp_phase(context: &SetupContext) -> Result<SetupContext> {
                 }
             }
         }
+
         wait_until(next_tick);
         next_tick += interval;
         i += 1;
+
+        // Simple regulation after initial stabilization
         if needed_time > ntp_regulation && i > stabilization_iterations {
-            let difference = needed_time - ntp_regulation;
-            ntp_regulation = ntp_regulation + (difference / 2);
-            println!("Regulation {} Need {}", ntp_regulation, needed_time);
+            let diff = needed_time - ntp_regulation;
+            ntp_regulation += diff / 2;
+            //println!("Regulation {} Need {}", ntp_regulation, needed_time);
         }
     }
-    return Ok(update_context(
+
+    Ok(update_context(
         context,
         SetupContextOverrides {
             needed_time: Some(needed_time),
             ..Default::default()
         },
-    ));
+    ))
 }
 
+/// PTP-like phase: try to align server/client timing by waiting a calibrated delay (time of RTT from NTP)
+/// and measuring the difference to `needed_time`.
 fn ptp_phase(context: &SetupContext) -> Result<SetupContext> {
-    let max_ptp_tolerance = 5000; // in nanoseconds
-
+    let max_ptp_tolerance = 5_000; // ns tolerance
     let mut buf = [0u8; std::mem::size_of::<Message>()];
     let socket = &context.socket;
-    let interval = context.interval.clone();
+    let interval = context.interval;
+
+    println!("PTP (latency_reg): {:?}", context.latency_reg);
+    println!("-------------------- Start PTP Mechanism --------------------");
+
+    let mut j = 0u64;
+    let mut ptp_regulation = 1_000u128;
     let mut ptp_diff = u128::MAX;
-    println!("PTP: {:?}", context.latency_reg);
-    println!("--------------------Start PTP Mechanism---------------------");
-    let mut j = 0;
-    let mut ptp_regulation = 1000;
     let mut next_tick = Instant::now() + interval;
+
     while ptp_diff > ptp_regulation {
         let start_time = Instant::now();
-        let encoded_msg = encode_message(MessageType::PTP, j, 0, 0, 0, 0.0, 0.0, 0)?;
-        socket.send_to(&encoded_msg, &context.src_client)?;
+        let encoded = encode_message(MessageType::PTP, j, 0, 0, 0, 0.0, 0.0, 0)?;
+        socket.send_to(&encoded, &context.src_client)?;
         increment_message_count();
+
+        // Wait a fraction of the previously measured needed_time (normally latency_reg = 2)
         let wait_time = Instant::now()
             + Duration::from_nanos(
                 (context.needed_time as f64 / context.latency_reg).round() as u64
@@ -506,6 +678,7 @@ fn ptp_phase(context: &SetupContext) -> Result<SetupContext> {
         wait_until(wait_time);
         update_user_zero();
 
+        // Await response
         loop {
             if start_time.elapsed() > TIMEOUT_DURATION {
                 println!("Timeout in PTP Phase");
@@ -522,12 +695,12 @@ fn ptp_phase(context: &SetupContext) -> Result<SetupContext> {
                 }
                 break;
             }
+
             match socket.recv_from(&mut buf) {
                 Ok((_amt, _src)) => {
                     let end_time = Instant::now();
                     let ptp_duration = end_time - start_time;
                     ptp_diff = ptp_duration.as_nanos().abs_diff(context.needed_time);
-                    //println!("PTP-Diff = {} {}", ptp_diff, j);
                     break;
                 }
                 Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => {
@@ -541,13 +714,12 @@ fn ptp_phase(context: &SetupContext) -> Result<SetupContext> {
 
         j += 1;
         ptp_regulation += 1;
-
         wait_until(next_tick);
         next_tick += interval;
 
-        if ptp_regulation > max_ptp_tolerance {
+        if ptp_regulation > max_ptp_tolerance as u128 {
             println!(
-                "PTP Phase exceeded a tolerance of {} , stopping.",
+                "PTP Phase exceeded a tolerance of {}, stopping.",
                 max_ptp_tolerance
             );
             return Ok(update_context(
@@ -559,56 +731,66 @@ fn ptp_phase(context: &SetupContext) -> Result<SetupContext> {
             ));
         }
     }
-    println!("PTP-Diff = {} {}", ptp_diff, j);
-    return Ok(update_context(
+
+    //println!("PTP-Diff = {} {}", ptp_diff, j);
+
+    Ok(update_context(
         context,
         SetupContextOverrides {
             ptp_result: Some(true),
             ..Default::default()
         },
-    ));
+    ))
 }
 
+/// Latency Test phase: exchanges `NtpResult` messages to measure path offsets
+/// to calibrate latency regulation and not assume a symmetric network
 fn latency_test_phase(context: &SetupContext) -> Result<SetupContext> {
     let test_mesg_count: u64 = 1000;
-    let max_tolerance = 10000; // in nanoseconds
-    let mut i = 0;
+    let max_tolerance = 10_000; // ns
+    let mut i = 0u64;
+
     let mut buf = [0u8; std::mem::size_of::<Message>()];
     let socket = &context.socket;
-    let interval = context.interval.clone();
-    println!("---------------------Start Latency Test---------------------");
+    let interval = context.interval;
+
+    println!("-------------------- Start Latency Test --------------------");
+
     let mut next_tick = Instant::now() + interval;
     let mut timestamps: Vec<PTPTimestampSet> =
         vec![PTPTimestampSet::default(); test_mesg_count as usize];
 
     while i < test_mesg_count + 1 {
         let index = i as usize;
+
         let start_time = Instant::now();
-        let elapsed_time = start_time.duration_since(read_user_zero());
-        let encoded_msg = encode_message(
+        let elapsed = start_time.duration_since(read_user_zero());
+        let encoded = encode_message(
             MessageType::NtpResult,
             i,
-            elapsed_time.as_nanos(),
+            elapsed.as_nanos(),
             0,
             0,
             0.0,
             0.0,
             0,
         )?;
-        socket.send_to(&encoded_msg, &context.src_client)?;
+        socket.send_to(&encoded, &context.src_client)?;
         increment_message_count();
 
+        // Prefer kernel send timestamp
         let mut server_kernel_sent =
             Instant::now().duration_since(read_user_zero()).as_nanos() as u64;
         if let Some(event) = wait_for_event(i, MessageType::NtpResult, 2) {
             server_kernel_sent = event.timestamp - get_kernel_zero();
         }
 
+        // Await response
         loop {
             if start_time.elapsed() > TIMEOUT_DURATION {
                 println!("Timeout in Latency Test Phase");
-                if i > 0{
-                    i = i - 1;
+                if i > 0 {
+                    i -= 1;
                 }
                 next_tick = Instant::now() + interval;
                 if increment_timeout_count() {
@@ -623,14 +805,15 @@ fn latency_test_phase(context: &SetupContext) -> Result<SetupContext> {
                 }
                 break;
             }
+
             match socket.recv_from(&mut buf) {
                 Ok((amt, _src)) => {
+                    // Prefer kernel receive timestamp
                     let mut server_arrival_kernel =
                         Instant::now().duration_since(read_user_zero()).as_nanos() as u64;
 
                     let msg: Message = *bytemuck::from_bytes::<Message>(&buf[..amt]);
                     let number = msg.seq;
-
                     let server_arrival = Instant::now().duration_since(read_user_zero()).as_nanos();
 
                     if let Some(event) = wait_for_event(number, MessageType::NtpResult, 1) {
@@ -662,26 +845,22 @@ fn latency_test_phase(context: &SetupContext) -> Result<SetupContext> {
                 }
             }
         }
+
         wait_until(next_tick);
         next_tick += interval;
-        i = i + 1;
+        i += 1;
     }
-    let mut diff_all: Vec<i128> = vec![0; test_mesg_count as usize];
 
+    // Compute offset across samples
+    let mut diff_all: Vec<i128> = vec![0; test_mesg_count as usize];
     for (i, ts) in timestamps.iter().enumerate() {
         if let Some(client_sent) = ts.client_sent {
             let first_offset = ts.client_arrival as i128 - ts.server_kernel_sent as i128;
             let second_offset = ts.server_arrival_kernel as i128 - client_sent as i128;
-            //   let whole = ts.server_arrival as i128 - ts.server_sent as i128;
             let diff_test_offset = second_offset - first_offset;
             diff_all[i] = diff_test_offset;
-            /*
-            println!(
-                "#{i}: Diff_Offset: {}, Whole: {}, First: {}, Second: {}",
-                diff_test_offset, whole, first_offset, second_offset
-            ); */
         } else {
-            println!("#{i}: Incomplete timestamp set");
+            println!("#{}: Incomplete timestamp set", i);
             return Ok(update_context(
                 context,
                 SetupContextOverrides {
@@ -691,8 +870,9 @@ fn latency_test_phase(context: &SetupContext) -> Result<SetupContext> {
             ));
         }
     }
-    let med = median(&diff_all);
 
+    // Computer Median of all offsets
+    let med = median(&diff_all);
     if med.abs() > max_tolerance as i128 {
         if med < 0 {
             println!("Median is too low: {}", med);
@@ -705,7 +885,7 @@ fn latency_test_phase(context: &SetupContext) -> Result<SetupContext> {
                 },
             ));
         } else {
-            println!("Median is too high: {}", med);
+            //println!("Median is too high: {}", med);
             return Ok(update_context(
                 context,
                 SetupContextOverrides {
@@ -716,23 +896,32 @@ fn latency_test_phase(context: &SetupContext) -> Result<SetupContext> {
             ));
         }
     }
+
     println!("Median of Latency Test: {}", med);
-    return Ok(update_context(
+    Ok(update_context(
         context,
         SetupContextOverrides {
             latency_result: Some(true),
             ..Default::default()
         },
-    ));
+    ))
 }
 
+/// Calculation phase: streams `Calc` messages (theta & radius) to client,
+/// collects timestamps and reconstructs a circle waveform from returned samples.
 fn calculation_phase(context: &SetupContext) -> Result<SetupContext> {
     let mut buf = [0u8; std::mem::size_of::<Message>()];
     let socket = &context.socket;
-    let interval = context.interval.clone();
+    let interval = context.interval;
+
     println!("Start Calculation");
-    let context_time: u64 = context.time.as_str().parse().expect("Invalid number in time");
-    let num_points =  (context_time * 1000000000) / TIMEOUT_NS; 
+
+    let context_time: u64 = context
+        .time
+        .as_str()
+        .parse()
+        .expect("Invalid number in time");
+    let num_points = (context_time * 1_000_000_000) / TIMEOUT_NS;
 
     let mut points = Vec::with_capacity(num_points as usize);
     let mut latency: Vec<CalcTimestampSet> = vec![CalcTimestampSet::default(); num_points as usize];
@@ -740,41 +929,47 @@ fn calculation_phase(context: &SetupContext) -> Result<SetupContext> {
     let mut last_y = 0.0;
     let calc_time = SystemTime::now();
     let mut next_tick = Instant::now() + interval;
-    let mut i = 0;
-    
 
+    let mut i = 0u64;
     while calc_time.elapsed()?.as_secs() < context_time {
         let index = i as usize;
-        //let calc_start_time = Instant::now();
+
         let theta = 2.0 * PI * (i as f64) / (num_points as f64);
         let x = RADIUS * theta.cos();
+
         let calc_send_time = Instant::now();
         let calc_send_elapsed = calc_send_time.duration_since(read_user_zero());
 
-        let encoded_msg = encode_message(MessageType::Calc, i, 0, 0, 0, theta, RADIUS, 0)?;
-        socket.send_to(&encoded_msg, &context.src_client)?;
+        let encoded = encode_message(MessageType::Calc, i, 0, 0, 0, theta, RADIUS, 0)?;
+        socket.send_to(&encoded, &context.src_client)?;
         increment_message_count();
 
+        // Kernel send timestamp (xmit)
         let mut server_sent_kernel =
             Instant::now().duration_since(read_user_zero()).as_nanos() as u64;
-
         if let Some(event) = wait_for_event(i, MessageType::Calc, 2) {
             server_sent_kernel = event.timestamp - get_kernel_zero();
         }
 
+        // Queueing snapshot (dev_queue)
         let event_snapshot_queue = wait_for_event(i, MessageType::Calc, 3);
-        let server_queue = event_snapshot_queue.unwrap().timestamp - get_kernel_zero();
+        let server_queue = event_snapshot_queue
+            .expect("Expected queue event")
+            .timestamp
+            - get_kernel_zero();
 
-        let calc_send_duration;
+        let calc_send_duration: u128;
+
+        // Await response with y-value and client-side kernel timing
         loop {
             if calc_send_time.elapsed() > TIMEOUT_DURATION {
                 println!("Timeout in Latency Calc Phase");
-                if i > 0{
-                    i = i - 1;
+                if i > 0 {
+                    i -= 1;
                 }
                 next_tick = Instant::now() + interval;
                 if increment_timeout_count() {
-                    println!("Too many timeouts, stopping Calculation Phase.");
+                    //println!("Too many timeouts, stopping Calculation Phase.");
                     return Ok(update_context(
                         context,
                         SetupContextOverrides {
@@ -785,17 +980,18 @@ fn calculation_phase(context: &SetupContext) -> Result<SetupContext> {
                 }
                 break;
             }
+
             match socket.recv_from(&mut buf) {
                 Ok((amt, _src)) => {
                     let end_time = Instant::now();
                     let calc_end_time = end_time.duration_since(read_user_zero());
-                    let msg: Message = *bytemuck::from_bytes::<Message>(&buf[..amt]);
 
+                    let msg: Message = *bytemuck::from_bytes::<Message>(&buf[..amt]);
                     let number = msg.seq;
 
+                    // Kernel receive timestamp
                     let mut server_arrival_kernel =
                         Instant::now().duration_since(read_user_zero()).as_nanos() as u64;
-
                     if let Some(event) = wait_for_event(number, MessageType::Calc, 1) {
                         server_arrival_kernel = event.timestamp - get_kernel_zero();
                     }
@@ -815,10 +1011,13 @@ fn calculation_phase(context: &SetupContext) -> Result<SetupContext> {
                             latency[index].server_sent = calc_send_elapsed.as_nanos();
                             latency[index].server_sent_kernel = server_sent_kernel as u128;
                             latency[index].client_arrival_kernel = client_arrival_kernel;
+
                             if i > 0 {
                                 latency[index - 1].client_sent_kernel = Some(client_sent);
                                 latency[index - 1].client_queue = Some(client_queue);
                             }
+
+                            // If the per-message latency exceeded timeout window, reuse last y with penalty
                             last_y = if calc_send_duration <= TIMEOUT_NS as u128 {
                                 y
                             } else {
@@ -843,79 +1042,89 @@ fn calculation_phase(context: &SetupContext) -> Result<SetupContext> {
         i += 1;
     }
 
-    let encoded_msg = encode_message(MessageType::Calc, u64::MAX, 0, 0, 0, 0.0, 0.0, 0)?;
-    socket.send_to(&encoded_msg, &context.src_client)?;
-    increment_message_count();
-    let start_time = Instant::now();
-    loop {
-        if start_time.elapsed() > TIMEOUT_DURATION {
-            println!("Timeout in Latency Test Phase");
-            if increment_timeout_count() {
-                println!("Too many timeouts, stopping Calculation Phase.");
-                return Ok(update_context(
-                    context,
-                    SetupContextOverrides {
-                        running: Some(Arc::new(AtomicBool::new(false))),
-                        ..Default::default()
-                    },
-                ));
+    // Send termination message for Calc exchange
+    {
+        let encoded = encode_message(MessageType::Calc, u64::MAX, 0, 0, 0, 0.0, 0.0, 0)?;
+        socket.send_to(&encoded, &context.src_client)?;
+        increment_message_count();
+
+        // Receive final client kernel send & queue timestamps for last element
+        let start_time = Instant::now();
+        loop {
+            if start_time.elapsed() > TIMEOUT_DURATION {
+                println!("Timeout waiting for final Calc ack");
+                if increment_timeout_count() {
+                    println!("Too many timeouts, stopping Calculation Phase.");
+                    return Ok(update_context(
+                        context,
+                        SetupContextOverrides {
+                            running: Some(Arc::new(AtomicBool::new(false))),
+                            ..Default::default()
+                        },
+                    ));
+                }
+                break;
             }
-            break;
-        }
-        match socket.recv_from(&mut buf) {
-            Ok((amt, _src)) => {
-                let msg: Message = *bytemuck::from_bytes::<Message>(&buf[..amt]);
-                match (msg.second_u128, msg.timestamp) {
-                    (client_sent, client_queue) => {
-                        latency[num_points as usize - 1].client_sent_kernel = Some(client_sent);
-                        latency[num_points as usize - 1].client_queue = Some(client_queue);
-                        break;
+
+            match socket.recv_from(&mut buf) {
+                Ok((amt, _src)) => {
+                    let msg: Message = *bytemuck::from_bytes::<Message>(&buf[..amt]);
+                    match (msg.second_u128, msg.timestamp) {
+                        (client_sent, client_queue) => {
+                            let last = num_points as usize - 1;
+                            latency[last].client_sent_kernel = Some(client_sent);
+                            latency[last].client_queue = Some(client_queue);
+                            break;
+                        }
                     }
                 }
-            }
-            Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => {
-                std::thread::sleep(Duration::from_nanos(10));
-            }
-            Err(e) => {
-                eprintln!("Error while receiving: {}", e);
+                Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => {
+                    std::thread::sleep(Duration::from_nanos(10));
+                }
+                Err(e) => {
+                    eprintln!("Error while receiving: {}", e);
+                }
             }
         }
     }
-    return Ok(update_context(
+
+    Ok(update_context(
         context,
         SetupContextOverrides {
             calculation_result: Some((points, latency)),
             ..Default::default()
         },
-    ));
+    ))
 }
 
+/// Persist collected circle points and latency breakdowns to disk.
+///
+/// Folder layout:
+///   ../{config}/results/standard_{standard}/frequency_{frequency}/bandwith_{bandwith}/qos_{qos}/udp/
 fn save_results(context: &SetupContext) -> Result<SetupContext> {
     let result_path = format!(
         "../{}/results/standard_{}/frequency_{}/bandwith_{}/qos_{}/udp/",
         &context.config, &context.standard, &context.frequency, &context.bandwith, &context.qos
     );
+
     if let Err(e) = create_dir_all(&result_path) {
         eprintln!("Error while creating directories: {}", e);
         return Ok(update_context(
             context,
             SetupContextOverrides {
-                counter: Some(context.counter.clone() + 1),
+                counter: Some(context.counter + 1), //clone()
                 ..Default::default()
             },
         ));
     }
 
+    // Write latencies
     let mut latencies = BufWriter::new(
         OpenOptions::new()
             .write(true)
             .create(true)
             .truncate(true)
-            .open(format!(
-                "{}/latencys_{}",
-                result_path,
-                context.counter.clone()
-            ))
+            .open(format!("{}/latencys_{}", result_path, context.counter))
             .unwrap(),
     );
 
@@ -930,6 +1139,7 @@ fn save_results(context: &SetupContext) -> Result<SetupContext> {
             let queue_t2 = client_sent_kernel as i128 - client_queue as i128;
             let send_t2 = ts.server_arrival_kernel as i128 - client_sent_kernel as i128;
             let whole = ts.server_arrival as i128 - ts.server_sent as i128;
+
             writeln!(
                 latencies,
                 "{},{},{},{},{},{},{}",
@@ -941,16 +1151,13 @@ fn save_results(context: &SetupContext) -> Result<SetupContext> {
         }
     }
 
+    // Write circle points (x,y)
     let mut circle_points = BufWriter::new(
         OpenOptions::new()
             .write(true)
             .create(true)
             .truncate(true)
-            .open(format!(
-                "{}/circle_points_{}",
-                result_path,
-                context.counter.clone()
-            ))
+            .open(format!("{}/circle_points_{}", result_path, context.counter))
             .unwrap(),
     );
 
@@ -960,56 +1167,66 @@ fn save_results(context: &SetupContext) -> Result<SetupContext> {
 
     circle_points.flush().unwrap();
     latencies.flush().unwrap();
-    println!("Points and Latencies written.");
-    return Ok(update_context(
+    println!("Points and latencies persisted.");
+
+    Ok(update_context(
         context,
         SetupContextOverrides {
-            counter: Some(context.counter.clone() + 1),
+            counter: Some(context.counter + 1),
             ..Default::default()
         },
-    ));
+    ))
 }
 
+/// Send a terminal `Calc/u64::MAX` message repeatedly to ensure the client
+/// observes the stop condition, then return.
 fn handle_error(context: &SetupContext) -> Result<()> {
     let socket = &context.socket;
-    let encoded_msg = encode_message(MessageType::Calc, u64::MAX, 0, 0, 0, 0.0, 0.0, 0)?;
+    let encoded = encode_message(MessageType::Calc, u64::MAX, 0, 0, 0, 0.0, 0.0, 0)?;
     for _ in 0..100 {
-        if let Err(e) = socket.send_to(&encoded_msg, &context.src_client) {
+        if let Err(e) = socket.send_to(&encoded, &context.src_client) {
             eprintln!("Error sending error message: {}", e);
             thread::sleep(Duration::from_millis(100));
         }
     }
-
     increment_message_count();
     Ok(())
 }
+
+// ============================================================================
+// Entry Point
+// ============================================================================
+
 fn main() -> anyhow::Result<()> {
+    // ---- Setup server & globals
     let context = setup()?;
 
+    // Initialize global event queues for eBPF callbacks
     let event_queue_rec = Arc::new(Mutex::new(VecDeque::new()));
     let event_queue_send = Arc::new(Mutex::new(VecDeque::new()));
     let queue_event_queue = Arc::new(Mutex::new(VecDeque::new()));
-    
+
     CURRENT_EVENT_REC.set(event_queue_rec.clone()).unwrap();
     CURRENT_EVENT_SEND.set(event_queue_send.clone()).unwrap();
     CURRENT_QUEUE_EVENT.set(queue_event_queue.clone()).unwrap();
 
+    // Convenience clones
     let event_ref_rec = CURRENT_EVENT_REC.get().unwrap().clone();
     let event_ref_send = CURRENT_EVENT_SEND.get().unwrap().clone();
     let queue_event_ref = CURRENT_QUEUE_EVENT.get().unwrap().clone();
 
+    // ---- Load & attach eBPF
     let open_skel = MonitoreSkelBuilder::default().open();
-    println!("Skelett ge  ffnet.");
-
+    println!("BPF skeleton opened.");
     let mut skel = open_skel?.load()?;
-    println!("Skelett geladen.");
-
+    println!("BPF skeleton loaded.");
     skel.attach()?;
+    println!("eBPF program attached and running.");
 
-    println!("eBPF-Programm l  uft  ^` ");
+    // ---- Build ring buffer and start polling thread
     let r = context.running.clone();
     let maps = skel.maps();
-    // Callback-Funktion, wird bei jedem Ringbuffer-Event aufgerufen
+
     let mut ringbuf_builder = RingBufferBuilder::new();
     ringbuf_builder.add(maps.events(), move |data: &[u8]| {
         if data.len() != std::mem::size_of::<Event>() {
@@ -1020,46 +1237,61 @@ fn main() -> anyhow::Result<()> {
             );
             return 0;
         }
+
         let my_pid = std::process::id() as u32;
         let event = *from_bytes::<Event>(data);
-        match event.event_type{
+
+        match event.event_type {
+            // Kernel reference time snapshot (uprobed in userspace)
             0 if event.pid == my_pid => {
-                let timestamp = event.timestamp;
-                set_kernel_zero(timestamp);
+                set_kernel_zero(event.timestamp);
             }
+
+            // Receive tracepoint
             1 if event.pid == my_pid => {
                 let mut queue = event_ref_rec.lock().unwrap();
                 queue.push_back(event);
             }
+
+            // Send tracepoint
             2 if event.pid == my_pid => {
                 let mut queue = event_ref_send.lock().unwrap();
                 queue.push_back(event);
             }
+
+            // Queue tracepoint
             3 if event.pid == my_pid => {
                 let mut queue = queue_event_ref.lock().unwrap();
                 queue.push_back(event);
             }
+
             _ => {
                 eprintln!("⚠️ Unknown event type: {}", event.event_type);
             }
         }
-
         0
     })?;
-
     let ringbuf = ringbuf_builder.build()?;
 
-    // Separate Thread f  r Polling des Ringbuffers starten
+    // Poll ring buffer in background
     let _handle = thread::spawn(move || {
         while r.load(Ordering::Relaxed) {
             ringbuf.poll(Duration::from_millis(100)).unwrap();
         }
     });
-    println!("Kerneltime: {}", get_kernel_zero());
+
+    println!("Kernel time zero: {}", get_kernel_zero());
+
+    // ---- Run state machine
     run_state_machine(context)?;
     Ok(())
 }
 
+// ============================================================================
+// State Machine
+// ============================================================================
+
+/// Drives the server through its phases until completion or error.
 fn run_state_machine(mut context: SetupContext) -> Result<()> {
     let mut state = State::WaitForStart;
 
