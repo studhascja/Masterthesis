@@ -823,7 +823,7 @@ fn latency_test_phase(context: &SetupContext) -> Result<SetupContext> {
 
                     match (msg.first_u128, msg.second_u128, msg.timestamp) {
                         (server_sent, client_arrival, client_sent) => {
-                            // Gather All EBPF Timestamps 
+                            // Gather All EBPF Timestamps
                             if i < test_mesg_count {
                                 timestamps[index].server_arrival = server_arrival;
                                 timestamps[index].server_arrival_kernel =
