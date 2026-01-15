@@ -2,7 +2,9 @@ use anyhow::Result;
 use bytemuck::{from_bytes, Pod, Zeroable};
 use libbpf_rs::skel::{OpenSkel, Skel, SkelBuilder};
 use libbpf_rs::RingBufferBuilder;
-use libc::{pthread_self, pthread_setschedparam, sched_param, SCHED_RR};
+use libc::{
+    mlockall, pthread_self, pthread_setschedparam, sched_param, MCL_CURRENT, MCL_FUTURE, SCHED_RR,
+};
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
 use std::collections::VecDeque;
@@ -1090,6 +1092,11 @@ fn handle_error(context: &SetupContext) -> Result<()> {
 // ============================================================================
 fn main() -> Result<(), libbpf_rs::Error> {
     set_rt_priority(99);
+    unsafe {
+        if mlockall(MCL_CURRENT | MCL_FUTURE) != 0 {
+            panic!("mlockall failed");
+        }
+    }
 
     // Initialize global event queues for eBPF callbacks
     let event_queue_rec = Arc::new(Mutex::new(VecDeque::new()));

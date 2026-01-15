@@ -2,7 +2,9 @@ use anyhow::Result;
 use bytemuck::{from_bytes, Pod, Zeroable};
 use libbpf_rs::skel::{OpenSkel, Skel, SkelBuilder};
 use libbpf_rs::RingBufferBuilder;
-use libc::{pthread_self, pthread_setschedparam, sched_param, SCHED_RR};
+use libc::{
+    mlockall, pthread_self, pthread_setschedparam, sched_param, MCL_CURRENT, MCL_FUTURE, SCHED_RR,
+};
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
 use std::collections::VecDeque;
@@ -486,6 +488,11 @@ fn read_user_zero() -> Instant {
 /// Initialize server socket, parse CLI args, configure global pacing and defaults.
 fn setup() -> anyhow::Result<SetupContext> {
     set_rt_priority(99);
+    unsafe {
+        if mlockall(MCL_CURRENT | MCL_FUTURE) != 0 {
+            panic!("mlockall failed");
+        }
+    }
 
     // CLI: config, standard, frequency, bandwith, qos, time
     let args: Vec<String> = env::args().collect();

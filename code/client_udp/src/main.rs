@@ -3,7 +3,8 @@ use bytemuck::{bytes_of, from_bytes, Pod, Zeroable};
 use libbpf_rs::skel::{OpenSkel, Skel, SkelBuilder};
 use libbpf_rs::RingBufferBuilder;
 use libc::{
-    pthread_self, pthread_setschedparam, sched_param, sched_setscheduler, SCHED_OTHER, SCHED_RR,
+    mlockall, pthread_self, pthread_setschedparam, sched_param, sched_setscheduler, MCL_CURRENT,
+    MCL_FUTURE, SCHED_OTHER, SCHED_RR,
 };
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
@@ -356,6 +357,11 @@ fn wait_for_event(seq: u64, msg_type: MessageType, event_type: u8) -> Option<Eve
 fn main() -> Result<()> {
     // Elevate current thread to real-time round-robin scheduling
     set_rt_priority(99);
+    unsafe {
+        if mlockall(MCL_CURRENT | MCL_FUTURE) != 0 {
+            panic!("mlockall failed");
+        }
+    }
 
     // Initialize global event queues
     let event_queue_rec = Arc::new(Mutex::new(VecDeque::new()));

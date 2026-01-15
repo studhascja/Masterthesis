@@ -3,11 +3,12 @@ use bytemuck::{bytes_of, from_bytes, Pod, Zeroable};
 use libbpf_rs::skel::{OpenSkel, Skel, SkelBuilder};
 use libbpf_rs::RingBufferBuilder;
 use libc::{
-    pthread_self, pthread_setschedparam, sched_param, sched_setscheduler, SCHED_OTHER, SCHED_RR,
+    mlockall, pthread_self, pthread_setschedparam, sched_param, sched_setscheduler, MCL_CURRENT,
+    MCL_FUTURE, SCHED_OTHER, SCHED_RR,
 };
-use std::env;
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
+use std::env;
 use std::{
     collections::VecDeque,
     convert::TryFrom,
@@ -28,7 +29,6 @@ use std::{
 // Generated eBPF skeleton (libbpf-rs)
 // This file provides access to the mapped tracepoints
 include!("bpf/monitore.skel.rs");
-
 
 // ============================================================================
 // Global State
@@ -51,7 +51,6 @@ static USER_ZERO: Lazy<Mutex<Instant>> = Lazy::new(|| Mutex::new(Instant::now())
 
 /// Reference timestamp in kernel space
 static KERNEL_ZERO: Lazy<Mutex<u64>> = Lazy::new(|| Mutex::new(0));
-
 
 // ============================================================================
 // Protocol Definitions
@@ -116,7 +115,6 @@ struct Message {
     _padding: [u8; 7],
 }
 
-
 // ============================================================================
 // eBPF Data Structures
 // ============================================================================
@@ -165,7 +163,6 @@ struct Event {
     data: BpfData,
 }
 
-
 // ============================================================================
 // Utility Implementations
 // ============================================================================
@@ -188,7 +185,6 @@ impl TryFrom<u8> for MessageType {
         })
     }
 }
-
 
 // ============================================================================
 // Message Encoding
@@ -222,7 +218,6 @@ fn encode_message(
     Ok(bytes_of(&msg).to_vec())
 }
 
-
 // ============================================================================
 // Real-Time Scheduling
 // ============================================================================
@@ -243,7 +238,6 @@ fn set_rt_priority(priority: i32) {
     }
 }
 
-
 // ============================================================================
 // External Notification
 // ============================================================================
@@ -258,7 +252,6 @@ fn notify_python() {
         eprintln!("⚠️ Could not open /tmp/notify_pipe.");
     }
 }
-
 
 // ============================================================================
 // Time Synchronization Helpers
@@ -301,7 +294,6 @@ fn read_user_zero() -> Instant {
     *USER_ZERO.lock().unwrap()
 }
 
-
 // ============================================================================
 // Event Synchronization
 // ============================================================================
@@ -315,11 +307,20 @@ fn wait_for_event(seq: u64, msg_type: MessageType, event_type: u8) -> Option<Eve
 
     // Select the appropriate event queue
     let queue = if event_type == 1 {
-        CURRENT_EVENT_REC.get().expect("CURRENT_EVENT not initialized").clone()
+        CURRENT_EVENT_REC
+            .get()
+            .expect("CURRENT_EVENT not initialized")
+            .clone()
     } else if event_type == 2 {
-        CURRENT_EVENT_SEND.get().expect("CURRENT_EVENT not initialized").clone()
+        CURRENT_EVENT_SEND
+            .get()
+            .expect("CURRENT_EVENT not initialized")
+            .clone()
     } else {
-        CURRENT_QUEUE_EVENT.get().expect("CURRENT_EVENT not initialized").clone()
+        CURRENT_QUEUE_EVENT
+            .get()
+            .expect("CURRENT_EVENT not initialized")
+            .clone()
     };
 
     loop {
@@ -359,6 +360,11 @@ fn wait_for_event(seq: u64, msg_type: MessageType, event_type: u8) -> Option<Eve
 fn main() -> Result<()> {
     // Elevate current thread to real-time round-robin scheduling
     set_rt_priority(99);
+    unsafe {
+        if mlockall(MCL_CURRENT | MCL_FUTURE) != 0 {
+            panic!("mlockall failed");
+        }
+    }
 
     // Initialize global event queues
     let event_queue_rec = Arc::new(Mutex::new(VecDeque::new()));
@@ -414,8 +420,7 @@ fn main() -> Result<()> {
             // Kernel reference timestamp event
             // Reaction to triggered Uprobe
             0 if event.pid == my_pid => {
-                let _diff =
-                    Instant::now().duration_since(read_user_zero()).as_nanos() as i128;
+                let _diff = Instant::now().duration_since(read_user_zero()).as_nanos() as i128;
                 set_kernel_zero(event.timestamp);
             }
 
@@ -442,9 +447,7 @@ fn main() -> Result<()> {
                 let pid = event.pid;
                 eprintln!(
                     "⚠️ Unknown event type: {} (pid {}, expected {})",
-                    event.event_type,
-                    pid,
-                    my_pid
+                    event.event_type, pid, my_pid
                 );
             }
         }
@@ -488,8 +491,7 @@ fn main() -> Result<()> {
             println!("✅ Connected to server at {}", server_addr);
 
             // Send initial START message
-            let start_msg =
-                encode_message(MessageType::Start, 0, 0, 0, 0, 0.0, 0.0, 0)?;
+            let start_msg = encode_message(MessageType::Start, 0, 0, 0, 0, 0.0, 0.0, 0)?;
             stream.write_all(&start_msg)?;
             increment_message_count();
 
@@ -524,7 +526,6 @@ fn main() -> Result<()> {
                     let msg = raw.assume_init();
 
                     match MessageType::try_from(msg.msg_type) {
-
                         // ----------------------------------------------------
                         // Unexpected START message
                         // ----------------------------------------------------
@@ -553,9 +554,7 @@ fn main() -> Result<()> {
                             let mut client_recv =
                                 Instant::now().duration_since(read_user_zero()).as_nanos() as u64;
 
-                            if let Some(event) =
-                                wait_for_event(seq, MessageType::NtpResult, 1)
-                            {
+                            if let Some(event) = wait_for_event(seq, MessageType::NtpResult, 1) {
                                 client_recv = event.timestamp - get_kernel_zero();
                             }
 
@@ -575,10 +574,8 @@ fn main() -> Result<()> {
                             client_sent_time =
                                 Instant::now().duration_since(read_user_zero()).as_nanos() as u128;
 
-                            if let Some(event) =
-                                wait_for_event(seq, MessageType::NtpResult, 2)
-                            {
-                                 client_sent_time =
+                            if let Some(event) = wait_for_event(seq, MessageType::NtpResult, 2) {
+                                client_sent_time =
                                     event.timestamp.checked_sub(get_kernel_zero()).unwrap();
                             }
                         }
@@ -631,8 +628,7 @@ fn main() -> Result<()> {
                                         .stdout(Stdio::piped())
                                         .pre_exec(|| {
                                             let param = sched_param { sched_priority: 0 };
-                                            let ret =
-                                                sched_setscheduler(0, SCHED_OTHER, &param);
+                                            let ret = sched_setscheduler(0, SCHED_OTHER, &param);
                                             if ret != 0 {
                                                 return Err(std::io::Error::last_os_error());
                                             }
@@ -652,9 +648,7 @@ fn main() -> Result<()> {
                                 start.duration_since(read_user_zero()).as_nanos() as u64;
 
                             // Match receive event
-                            if let Some(event) =
-                                wait_for_event(seq, MessageType::Calc, 1)
-                            {
+                            if let Some(event) = wait_for_event(seq, MessageType::Calc, 1) {
                                 client_recv = event.timestamp - get_kernel_zero();
                             }
 
@@ -679,18 +673,14 @@ fn main() -> Result<()> {
                             let mut tcp_seq = 0u64;
 
                             // Match send event
-                            if let Some(event) =
-                                wait_for_event(seq, MessageType::Calc, 2)
-                            {
+                            if let Some(event) = wait_for_event(seq, MessageType::Calc, 2) {
                                 client_sent_time_calc =
                                     (event.timestamp - get_kernel_zero()) as u128;
                                 tcp_seq = event.data.tcp_seq;
                             }
 
                             // Match queueing event
-                            if let Some(evt) =
-                                wait_for_event(tcp_seq, MessageType::Calc, 3)
-                            {
+                            if let Some(evt) = wait_for_event(tcp_seq, MessageType::Calc, 3) {
                                 client_queue_time_calc =
                                     (evt.timestamp - get_kernel_zero()) as u128;
                             }
