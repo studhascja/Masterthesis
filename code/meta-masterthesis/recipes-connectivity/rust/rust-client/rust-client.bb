@@ -211,7 +211,7 @@ SRC_URI += " \
 "
 do_compile:prepend() {
     export KERNEL_HEADERS="${STAGING_KERNEL_DIR}"
-    # bpftool suchen
+    # search bpftool 
     BPFT=$(which bpftool || true)
     if [ -z "$BPFT" ]; then
         BPFT="${STAGING_DIR_NATIVE}/usr/sbin/bpftool"
@@ -220,7 +220,7 @@ do_compile:prepend() {
         bbfatal "bpftool nicht gefunden oder nicht ausführbar: ${BPFT}"
     fi
      VMLINUX_PATH="${TOPDIR}/tmp/work/raspberrypi5-poky-linux/linux-raspberrypi/6.12.1+git/linux-raspberrypi5-standard-build/"
-    # vmlinux.h erzeugen
+    # create vmlinux.h
     $BPFT btf dump file "${VMLINUX_PATH}/vmlinux" format c > ${S}/src/bpf/vmlinux.h
 }
 

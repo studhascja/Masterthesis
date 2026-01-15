@@ -9,7 +9,7 @@ inherit core-image
 
 #IMAGE_INSTALL:append = " linux-firmware raspberrypi-overlays"
 
-# Zusätzliche Pakete
+# Further Packages
 IMAGE_INSTALL += " \
   packagegroup-core-boot \
   kernel-modules \
